@@ -88,23 +88,6 @@ from uw.utilities.colormaps import *
 
 class Empty: pass
 
-def merge_dict(first,second):
-    """ recursivly merge two dictionaries. If two conflicting non-dictionary 
-        items are present, read in from first by default. """
-    ret={}
-    for k in set(first.keys()+second.keys()):
-        if not first.has_key(k):
-            ret[k]=second[k]
-        elif not second.has_key(k):
-            ret[k]=first[k]
-        elif type(first[k])==dict and type(second[k]):
-            ret[k]=merge_dict(first[k],second[k])
-        else:
-            ret[k]=first[k]
-    return ret
-
-
-
 
 class LandeROI(ROIAnalysis):
     """ Subclass of ROIAnalysis with helper 

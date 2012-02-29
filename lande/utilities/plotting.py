@@ -1,7 +1,10 @@
+from os.path import expandvars
+from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
+from matplotlib.patheffects import withStroke
 
 def plot_ds9_contour(ax,contour,**kwargs):
     """ Parse a ds9 format contour file. Kwargs goes into the plot function. """
-    lines=open(os.path.expandvars(contour)).readlines()
+    lines=open(expandvars(contour)).readlines()
     ras,decs=[],[]
     for line in lines:
         if line.strip() is '':
