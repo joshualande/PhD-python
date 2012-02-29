@@ -9,7 +9,7 @@ from skymaps import SkyImage
 
 from uw.like.roi_state import PointlikeState
 
-from . fitting import fit_prefactor
+from . fit import fit_prefactor
 from . tools import galstr
 
 class GridLocalize(object):

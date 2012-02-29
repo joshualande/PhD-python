@@ -16,7 +16,7 @@ from lande.fermi.sed.supersed import SuperSED
 from . superstate import SuperState
 
 from . tools import gtlike_or_pointlike
-from . fitting import paranoid_gtlike_fit
+from . fit import paranoid_gtlike_fit
 
 def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=None, 
                             model_0_kwargs=dict(color='red', zorder=0),
