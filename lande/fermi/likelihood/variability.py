@@ -32,7 +32,8 @@ from roi_gtlike import Gtlike
 
 from lande.utilities.toolbag import tolist
 
-from lande.fermi.likelihood.tools import paranoid_gtlike_fit,fluxdict,gtlike_upper_limit,\
+from . fitting import paranoid_gtlike_fit
+from . tools import fluxdict,gtlike_upper_limit,\
         pointlike_upper_limit,diffusedict,fit_only_prefactor,get_background,\
         get_sources,gtlike_modify,sourcedict
 from . superstate import SuperState

@@ -37,7 +37,7 @@ from lande_plotting import *
 from lande_extended import *
 from lande_decorators import *
 
-from lande.fermi.likelihood.tools import galstr
+from . tools import galstr
 
 from uw.like import sed_plotter
 import pylab as P

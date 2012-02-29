@@ -3,7 +3,8 @@ import numpy as np
 from SED import SED
 from lande.utilities.toolbag import tolist
 
-from lande.fermi.likelihood.tools import fluxdict,powerlaw_upper_limit,paranoid_gtlike_fit
+from lande.fermi.likelihood.tools import fluxdict,powerlaw_upper_limit
+from . fitting import paranoid_gtlike_fit
 from . superstate import SuperState
 
 
