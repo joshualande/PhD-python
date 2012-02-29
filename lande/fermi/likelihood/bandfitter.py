@@ -3,7 +3,7 @@ import numpy as np
 from SED import SED
 from lande.utilities.toolbag import tolist
 
-from . tools import fluxdict
+from . saving import fluxdict
 from . limits import powerlaw_upper_limit
 from . fitting import paranoid_gtlike_fit
 from . superstate import SuperState

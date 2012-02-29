@@ -11,10 +11,11 @@ from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
 from uw.like.Models import DefaultModelValues
 
-from lande.utilities.toolbag import tolist
 from SED import SED
 
 from lande.pysed import units
+from lande.utilities.toolbag import tolist
+from . tools import gtlike_or_pointlike
 
 
 def gtlike_get_full_energy_range(like): return like.energies[[0,-1]]
