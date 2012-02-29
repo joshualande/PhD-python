@@ -94,3 +94,77 @@ def fit_prefactor(roi, which, *args, **kwargs):
 def fit_only_prefactor(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_fit_only_prefactor, pointlike_fit_only_prefactor, *args, **kwargs)
 
+def gtlike_modify(like, name, free=True):
+    """ Freeze a source in a gtlike ROI. 
+    
+        The method for modifying the ROI
+        follows the code in SuperState.py 
+        
+        I am not sure why the modificaiton
+        has to be done in this particular way. """
+    from pyLikelihood import StringVector
+
+    source = like.logLike.getSource(name)
+    spectrum = like[name].src.spectrum()
+
+    parNames = StringVector()
+    spectrum.getParamNames(parNames)
+    for parName in parNames:
+        index = like.par_index(name, parName)
+        par = like.params()[index]
+        par.setFree(free)
+
+    like.syncSrcParams(name)
+
+
+
+def freeze_insignificant_to_catalog(roi,catalog,exclude_names=[], min_ts=25):
+    """ Replace all insigificant 2FGL catalog sources
+        with the predictions of 2FGL and 
+        the spectral shape of the source frozen. """
+    any_changed=False
+    for source in roi.get_sources():
+        name = source.name
+
+        if name in exclude_names: continue
+
+        # Note only check sources with MORE than their
+        # prefactor frozen!
+        if np.any(source.model.free[1:]) and roi.TS(which=source)< min_ts:
+            try:
+                catalog_source = catalog.get_source(name)
+            except StopIteration:
+                pass
+            else:
+                print 'Freezing spectra of %s to 2FGL prediction b/c it is insignificant' % name
+                roi.modify(which=name, model=catalog_source.model, keep_old_flux=False)
+                fit_only_prefactor(roi, name)
+                any_changed=True
+    return any_changed
+
+def freeze_bad_index_to_catalog(roi,catalog,exclude_names=[], min_ts=25):
+    """ Fix the spectrum of all power-law catalog sources with a bad spectral
+        index to the predictions from the catalog
+        with the predictions of 2FGL and 
+        the spectral shape of the source frozen. """
+    any_changed=False
+    for source in roi.get_sources():
+        name = source.name
+
+        if name in exclude_names: continue
+
+        if isinstance(source.model,PowerLaw):
+            index =source.model['index']
+            if index < -5 or index > 5:
+                try:
+                    catalog_source = catalog.get_source(name)
+                except StopIteration:
+                    pass
+                else:
+                    print 'Freezing spectra of %s to 2FGL prediction b/c fit index is bad' % name
+                    roi.modify(which=name, model = catalog_source.model, keep_old_flux=False)
+                    fit_only_prefactor(roi, name)
+                    any_changed=True
+    return any_changed
+
+
