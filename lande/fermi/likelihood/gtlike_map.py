@@ -1,20 +1,12 @@
-import os,sys
-from os.path import join
-import shutil
-import math
-import numpy as np
-from tempfile import mkdtemp
+""" This is mostly Romain's code. """
+import os
 import readXml
 # pointlike
-from uw.like.SpatialModels import RadiallySymmetricModel
 from skymaps import SkyDir
 from uw.utilities import keyword_options
 
 # pylikelihood
 from GtApp import GtApp
-from BinnedAnalysis import BinnedObs,BinnedAnalysis
-from pyLikelihood import ParameterVector
-from SED import SED
 
 from datetime import date
 
