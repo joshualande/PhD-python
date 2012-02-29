@@ -6,14 +6,8 @@ import pywcsgrid2
 
 from uw.utilities import keyword_options
  
-from mpl_toolkits.axes_grid1.axes_grid import ImageGrid
-from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
-from matplotlib.patheffects import withStroke
-
 from uw.like.roi_plotting import ROITSMapPlotter, ROISmoothedSources, ROISmoothedSource
 from uw.like.roi_state import PointlikeState
-from lande_sed import LandeSED
-        
 
 class ROIBandPlotter(object):
 

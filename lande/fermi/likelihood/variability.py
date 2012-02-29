@@ -30,8 +30,9 @@ from uw.utilities.phasetools import phase_ltcube
 
 from roi_gtlike import Gtlike
 
-from lande_toolbag import tolist
-from likelihood_tools import paranoid_gtlike_fit,fluxdict,gtlike_upper_limit,\
+from lande.utilities.toolbag import tolist
+
+from lande.fermi.likelihood.tools import paranoid_gtlike_fit,fluxdict,gtlike_upper_limit,\
         pointlike_upper_limit,diffusedict,fit_only_prefactor,get_background,\
         get_sources,gtlike_modify,sourcedict
 from . superstate import SuperState

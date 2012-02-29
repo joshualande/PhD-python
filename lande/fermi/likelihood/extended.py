@@ -104,7 +104,8 @@ class ExtensionProfile(object):
         d=dict(sigma=self.extension_list,
                TS_spectral=self.TS_spectral,
                TS_bandfits=self.TS_bandfits)
-        from lande_toolbag import tolist
+        from lande.utilities.toolbag import tolist
+
         return tolist(d)
 
     def save(self, filename):

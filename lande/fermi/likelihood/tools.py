@@ -831,7 +831,7 @@ def fit_prefactor(roi, which, *args, **kwargs):
 def force_gradient(use_gradient):
     """ A kludge to force use_gradient everywhere! """
     from uw.like.roi_analysis import ROIAnalysis
-    from lande_decorators import modify_defaults
+    from lande.utilities.decorators import modify_defaults
     ROIAnalysis.fit=modify_defaults(use_gradient=use_gradient)(ROIAnalysis.fit)
 
 def galstr(skydir):

@@ -7,10 +7,10 @@ def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=No
                             plot_kwargs=dict(),
                            ):
     """ Plots the cutoff test performed of a spectrum using the function
-        likelihood_tools.gtlike_test_cutoff.
+        gtlike_test_cutoff.
 
         Input:
-            cutoff_dict: created by likelihood_tools.gtlike_test_cutoff
+            cutoff_dict: created by gtlike_test_cutoff
             sed_dict: created by LandeSED.todict(). Can also be a yaml
               file created by LandeSED.save().
 

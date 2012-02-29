@@ -11,10 +11,7 @@
 import numpy as np
 #np.seterr(divide='ignore', invalid='ignore', over='ignore', under='ignore')
 
-try:
-    from lande_toolbag import *
-except Exception, ex:
-    print 'Unable to import lande_toolbag: %s' % ex
+from lande.utilities.toolbag import tolist
 
 from lande_localize import *
 
@@ -40,7 +37,7 @@ from lande_plotting import *
 from lande_extended import *
 from lande_decorators import *
 
-from likelihood_tools import galstr
+from lande.fermi.likelihood.tools import galstr
 
 from uw.like import sed_plotter
 import pylab as P
