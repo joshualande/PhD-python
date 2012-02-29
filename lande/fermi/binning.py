@@ -5,6 +5,7 @@ def gtbin_from_binfile(evfile, outfile, scfile, binfile):
         but make the outfile have a binning consistent with the reference
         binfile. """
 
+    """
     GtApp(evfile=ft1, 
                 outfile=binfile,
                 scfile=ft2,
@@ -16,4 +17,5 @@ def gtbin_from_binfile(evfile, outfile, scfile, binfile):
                 yref=
                 axisrot=
                 proj=
-
+    """
+    pass
