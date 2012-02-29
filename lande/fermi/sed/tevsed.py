@@ -6,7 +6,7 @@ from SED import SED
 
 from uw.like.Models import PowerLaw
 
-import lande_units as units
+from lande.pysed import units
 
 class TeVSED(object):
     """ General SED-like object

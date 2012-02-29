@@ -13,7 +13,7 @@ import pyLikelihood
 from SED import SED
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 
-import lande_units as units
+from lande.pysed import units
 from lande_toolbag import tolist
 
 

@@ -23,7 +23,9 @@ from uw.like.roi_state import PointlikeState
 from lande_toolbag import tolist
 from SED import SED
 
+from lande.pysed import units
 import lande_units as units
+
 
 from lande_state import LandeState
 
