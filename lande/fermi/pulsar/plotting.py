@@ -2,6 +2,7 @@ import pylab as P
 import numpy as np
 
 from . data import get_phases
+from uw.pulsar.phase_range import PhaseRange
 
 def plot_phaseogram(ft1, nbins=100, filename=None, title=None, off_pulse=None, axes=None, **kwargs):
     """ Simple code to plot a phaseogram. """
