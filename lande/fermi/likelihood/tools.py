@@ -48,41 +48,6 @@ def gtlike_or_pointlike(f_gtlike, f_pointlike, like_or_roi, *args, **kwargs):
 def gtlike_get_full_energy_range(like): return like.energies[[0,-1]]
 def pointlike_get_full_energy_range(roi): return roi.bin_edges[[0,-1]]
 
-def paranoid_gtlike_fit(like, covar=True):
-    """ Perform a sepctral fit in gtlike in
-        a paranoid manner. 
-        
-        See here for description of method:
-            http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Likelihood/Fitting_Models.html
-    """
-    saved_state = SuperState(like)
-    try:
-        print 'First, fitting with minuit'
-        like.fit(optimizer="MINUIT",covar=covar)
-    except Exception, ex:
-        print 'Minuit fit failed with optimizer=MINUIT, Try again with DRMNFB + NEWMINUIT!', ex
-        traceback.print_exc(file=sys.stdout)
-        saved_state.restore()
-
-        try:
-            saved_state = SuperState(like)
-            print 'Refitting, first with DRMNFB'
-            like.fit(optimizer='DRMNFB', covar=False)
-            print 'Refitting, second with NEWMINUIT'
-            like.fit(optimizer='NEWMINUIT', covar=covar)
-        except Exception, ex:
-            print 'ERROR spectral fitting with DRMNFB + NEWMINUIT: ', ex
-            traceback.print_exc(file=sys.stdout)
-            saved_state.restore()
-            try:
-                saved_state = SuperState(like)
-                print 'Refitting with LBFGS'
-                like.fit(optimizer='LBFGS', covar=False)
-            except Exception, ex:
-                print 'ERROR spectral fitting with LBFGS', ex
-                traceback.print_exc(file=sys.stdout)
-                saved_state.restore()
-
 
 def pointlike_spectrum_to_dict(model, errors=False):
     """ Package of a spectral model into a handy
@@ -347,21 +312,6 @@ def gtlike_modify(like, name, free=True):
 
     like.syncSrcParams(name)
 
-def gtlike_fit_only_prefactor(like, name):
-    """ Freeze everything but norm of source with name
-        in pyLikelihood object. """
-    gtlike_modify(like, name, free=False)
-    par = like.normPar(name)
-    par.setFree(True)
-    like.syncSrcParams(name)
-
-def pointlike_fit_only_prefactor(roi, which):
-    model = roi.get_model(which)
-    old_free = model.free
-    new_free = np.zeros_like(old_free).astype(bool)
-    new_free[0] = True
-    roi.modify(which=which, free=new_free)
-
 
 def gtlike_upper_limit(like, name, cl, emin=None, emax=None, 
                        flux_units='erg', **kwargs):
@@ -531,63 +481,6 @@ def pointlike_powerlaw_upper_limit(roi, name, powerlaw_index=2, cl=0.95, emin=No
     return tolist(ul)
 
 
-def pointlike_plot_all_seds(roi, filename=None, ncols=4, **kwargs):
-    """ Create an SED of all sources in the ROI as a big plot. """
-    
-    sources=roi.get_sources()
-    nrows = int(ceil(float(len(sources))/ncols))
-    
-    fig = P.figure(figsize=(2.5*ncols,2*nrows),frameon=False)
-    tit=P.title("All seds of the sources included in the region.\nRed : fitted sources\nBlue : non fitted sources inside the counts map\nBlack : sources outside of the counts map")
-
-    tit.axes.get_xaxis().set_visible(False)
-    tit.axes.get_yaxis().set_visible(False)
-    grid = AxesGrid(fig, 111,
-                    aspect=False,
-                    nrows_ncols = (nrows, ncols),
-                    axes_pad = 0.1,
-                    add_all=True,
-                    label_mode = "L")
-
-
-    from celgal import dist
-    from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
-    use_ergs=True
-    energy_flux_unit = None
-    if energy_flux_unit is None:
-        energy_flux_unit = 'erg' if use_ergs else 'MeV'
-    assert energy_flux_unit in ('erg', 'MeV', 'GeV', 'eV') , 'unrecognized energy flux unit'
-    energy_flux_factor = dict(erg=1.602e-6, MeV=1, eV=1e6, GeV=1e-3)[energy_flux_unit]
-    dir=["bottom","top","left","right"]
-    for i,which in enumerate(sources):
-        source=roi.get_source(which=which)
-        distance=dist([source.skydir.ra(),source.skydir.dec()],[roi.sa.roi_dir.ra(),roi.sa.roi_dir.dec()])
-        axis = (80, 5e5, 1e-7*energy_flux_factor,3.0e-4*energy_flux_factor)
-        axes=grid[i]
-        if distance<float(roi.sa.maxROI):
-            if len(source.model.get_parameters())!=0:
-                for axem in dir:
-                    axes.spines[axem].set_color('red')
-            else :
-                for axem in dir:
-                    axes.spines[axem].set_color('blue')
-        else :
-            for axem in dir:
-                axes.spines[axem].set_color('black')
-        at = AnchoredText("%s"%which.name,
-                          prop=dict(size=8), frameon=True,
-                          loc=2,
-                          )
-        at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-        axes.add_artist(at)
-                                
-            
-        roi.plot_sed(which,axes=grid[i],axis=axis,title=which.name,energy_flux_unit=energy_flux_unit,**kwargs)
-        
-    if filename is not None: P.savefig(filename)
-    
-
-plot_all_seds = pointlike_plot_all_seds # for now
 
 
 def freeze_insignificant_to_catalog(roi,catalog,exclude_names=[], min_ts=25):
@@ -640,34 +533,6 @@ def freeze_bad_index_to_catalog(roi,catalog,exclude_names=[], min_ts=25):
     return any_changed
 
 
-def fit_prefactor(roi, which, *args, **kwargs):
-    """ Fit the prefactor of source 'which'
-        without varying any other parmters.
-        
-        Can help if one source has a very bad 
-        starting value. """
-    source = roi.get_source(which)
-    model = roi.get_model(which)
-    name = source.name
-
-    frozen_sources = dict()
-    for other_source in roi.psm.point_sources.tolist() + roi.dsm.diffuse_sources.tolist():
-        other_model = roi.get_model(other_source)
-        if np.any(other_model.free) and other_source.name != name:
-            frozen_sources[other_source.name]=other_model.free.copy()
-            roi.modify(which=other_source,free=False)
-
-    old_free = model.free.copy()
-    new_free = np.zeros_like(model.free).astype(bool)
-    new_free[0] = True
-    roi.modify(which=which, free=new_free)
-
-    roi.fit(*args, **kwargs)
-
-    roi.modify(which=which, free=old_free)
-
-    for other_name,other_free in frozen_sources.items():
-        roi.modify(which=other_name,free=other_free)
 
 def force_gradient(use_gradient):
     """ A kludge to force use_gradient everywhere! """
@@ -705,9 +570,6 @@ def get_all_names(*args, **kwargs):
 
 def get_spatial_model_name(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_get_spatial_model_name, pointlike_get_spatial_model_name, *args, **kwargs)
-
-def fit_only_prefactor(*args, **kwargs):
-    return gtlike_or_pointlike(gtlike_fit_only_prefactor, pointlike_fit_only_prefactor, *args, **kwargs)
 
 if __name__ == "__main__":
     import doctest
