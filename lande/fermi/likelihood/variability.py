@@ -34,7 +34,7 @@ from lande_toolbag import tolist
 from likelihood_tools import paranoid_gtlike_fit,fluxdict,gtlike_upper_limit,\
         pointlike_upper_limit,diffusedict,fit_only_prefactor,get_background,\
         get_sources,gtlike_modify,sourcedict
-from lande_state import LandeState
+from . superstate import SuperState
 
 
 class VariabilityTester(object):
@@ -153,7 +153,7 @@ class VariabilityTester(object):
             paranoid_gtlike_fit(like)
             print '... After'; print like.model
 
-            self.best_gtlike_state = LandeState(like)
+            self.best_gtlike_state = SuperState(like)
 
             all_time['gtlike'] = sourcedict(like, which)
 

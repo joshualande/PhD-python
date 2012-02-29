@@ -20,14 +20,12 @@ from uw.like.roi_diffuse import DiffuseSource
 from uw.like.Models import Model,PowerLaw,ExpCutoff,DefaultModelValues
 from uw.like.roi_state import PointlikeState
 
-from lande_toolbag import tolist
+from lande.utilities.toolbag import tolist
 from SED import SED
 
 from lande.pysed import units
-import lande_units as units
 
-
-from lande_state import LandeState
+from . superstate import SuperState
 
 
 def gtlike_or_pointlike(f_gtlike, f_pointlike, like_or_roi, *args, **kwargs):
@@ -57,7 +55,7 @@ def paranoid_gtlike_fit(like, covar=True):
         See here for description of method:
             http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Likelihood/Fitting_Models.html
     """
-    saved_state = LandeState(like)
+    saved_state = SuperState(like)
     try:
         print 'First, fitting with minuit'
         like.fit(optimizer="MINUIT",covar=covar)
@@ -67,7 +65,7 @@ def paranoid_gtlike_fit(like, covar=True):
         saved_state.restore()
 
         try:
-            saved_state = LandeState(like)
+            saved_state = SuperState(like)
             print 'Refitting, first with DRMNFB'
             like.fit(optimizer='DRMNFB', covar=False)
             print 'Refitting, second with NEWMINUIT'
@@ -77,7 +75,7 @@ def paranoid_gtlike_fit(like, covar=True):
             traceback.print_exc(file=sys.stdout)
             saved_state.restore()
             try:
-                saved_state = LandeState(like)
+                saved_state = SuperState(like)
                 print 'Refitting with LBFGS'
                 like.fit(optimizer='LBFGS', covar=False)
             except Exception, ex:
@@ -331,7 +329,7 @@ def gtlike_modify(like, name, free=True):
     """ Freeze a source in a gtlike ROI. 
     
         The method for modifying the ROI
-        follows the code in LandeState.py 
+        follows the code in SuperState.py 
         
         I am not sure why the modificaiton
         has to be done in this particular way. """
@@ -374,7 +372,7 @@ def gtlike_upper_limit(like, name, cl, emin=None, emax=None,
 
     print 'Calculating gtlike upper limit'
 
-    saved_state = LandeState(like)
+    saved_state = SuperState(like)
     source = like.logLike.getSource(name)
 
     try:
@@ -446,7 +444,7 @@ def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=Non
     """
     print 'Calculating gtlike power-law upper limit'
 
-    saved_state = LandeState(like)
+    saved_state = SuperState(like)
 
     if emin is None and emax is None: 
         emin, emax = get_full_energy_range(like)
@@ -582,7 +580,7 @@ def pointlike_test_cutoff(roi, which, flux_units='erg'):
 def gtlike_test_cutoff(like, name, flux_units='erg'):
     print 'Testing cutoff in gtlike'
 
-    saved_state = LandeState(like)
+    saved_state = SuperState(like)
 
     d = {}
 

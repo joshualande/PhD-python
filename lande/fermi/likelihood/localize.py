@@ -9,7 +9,7 @@ from skymaps import SkyImage
 
 from uw.like.roi_state import PointlikeState
 
-from likelihood_tools import fit_prefactor, galstr
+from . tools import fit_prefactor, galstr
 
 class GridLocalize(object):
     """ Simple class evalulates the TS of a source
