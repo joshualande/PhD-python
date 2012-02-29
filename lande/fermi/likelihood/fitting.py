@@ -5,6 +5,8 @@ import sys
 
 import numpy as np
 
+from uw.like.Models import PowerLaw
+
 from lande.utilities.toolbag import tolist
 
 from . superstate import SuperState

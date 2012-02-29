@@ -38,7 +38,7 @@ class SuperSED(SED):
         if isinstance(like,dict)or isinstance(like,str):
             self.fromdict(like, *args, **kwargs)
         else:
-            super(LandeSED,self).__init__(like, *args, **kwargs)
+            super(SuperSED,self).__init__(like, *args, **kwargs)
 
     @staticmethod
     def dict_to_spectrum(d):
@@ -60,7 +60,7 @@ class SuperSED(SED):
         self.eflux_ul=np.nan*self.eflux_ul
 
         try:
-            super(LandeSED,self)._calculate(*args,**kwargs)
+            super(SuperSED,self)._calculate(*args,**kwargs)
             self.crashed = False
         except Exception, ex:
             print 'ERROR computing SED:', ex
@@ -154,7 +154,7 @@ class SuperSED(SED):
         self.significant = np.asarray(d['Significant'])
 
         if d.has_key('Spectrum'):
-            self.spectrum = LandeSED.dict_to_spectrum(d['Spectrum'])
+            self.spectrum = SuperSED.dict_to_spectrum(d['Spectrum'])
 
         self.crashed = False
 
@@ -183,7 +183,7 @@ class SuperSED(SED):
         axes.plot(energies, e2_dnde, **kwargs)
 
     def plot_spectrum(self, spectrum, **kwargs):
-        LandeSED._plot_spectrum(spectrum, self.axes, self.energy_units, self.flux_units, **kwargs)
+        SuperSED._plot_spectrum(spectrum, self.axes, self.energy_units, self.flux_units, **kwargs)
 
     def plot(self, filename=None,
              axes=None, 
