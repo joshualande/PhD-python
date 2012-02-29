@@ -12,7 +12,7 @@ from . sed_spectrum import Spectrum
 from . sed_integrate import logsimps
 from . sed_relativity import gamma_to_beta
 from . import sed_config
-from . import sed_units as u
+from . import units as u
 
 # Energy of an electron at rest in erg
 electron_rest_energy_erg = float(u.electron_mass*u.speed_of_light**2/u.erg)

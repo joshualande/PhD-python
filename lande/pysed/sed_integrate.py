@@ -6,7 +6,7 @@
 import numpy as np
 from scipy import integrate
 
-from . import sed_units as u
+from . import units as u
 from . sed_helper import logrange
 
 def dbltrapz(f, x, y):

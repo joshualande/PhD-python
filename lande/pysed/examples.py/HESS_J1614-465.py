@@ -10,7 +10,7 @@ from pysed.sed_helper import linspace_unit
 from pysed.sed_spectrum import Constant
 from pysed.sed_spectrum import CompositeSpectrum
 from pysed.sed_thermal import CMB,ThermalSpectrum
-import pysed.sed_units as u
+import pysed.units as u
 
 
 class InjectionRate(object):

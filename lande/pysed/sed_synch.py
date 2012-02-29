@@ -11,7 +11,7 @@ from . sed_spectrum import Spectrum
 from . sed_integrate import halfdbllogsimps
 from . sed_cache import FunctionCache
 from . import sed_config
-from . import sed_units as u
+from . import units as u
 
 class Synchrotron(Spectrum):
     """ Calculates the syncrotron power radiated

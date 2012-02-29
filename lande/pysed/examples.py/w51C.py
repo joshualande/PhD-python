@@ -23,7 +23,7 @@ from pysed.sed_synch import Synchrotron
 from pysed.sed_spectrum import CompositeSpectrum
 from pysed.sed_plotting import SEDPlotter
 from pysed.sed_thermal import CMB,ThermalSpectrum
-import pysed.sed_units as u
+import pysed.units as u
 
 np.seterr(all='ignore')
 

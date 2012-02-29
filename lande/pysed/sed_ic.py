@@ -8,7 +8,7 @@ import numpy as np
 from . sed_integrate import dbllogsimps
 from . sed_spectrum import Spectrum
 from . import sed_config
-from . import sed_units as u
+from . import units as u
 
 class InverseCompton(Spectrum):
     """ The inverse compton radiation an electron spectrum

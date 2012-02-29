@@ -4,7 +4,7 @@
     Author: Joshua Lande <joshualande@gmail.com>
 """
 import numpy as np
-from . import sed_units as u
+from . import units as u
 
 def logrange(min,max,per_decade):
     """ Creates a range of values from min to max

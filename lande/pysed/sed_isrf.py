@@ -10,7 +10,7 @@ import pyfits
 import numpy as np
 from scipy.special import lambertw
 
-from . import sed_units as u
+from . import units as u
 from . sed_thermal import ThermalSpectrum
 from sed_helper import argmax_unit
 

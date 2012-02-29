@@ -15,7 +15,7 @@ from . sed_integrate import logsimps
 from . sed_cross_section import CrossSection
 from . sed_relativity import gamma_to_beta
 from . import sed_config
-from . import sed_units as u
+from . import units as u
 
 class PPCrossSection(CrossSection):
     """ Object to calculate the 

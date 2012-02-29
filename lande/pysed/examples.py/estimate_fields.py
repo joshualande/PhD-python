@@ -10,7 +10,7 @@
 import pylab as P
 from pysed.sed_isrf import ISRF
 from pysed.sed_spectrum import CompositeSpectrum
-import pysed.sed_units as u
+import pysed.units as u
 
 if __name__ == '__main__':
 

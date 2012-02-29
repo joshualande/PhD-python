@@ -7,7 +7,7 @@ import pylab as P
 
 import sympy
 
-from . import sed_units as u
+from . import units as u
 
 class SEDPlotter(object):
     """ Plot an E^2 dN/dE SED with multiple componets.

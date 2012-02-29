@@ -11,7 +11,7 @@ import pylab as P
 import sympy
 
 from . import sed_config
-from . import sed_units as u
+from . import units as u
 from . sed_helper import logrange,logrange_unit
 
 class Spectrum(object):
