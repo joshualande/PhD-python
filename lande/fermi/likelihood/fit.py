@@ -170,3 +170,12 @@ def freeze_bad_index_to_catalog(roi,catalog,exclude_names=[], min_ts=25):
     return any_changed
 
 
+def gtlike_setp(like, name, parname, value, scale, lower, upper, free):
+    """ Set a paramter in gtlike. """
+    par = like[like.par_index(name, parname)]
+    par.setBounds(-1e100,1e100)
+    par.setScale(scale)
+    par.setTrueValue(value)
+    par.setBounds(lower,upper)
+    par.setFree(free)
+    like.syncSrcParams(name)
