@@ -3,7 +3,7 @@ from collections import defaultdict
 import yaml
 import numpy as np
 
-from lande.utilities.toolbag import tolist
+from lande.utilities.tools import tolist
 
 
 def pointlike_sed_to_yaml(bandflux, filename):

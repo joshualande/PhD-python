@@ -7,7 +7,7 @@ import numpy as np
 from uw.like.Models import Model,PowerLaw,ExpCutoff
 from uw.like.roi_state import PointlikeState
 
-from lande.utilities.toolbag import tolist
+from lande.utilities.tools import tolist
 from SED import SED
 
 from lande.pysed import units
@@ -16,6 +16,7 @@ from lande.fermi.sed.supersed import SuperSED
 from . superstate import SuperState
 
 from . tools import gtlike_or_pointlike
+from . save import get_full_energy_range, spectrum_to_dict, fluxdict
 from . fit import paranoid_gtlike_fit
 
 def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=None, 

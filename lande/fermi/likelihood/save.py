@@ -14,7 +14,7 @@ from uw.like.Models import DefaultModelValues
 from SED import SED
 
 from lande.pysed import units
-from lande.utilities.toolbag import tolist
+from lande.utilities.tools import tolist
 from . tools import gtlike_or_pointlike
 
 

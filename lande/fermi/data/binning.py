@@ -1,22 +1,10 @@
 import re
 from tempfile import NamedTemporaryFile
 
+import numpy as np
 import pyfits
 
 from GtApp import GtApp
-
-def make_ebinfile(ebins, filename):
-    """ Make an ebinfile suitable for gtbin given an array of energy
-        bins. Not sure why, but this is the required format. """
-
-    c1=pyfits.Column(name='E_MIN', format='D', array=ebins[:-1])
-    c2=pyfits.Column(name='E_MAX', format='D', array=ebins[1:])
-
-    t=pyfits.new_table([c1, c2])
-    t.update_ext_name('ENERGYBINS')
-    h=pyfits.HDUList([pyfits.PrimaryHDU(), t])
-
-    h.writeto(filename)
 
 
 def gtbin_from_binfile(evfile, outfile, scfile, binfile):
@@ -70,14 +58,19 @@ def gtbin_from_binfile(evfile, outfile, scfile, binfile):
 
         ebins = b['ENERGIES'].data.field('ENERGY')
 
-        temp=NamedTemporaryFile(delete=True)
-        ebinfile = temp.name
-        make_ebinfile(ebins, ebinfile)
+        emin = ebins[0],
+        emax = ebins[-1],
+        enumbins = len(ebins)
+
+        # For now, just crash if ebinalg != 'LOG'
+        assert np.allclose(ebins, np.logspace(np.log10(emin), np.log10(emax), enumbins))
 
         kwargs.update(
             algorithm = 'CCUBE',
-            ebinalg = 'FILE',
-            ebinfile = ebinfile,
+            ebinalg = 'LOG',
+            emin = emin,
+            emax = emax,
+            enumbins = enumbins,
         )
 
     GtApp('gtbin').run(

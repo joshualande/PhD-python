@@ -14,7 +14,7 @@ from SED import SED
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 
 from lande.pysed import units
-from lande.utilities.toolbag import tolist
+from lande.utilities.tools import tolist
 
 
 

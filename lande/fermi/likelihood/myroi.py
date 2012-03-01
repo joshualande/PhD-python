@@ -9,9 +9,8 @@
     Author: Joshua Lande
 """
 import numpy as np
-#np.seterr(divide='ignore', invalid='ignore', over='ignore', under='ignore')
 
-from lande.utilities.toolbag import tolist
+from lande.utilities.tools import tolist
 
 from lande_localize import *
 

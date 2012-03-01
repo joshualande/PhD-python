@@ -1,7 +1,7 @@
 import numpy as np
 
 from SED import SED
-from lande.utilities.toolbag import tolist
+from lande.utilities.tools import tolist
 
 from . save import fluxdict
 from . limits import powerlaw_upper_limit

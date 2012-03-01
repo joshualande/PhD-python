@@ -6,12 +6,13 @@ import numpy as np
 from uw.like.Models import PowerLaw
 from uw.like.roi_state import PointlikeState
 
-from lande.utilities.toolbag import tolist
+from lande.utilities.tools import tolist
 
 from lande.pysed import units
 
 from . superstate import SuperState
 from . tools import gtlike_or_pointlike
+from . save import get_full_energy_range
 
 def gtlike_upper_limit(like, name, cl, emin=None, emax=None, 
                        flux_units='erg', **kwargs):
