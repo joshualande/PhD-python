@@ -173,9 +173,12 @@ class SuperSED(SED):
         low_lim, hi_lim = axes.get_xlim()
         energies = np.logspace(np.log10(low_lim), np.log10(hi_lim), npts)
 
-        # (a) convert to acutal units
-        dnde = units.tosympy(SED.get_dnde(spectrum,energies),units.ph/units.cm**2/units.s/units.MeV)
         e_units = units.tosympy(energies,energy_units)
+
+        energies_mev = units.tonumpy(e_units, units.MeV)
+
+        # (a) convert to acutal units. gtlike spectra take energy in MeV, return flux in ph/cm^2/s/MeV
+        dnde = units.tosympy(SED.get_dnde(spectrum,energies_mev),units.ph/units.cm**2/units.s/units.MeV)
         # (b) create E^2 dN/dE in acutal units
         e2_dnde = dnde.multiply_elementwise(e_units).multiply_elementwise(e_units)
         # (c) convert to desired units
