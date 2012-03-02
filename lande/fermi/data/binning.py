@@ -58,8 +58,8 @@ def gtbin_from_binfile(evfile, outfile, scfile, binfile):
 
         ebins = b['ENERGIES'].data.field('ENERGY')
 
-        emin = ebins[0],
-        emax = ebins[-1],
+        emin = ebins[0]
+        emax = ebins[-1]
         enumbins = len(ebins)
 
         # For now, just crash if ebinalg != 'LOG'
