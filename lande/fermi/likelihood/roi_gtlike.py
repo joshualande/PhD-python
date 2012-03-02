@@ -134,8 +134,9 @@ class Gtlike(object):
         expcube_file=pd.ltcube 
 
         irfs=roi.sa.irf
-        if pd.conv_type == 0 and 'FRONT' not in irfs: irfs += '::FRONT'
-        if pd.conv_type == 1 and 'BACK' not in irfs: irfs += '::BACK'
+        ct = pd.conv_type
+        if ct == 0 and 'FRONT' not in irfs: irfs += '::FRONT'
+        if ct == 1 and 'BACK' not in irfs: irfs += '::BACK'
 
 
         if self.coordsystem==SkyDir.GALACTIC:
@@ -168,7 +169,7 @@ class Gtlike(object):
                          ra=0, dec=0, rad=180,
                          tmin=0, tmax=0,
                          emin=self.emin, emax=self.emax,
-                         zmax=180)
+                         zmax=180, convtype=ct)
         else:
             if not roi.quiet: print '... Skiping gtselect'
 
