@@ -133,6 +133,8 @@ def pointlike_get_spatial_model_name(roi, name):
         elif isinstance(dm,IsotropicSpectrum) or \
                 isinstance(dm,IsotropicPowerLaw):
             return 'ConstantValue'
+    else:
+        raise Exception("Unknown spatial model for source %s" % source.name)
 
 def get_spatial_model_name(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_get_spatial_model_name, pointlike_get_spatial_model_name, *args, **kwargs)
@@ -143,10 +145,10 @@ def pointlike_get_all_names(roi):
 
 def gtlike_get_all_names(like):
     """ Get a list of the names of all sources in the gtlike ROI. """
+    return like.sourceNames()
 
 def get_all_names(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_get_all_names, pointlike_get_all_names, *args, **kwargs)
-    return like.sourceNames()
 
 
 def get_sources(like_or_roi):
@@ -179,7 +181,7 @@ def diffusedict(like_or_roi):
         f[name] = name_to_dict(like_or_roi, name, errors=True)
     return tolist(f)
 
-def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg'):
+def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg', errors=True):
     from pyLikelihood import ParameterVector
 
     if emin is None and emax is None:
@@ -190,12 +192,12 @@ def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg'):
         logLikelihood=like.logLike.value()
     )
 
-    d['flux']=fluxdict(like,name,emin,emax,flux_units=flux_units)
+    d['flux']=fluxdict(like,name,emin,emax,flux_units=flux_units, error=errors)
 
     source = like.logLike.getSource(name)
     spectrum = source.spectrum()
 
-    d['model']=spectrum_to_dict(spectrum, errors=True)
+    d['model']=spectrum_to_dict(spectrum, errors=errors)
 
     d['diffuse'] = diffusedict(like)
 
@@ -232,7 +234,7 @@ def pointlike_fluxdict(roi, which, emin=None, emax=None, *args, **kwargs):
 
 
 
-def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg'):
+def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', errors=True):
     d={}
 
     if emin is None and emax is None:
@@ -247,9 +249,9 @@ def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg'):
 
     d['logLikelihood']=-roi.logLikelihood(roi.parameters())
 
-    d['flux']=fluxdict(roi,name,emin,emax,flux_units)
+    d['flux']=fluxdict(roi,name,emin,emax,flux_units, error=errors)
 
-    d['model']=spectrum_to_dict(model, errors=True)
+    d['model']=spectrum_to_dict(model, errors=errors)
 
     # Source position
     d['gal'] = [source.skydir.l(),source.skydir.b()]

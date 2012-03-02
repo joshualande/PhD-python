@@ -14,7 +14,7 @@ def plot_phaseogram(ft1, nbins=100, filename=None, title=None, off_pulse=None, a
         axes = fig.add_subplot(111)
 
     bins = np.linspace(0,1,nbins+1)
-    axes.hist(phases,bins=bins,histtype='step',ec='red',normed=True,lw=1)
+    axes.hist(phases,bins=bins,histtype='step',ec='red', normed=False, lw=1)
     axes.set_xlim(0,1)
 
     if title is not None: 

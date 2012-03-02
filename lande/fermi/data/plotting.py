@@ -4,6 +4,8 @@ import pylab as P
 import numpy as np
 import pywcsgrid2
 
+from mpl_toolkits.axes_grid1.axes_grid import ImageGrid
+
 from uw.utilities import keyword_options
  
 from uw.like.roi_plotting import ROITSMapPlotter, ROISmoothedSources, ROISmoothedSource
