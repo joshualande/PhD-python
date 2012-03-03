@@ -51,7 +51,8 @@ def gtbin_from_binfile(evfile, outfile, scfile, binfile):
     )
 
 
-    if naxis == 2:
+    if naxis == 2 or (naxis == 3 and h['naxis3'] == 1):
+        # 2D image or 3D image with 3rd axis only one deep
         kwargs['algorithm'] = 'CMAP'
 
     elif naxis == 3:
