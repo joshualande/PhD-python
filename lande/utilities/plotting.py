@@ -1,4 +1,7 @@
 from os.path import expandvars
+from collections import Iterable
+
+from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from matplotlib.patheffects import withStroke
 
@@ -30,13 +33,20 @@ def fix_axesgrid(grid):
                 ax.set_xticks(ax.get_xticks()[0:-1])
 
 
-def label_axesgrid(grid, stroke=True, **kwargs):
+def label_axesgrid(plots, stroke=True, **kwargs):
     """ Add "(a)" to first plot, "(b)" to second, ... """
 
     text_kwargs=dict(frameon=False, loc=2, prop=dict(size=14))
     text_kwargs.update(kwargs)
 
-    for i,g in enumerate(grid):
+    if isinstance(list, Iterable):
+        plot_list=plots
+    elif isinstance(plots,Figure):
+        plot_list=plots.axes
+    else:
+        raise Exception("Unrecognized plot list.")
+
+    for i,g in enumerate(plot_list):
         _at = AnchoredText('(%s)' % chr(i+97), **text_kwargs)
 
         if stroke:
