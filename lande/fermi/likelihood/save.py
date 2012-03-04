@@ -174,9 +174,7 @@ def diffusedict(like_or_roi):
     """ Save out all diffuse sources. """
 
     f = dict()
-
     bgs = get_background(like_or_roi)
-
     for name in bgs:
         f[name] = name_to_dict(like_or_roi, name, errors=True)
     return tolist(f)
@@ -233,6 +231,10 @@ def pointlike_fluxdict(roi, which, emin=None, emax=None, *args, **kwargs):
     return tolist(pointlike_model_to_flux(model, emin, emax, *args, **kwargs))
 
 
+def skydirdict(skydir):
+    return tolist(dict(
+        gal = [skydir.l(),skydir.b()],
+        equ = [skydir.ra(),skydir.dec()]))
 
 def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', errors=True):
     d={}
@@ -254,8 +256,7 @@ def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', erro
     d['model']=spectrum_to_dict(model, errors=errors)
 
     # Source position
-    d['gal'] = [source.skydir.l(),source.skydir.b()]
-    d['equ'] = [source.skydir.ra(),source.skydir.dec()]
+    d['position'] = skydirdict(source.skydir)
 
     d['diffuse'] = diffusedict(roi)
 
