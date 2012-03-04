@@ -1,7 +1,6 @@
 """ Function for generating random quantities.
 
 """
-import math
 import numpy as np
 from skymaps import SkyDir
 
@@ -9,7 +8,7 @@ from skymaps import SkyDir
 def random_on_sphere():
     """ Pick a random SkyDir on the sphere. """
     l=np.random.uniform(0,360)
-    b=180*math.acos(np.random.uniform(-1,1))/math.pi-90
+    b=180*np.arccos(np.random.uniform(-1,1))/np.pi-90
     skydir=SkyDir(l,b,SkyDir.GALACTIC)
     return skydir
 
