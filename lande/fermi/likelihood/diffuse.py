@@ -1,9 +1,12 @@
 import numpy as np
+import re
+from os.path import basename
 
-from skymaps import IsotropicSpectrum
+from skymaps import IsotropicSpectrum, IsotropicPowerLaw
 
-from uw.like.Models import PowerLaw
+from uw.like.Models import PowerLaw, Constant
 from uw.like.roi_diffuse import DiffuseSource
+from uw.like.pointspec_helpers import get_diffuse_source
 
 class ApproximateIsotropic(DiffuseSource):
 
@@ -50,3 +53,26 @@ class ApproximateIsotropic(DiffuseSource):
         return '\n'.join(['%s\t%s' % (e,f) for e,f in zip(energies, fluxes)])
 
         
+def get_background(*args):
+    bg = []
+    for source in args:
+        if re.search(r'\.fit(s)?(\.gz)?$',source) is not None:
+            bg.append(get_diffuse_source('MapCubeFunction',source,'PowerLaw',None,name=basename(source)))
+        elif re.search(r'\.txt$',source) is not None:
+            bg.append(get_diffuse_source('ConstantValue',None,'FileFunction',source,name=basename(source)))
+        else:
+            raise Exception("Diffuse Sources must end in .fit, .fits, .fit.gz, .fits.gz, or .txt (file is %s)" % basename(source))
+
+    return bg[0] if len(args)==1 else bg
+
+def get_sreekumar(diff_factor=1, scaling_model=None):
+
+    if scaling_model is None: 
+        scaling_model = Constant()
+
+    # use Sreekumar-like defaults
+    return DiffuseSource(
+        name='Isotropic Diffuse x%s' % diff_factor,
+        diffuse_model=IsotropicPowerLaw(1.5e-5*diff_factor,2.1),
+        scaling_model=scaling_model)
+
