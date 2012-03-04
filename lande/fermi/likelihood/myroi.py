@@ -37,6 +37,7 @@ from lande_extended import *
 from lande_decorators import *
 
 from . tools import galstr
+from . diffuse import get_background
 
 from uw.like import sed_plotter
 import pylab as P
@@ -140,20 +141,7 @@ class LandeROI(ROIAnalysis):
 
         return point_sources
 
-    @staticmethod 
-    def get_background(*args):
-        bg = []
-        for source in args:
-            if re.search(r'\.fit(s)?(\.gz)?$',source) is not None:
-                bg.append(get_diffuse_source('MapCubeFunction',source,'PowerLaw',None,name=os.path.basename(source)))
-            elif re.search(r'\.txt$',source) is not None:
-                bg.append(get_diffuse_source('ConstantValue',None,'FileFunction',source,name=os.path.basename(source)))
-
-            else:
-                raise Exception("Diffuse Sources must end in .fit, .fits, .fit.gz, .fits.gz, or .txt (file is %s)" % os.path.basename(source))
-
-        return bg[0] if len(args)==1 else bg
-
+    get_background = get_background
 
     def fit(self,*args,**kwargs):
         try:
