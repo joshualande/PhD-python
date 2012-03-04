@@ -23,6 +23,9 @@ def fix_axesgrid(grid):
     if grid._direction != 'row': 
         raise Exception("Not implemented")
 
+    if grid._refax is not None:
+        raise Exception("This function does not work for AxesGrids with share_all=True")
+
     nrows,ncols=grid._nrows,grid._ncols
 
     for row in range(nrows):
