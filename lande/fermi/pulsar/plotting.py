@@ -44,7 +44,7 @@ def plot_phaseogram(ft1, nbins=100, filename=None, title=None, off_peak=None,
         kwargs=dict(alpha=0.25, color='blue')
         kwargs.update(off_peak_kwargs)
         PhaseRange(off_peak).axvspan(axes=axes, 
-                                     phase_offsets=[0,1] if repeat_phase else 1,
+                                     phase_offsets=[0,1] if repeat_phase else 0,
                                      **kwargs)
 
     if filename is not None:
