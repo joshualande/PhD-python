@@ -4,6 +4,7 @@ from collections import Iterable
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from matplotlib.patheffects import withStroke
+from mpl_toolkits.axes_grid.axes_grid import Grid, AxesGrid, ImageGrid
 
 def plot_ds9_contour(ax,contour,**kwargs):
     """ Parse a ds9 format contour file. Kwargs goes into the plot function. """
@@ -33,13 +34,14 @@ def fix_axesgrid(grid):
                 ax.set_xticks(ax.get_xticks()[0:-1])
 
 
-def label_axesgrid(plots, stroke=True, **kwargs):
+def label_axes(plots, stroke=True, **kwargs):
     """ Add "(a)" to first plot, "(b)" to second, ... """
 
     text_kwargs=dict(frameon=False, loc=2, prop=dict(size=14))
     text_kwargs.update(kwargs)
 
-    if isinstance(list, Iterable):
+    if isinstance(plots, Iterable) or isinstance(plots, Grid) or \
+       isinstance(plots, AxesGrid) or isinstance(plots, ImageGrid):
         plot_list=plots
     elif isinstance(plots,Figure):
         plot_list=plots.axes
