@@ -71,8 +71,12 @@ def get_sreekumar(diff_factor=1, scaling_model=None):
         scaling_model = Constant()
 
     # use Sreekumar-like defaults
+    if diff_factor == 1:
+        name = 'Sreekumar Isotropic'
+    else:
+        name = 'Sreekumar Isotropic x%s' % diff_factor
     return DiffuseSource(
-        name='Isotropic Diffuse x%s' % diff_factor,
+        name=name,
         diffuse_model=IsotropicPowerLaw(1.5e-5*diff_factor,2.1),
         scaling_model=scaling_model)
 
