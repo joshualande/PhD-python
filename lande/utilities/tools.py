@@ -2,6 +2,7 @@
     can't think of a better place to put. 
     
     Author: Joshua Lande <joshualande@gmail.com> """
+import yaml
 from collections import OrderedDict
 import numpy as np
 from uw.pulsar.phase_range import PhaseRange
@@ -68,3 +69,14 @@ class OrderedDefaultdict(OrderedDict):
             raise KeyError(key)
         self[key] = value = self.default_factory()
         return value
+
+
+def savedict(filename, results):
+    """ Save a dictionary to a file. """
+    if isinstance(filename,str) and isinstance(results,dict):
+        pass
+    elif isinstance(filename, dict) and isinstance(results, str):
+        filename, results = results, filename
+    else:
+        raise Exception("Unrecoginized types for filename and results")
+    open(filename, 'w').write(yaml.dump(tolist(results)))
