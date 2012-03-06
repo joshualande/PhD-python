@@ -4,9 +4,9 @@ import pylab as P
 import numpy as np
 
 from uw.utilities.fitstools import rad_extract
+from uw.utilities.decorators import memoize
 from uw.pulsar.phase_range import PhaseRange
 
-from uw.like.roi_image import memoize
 @memoize
 def get_all_phases(ft1, skydir):
     """ Cache photons = faster """
