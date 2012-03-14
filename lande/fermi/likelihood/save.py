@@ -4,7 +4,7 @@ import sys
 import pylab as P
 import numpy as np
 
-from skymaps import DiffuseFunction,IsotropicSpectrum,IsotropicPowerLaw
+from skymaps import DiffuseFunction,IsotropicSpectrum,IsotropicPowerLaw,IsotropicConstant
 
 from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
@@ -131,7 +131,8 @@ def pointlike_get_spatial_model_name(roi, name):
         if isinstance(dm,DiffuseFunction):
             return 'MapCubeFunction'
         elif isinstance(dm,IsotropicSpectrum) or \
-                isinstance(dm,IsotropicPowerLaw):
+                isinstance(dm,IsotropicPowerLaw) or \
+                isinstance(dm,IsotropicConstant):
             return 'ConstantValue'
     else:
         raise Exception("Unknown spatial model for source %s" % source.name)
