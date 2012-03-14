@@ -73,9 +73,11 @@ class OrderedDefaultdict(OrderedDict):
 
 def savedict(filename, results):
     """ Save a dictionary to a file. """
-    if isinstance(filename,str) and isinstance(results,dict):
+    is_results = lambda x: isinstance(x,dict) or isinstance(x,list)
+
+    if isinstance(filename,str) and is_results(results):
         pass
-    elif isinstance(filename, dict) and isinstance(results, str):
+    elif is_results(filename) and isinstance(results, str):
         filename, results = results, filename
     else:
         raise Exception("Unrecoginized types for filename and results")
