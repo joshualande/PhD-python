@@ -179,3 +179,11 @@ def gtlike_setp(like, name, parname, value, scale, lower, upper, free):
     par.setBounds(lower,upper)
     par.setFree(free)
     like.syncSrcParams(name)
+
+
+def pointlike_logLikelihood(roi): return -roi.logLikelihood(roi.parameters())
+
+def gtlike_logLikelihood(like): return like.logLike.value()
+
+def logLikelihood(*args, **kwargs):
+    return gtlike_or_pointlike(gtlike_logLikelihood, pointlike_logLikelihood, *args, **kwargs)
