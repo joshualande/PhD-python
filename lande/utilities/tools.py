@@ -7,6 +7,7 @@ from collections import OrderedDict
 import numpy as np
 from uw.pulsar.phase_range import PhaseRange
 
+
 def merge_dict(first,second):
     """ recursivly merge two dictionaries. If two conflicting non-dictionary 
         items are present, read in from first by default. """
@@ -70,15 +71,3 @@ class OrderedDefaultdict(OrderedDict):
         self[key] = value = self.default_factory()
         return value
 
-
-def savedict(filename, results):
-    """ Save a dictionary to a file. """
-    is_results = lambda x: isinstance(x,dict) or isinstance(x,list)
-
-    if isinstance(filename,str) and is_results(results):
-        pass
-    elif is_results(filename) and isinstance(results, str):
-        filename, results = results, filename
-    else:
-        raise Exception("Unrecoginized types for filename and results")
-    open(filename, 'w').write(yaml.dump(tolist(results)))
