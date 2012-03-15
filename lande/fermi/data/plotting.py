@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1.axes_grid import ImageGrid
 
 from uw.utilities import keyword_options
  
-from uw.like.roi_plotting import ROITSMapPlotter, ROISmoothedSources, ROISmoothedSource
+from uw.like.roi_plotting import ROITSMapPlotter, ROISmoothedSources, ROISmoothedSource, ROISignificance
 from uw.like.roi_state import PointlikeState
 
 class ROIBandPlotter(object):
@@ -80,6 +80,13 @@ class ROISourceBandPlotter(ROIBandPlotter):
     object = ROISmoothedSource
     defaults = object.defaults 
     defaults=keyword_options.change_defaults(defaults,'figsize',(9,4))
+
+class ROISignificanceBandPlotter(ROIBandPlotter):
+    object = ROISignificance
+    defaults = object.defaults 
+    defaults=keyword_options.change_defaults(defaults,'figsize',(9,4))
+
+
 
 
 
