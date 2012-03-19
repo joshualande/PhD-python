@@ -1,7 +1,7 @@
 import pylab as P
 from matplotlib import rc
 
-def latex_defaults():
+def set_latex_defaults():
     rc('ps',usedistiller='xpdf')
     rc('text', usetex=True)
     rc('font', family='serif', serif="Computer Modern Roman")
