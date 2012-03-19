@@ -4,6 +4,8 @@ import yaml
 
 import h5py
 
+from . tools import tolist
+
 def savedict(filename, results):
     """ Save a dictionary to a file. """
     is_results = lambda x: isinstance(x,dict) or isinstance(x,list)
@@ -21,7 +23,7 @@ def savedict(filename, results):
         open(filename, 'w').write(yaml.dump(tolist(results)))
     elif extension == '.hdf5':
         if not isinstance(results, dict): raise Exception("Can only save dicts to hdf5 format.")
-        f=h5py.File(savename,'w')
+        f=h5py.File(filename,'w')
         for k,v in results.items(): f[k] = v
         f.close()
     else:
