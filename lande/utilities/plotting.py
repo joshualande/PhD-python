@@ -1,10 +1,34 @@
 from os.path import expandvars
 from collections import Iterable
 
+import numpy as np
+
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from matplotlib.patheffects import withStroke
 from mpl_toolkits.axes_grid.axes_grid import Grid, AxesGrid, ImageGrid
+
+from . arrays import nzip
+
+def histpoints(data, bins):
+    """ Create a series of x,y, points which will draw a histogram.
+        Useful because the points can be directly plotted with
+        the plot function. This is similar to the matplotlib hist
+        function, but allows more direct control. 
+        
+            >>> data = [0.25, 0.5, 1.25]
+            >>> bins = [0,1,2]
+            >>> x,y=histpoints(data, bins)
+            >>> np.all(x == [0, 0, 1, 1, 2, 2])
+            True
+            >>> np.all(y == [0, 2, 2, 1, 1, 0])
+            True
+    """
+    binned_data, bins = np.histogram(data, bins=bins)
+
+    x = nzip(bins, bins)
+    y = np.concatenate(([0], nzip(binned_data, binned_data), [0]))
+    return x,y
 
 def plot_ds9_contour(ax,contour,**kwargs):
     """ Parse a ds9 format contour file. Kwargs goes into the plot function. """
@@ -59,3 +83,6 @@ def label_axes(plots, stroke=True, **kwargs):
 
         g.add_artist(_at)
 
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
