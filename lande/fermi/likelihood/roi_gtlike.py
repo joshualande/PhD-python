@@ -55,7 +55,8 @@ class Gtlike(object):
             ("emax",                    None, "Maximum energy. Default is to get from ROI."),
             ("enumbins",                None, "Number of bins. Defualt is to get from ROI."),
             ("savedir",                 None, "Directory to put output files into. Default is to use a temporary file and delete it when done."),
-            ("optimizer",           "MINUIT", "Optimizer to use when fitting.")
+            ("optimizer",           "MINUIT", "Optimizer to use when fitting."),
+            ("enable_edisp",           False, "Enable energy dispersion. See https://confluence.slac.stanford.edu/display/ST/Energy+Dispersion+in+Binned+Likelihood")
     )
 
 
@@ -81,10 +82,13 @@ class Gtlike(object):
         """ Build a gtlike pyLikelihood object
             which is consistent with a pointlike roi. """
         keyword_options.process(self, kwargs)
-
         self.roi = roi
 
         if not roi.quiet: print 'Running a gtlike followup'
+
+        if self.enable_edisp:
+            if not roi.quiet: print 'Enabeling energy dispersion'
+            os.environ['USE_BL_EDISP'] = "1" 
 
         self.old_dir=os.getcwd()
         if self.savedir is not None:
@@ -195,7 +199,9 @@ class Gtlike(object):
             gtexpcube.run(infile=expcube_file,
                           cmap='none',
                           ebinalg='LOG', emin=self.emin, emax=self.emax, enumbins=self.enumbins,
-                          outfile=bexpmap_file,
+                          outfile=bexpmap_file, proj=self.proj,
+#                          nxpix=360, nypix=180, binsz=1
+                          nxpix=360, nypix=180, binsz=1,
                           irfs=irfs)
         else:
             if not roi.quiet: print '... Skiping gtexpcube'
