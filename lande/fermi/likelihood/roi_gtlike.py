@@ -43,6 +43,7 @@ from BinnedAnalysis import BinnedObs,BinnedAnalysis
 from pyLikelihood import ParameterVector
 from SED import SED
 
+from lande.fermi.data import livetime
 
 class Gtlike(object):
 
@@ -56,7 +57,9 @@ class Gtlike(object):
             ("enumbins",                None, "Number of bins. Defualt is to get from ROI."),
             ("savedir",                 None, "Directory to put output files into. Default is to use a temporary file and delete it when done."),
             ("optimizer",           "MINUIT", "Optimizer to use when fitting."),
-            ("enable_edisp",           False, "Enable energy dispersion. See https://confluence.slac.stanford.edu/display/ST/Energy+Dispersion+in+Binned+Likelihood")
+            ("enable_edisp",           False, """ Enable energy dispersion. 
+                                                  See https://confluence.slac.stanford.edu/display/ST/Energy+Dispersion+in+Binned+Likelihood"""),
+            ("fix_pointlike_ltcube",   False, "Fix header of pointlike livetime cube so that it can be used by gtlike."),
     )
 
 
@@ -137,6 +140,10 @@ class Gtlike(object):
         scfile=pd.ft2files[0]
         expcube_file=pd.ltcube 
 
+        if self.fix_pointlike_ltcube:
+            print 'Fixing pointlike ltcube %s' % expcube_file
+            livetime.fix_pointlike_ltcube(expcube_file)
+
         irfs=roi.sa.irf
         ct = pd.conv_type
         if ct == 0 and 'FRONT' not in irfs: irfs += '::FRONT'
@@ -200,8 +207,7 @@ class Gtlike(object):
                           cmap='none',
                           ebinalg='LOG', emin=self.emin, emax=self.emax, enumbins=self.enumbins,
                           outfile=bexpmap_file, proj=self.proj,
-#                          nxpix=360, nypix=180, binsz=1
-                          nxpix=360, nypix=180, binsz=1,
+                          nxpix=360, nypix=180, binsz=1
                           irfs=irfs)
         else:
             if not roi.quiet: print '... Skiping gtexpcube'
