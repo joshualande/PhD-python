@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 from os.path import join, expandvars, exists
 from os import makedirs
+import collections
+
+from itertools import product
 
 from uw.utilities import keyword_options 
-from itertools import product
+from . lists import flatten
 
 class SimBuilder(object):
 
     defaults = (
         ('params', None, 'Extra params to pass into the script'),
+        ('extra', 'sim', 'Extra params to pass into the script'),
     )
 
     @keyword_options.decorate(defaults)
@@ -20,31 +24,33 @@ class SimBuilder(object):
         self.num = num
 
     def build(self):
+        if self.params is not None:
 
-        if params is None:
+            keys = flatten(self.params.keys())
+            values = self.params.values()
 
-            keys = params.keys()
-            values = params.values()
+            for perm in product(*values):
+                perm = flatten(perm)
 
-            for perm in product(values):
+                f = lambda x: x if isinstance(x,str) else '%g' % x
 
-                base = '_'.join(p if not isinstance(p, tuple) else '_'.join(p) for p in perm)
-                extra = ' '.join('--%s' for k,v in zip(keys,values))
+                base = self.extra + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,v in zip(keys,perm))
 
-                print 'base',base
-                print 'extra',extra
+                args= ' '.join('--%s=%s' % (f(k),f(v)) for k,v in zip(keys,perm))
+
+                subdir = join(self.savedir, base)
 
                 for i in range(self.num):
                     istr='%0*d' % (5,i)
 
-                    jobdir = join(self.savedir,istr)
+                    jobdir = join(subdir,istr)
                     if not exists(jobdir): makedirs(jobdir)
 
                     run = join(jobdir,'run.sh')
-                    open(run,'w').write("python %s %g" % (self.code,i))
+                    open(run,'w').write("python %s %g %s" % (self.code, i, args))
 
             submit_all = join(self.savedir,'submit_all.sh')
-            open(submit_all,'w').write("submit_all */run.sh $@")
+            open(submit_all,'w').write("submit_all */*/run.sh $@")
 
         else:
             for i in range(self.num):
