@@ -16,7 +16,8 @@ class SimBuilder(object):
 
     defaults = (
         ('params', None, 'Extra params to pass into the script'),
-        ('extra', 'sim', 'Extra params to pass into the script'),
+        ('front', 'sim'),
+        ('extra', ''),
     )
 
     @keyword_options.decorate(defaults)
@@ -42,7 +43,7 @@ class SimBuilder(object):
 
                 f = lambda x: x if isinstance(x,str) else '%g' % x
 
-                base = self.extra + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,v in zip(keys,perm))
+                base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,v in zip(keys,perm))
 
                 args= ' '.join('--%s=%s' % (f(k),f(v)) for k,v in zip(keys,perm))
 
@@ -55,7 +56,7 @@ class SimBuilder(object):
                     if not exists(jobdir): makedirs(jobdir)
 
                     run = join(jobdir,'run.sh')
-                    open(run,'w').write("python %s %g %s" % (self.code, i, args))
+                    open(run,'w').write("python %s %g %s %s" % (self.code, i, args, self.extra))
 
             submit_all = join(self.savedir,'submit_all.sh')
             open(submit_all,'w').write("submit_all */*/run.sh $@")
