@@ -40,8 +40,6 @@ class ROIBandPlotter(object):
         state.restore()
 
     def show(self,filename=None):
-        print 'figsize = ',self.figsize
-
         self.fig = fig = P.figure(self.fignum,self.figsize)
         P.clf()
 
