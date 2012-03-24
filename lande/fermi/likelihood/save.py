@@ -180,16 +180,17 @@ def diffusedict(like_or_roi):
         f[name] = name_to_dict(like_or_roi, name, errors=True)
     return tolist(f)
 
-def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg', errors=True):
+def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg', errors=True, save_TS=True):
     from pyLikelihood import ParameterVector
 
     if emin is None and emax is None:
         emin, emax = get_full_energy_range(like)
 
     d=dict(
-        TS=like.Ts(name,reoptimize=True),
-        logLikelihood=like.logLike.value()
+        logLikelihood=logLikelihood(like),
     )
+    if save_TS:
+        d['TS']=like.Ts(name,reoptimize=True),
 
     d['flux']=fluxdict(like,name,emin,emax,flux_units=flux_units, error=errors)
 
@@ -237,7 +238,7 @@ def skydirdict(skydir):
         gal = [skydir.l(),skydir.b()],
         equ = [skydir.ra(),skydir.dec()]))
 
-def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', errors=True):
+def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', errors=True, save_TS=True):
     d={}
 
     if emin is None and emax is None:
@@ -247,10 +248,12 @@ def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', erro
     model=roi.get_model(name)
 
     old_quiet = roi.quiet; roi.quiet=True
-    d['TS'] = roi.TS(name,quick=False)
+    if save_TS:
+        d['TS'] = roi.TS(name,quick=False)
+
     roi.quiet = old_quiet
 
-    d['logLikelihood']=-roi.logLikelihood(roi.parameters())
+    d['logLikelihood']=logLikelihood(roi)
 
     d['flux']=fluxdict(roi,name,emin,emax,flux_units, error=errors)
 
@@ -261,22 +264,28 @@ def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', erro
 
     d['diffuse'] = diffusedict(roi)
 
-    f = d['spatial_model'] = dict()
+    d['spatial_model'] = spatial_dict(source, roi)
+
+    return tolist(d)
+
+def spatial_dict(source, roi):
+    f = dict()
     if isinstance(source,ExtendedSource):
         # Extended Source parameters
         spatial_model = source.spatial_model
         for param in spatial_model.param_names:
             f[param]=spatial_model[param]
             f[param + '_err']=spatial_model.error(param)
+        f['r68'] = spatial_model.r68()
+        f['r99'] = spatial_model.r99()
 
     # add elliptical error, if they exist.
     # N.B. If no localization performed, this will return
     # an empty dictionary.
     # N.B. This method will do the wrong thing if you have recently relocalized
     # another source. This is rarely the case.
-    f.update(roi.get_ellipse())
-
-    return tolist(d)
+    f['ellipse'] = roi.get_ellipse()
+    return tolist(f)
 
 def spectrum_to_dict(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_spectrum_to_dict, pointlike_spectrum_to_dict, *args, **kwargs)
@@ -284,9 +293,15 @@ def spectrum_to_dict(*args, **kwargs):
 def name_to_dict(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_name_to_dict, pointlike_name_to_dict, *args, **kwargs)
 
-
 def fluxdict(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_fluxdict, pointlike_fluxdict, *args, **kwargs)
+
+def pointlike_logLikelihood(roi): return -roi.logLikelihood(roi.parameters())
+
+def gtlike_logLikelihood(like): return like.logLike.value()
+
+def logLikelihood(*args, **kwargs):
+    return gtlike_or_pointlike(gtlike_logLikelihood, pointlike_logLikelihood, *args, **kwargs)
 
 if __name__ == "__main__":
     import doctest
