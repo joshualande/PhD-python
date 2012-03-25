@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from os.path import join, expandvars, exists
+from os.path import join, expandvars, exists, splitext
 from os import makedirs
 from collections import defaultdict
 from itertools import product
@@ -29,6 +29,15 @@ class SimBuilder(object):
         self.num = num
 
     def build(self):
+
+        ext=splitext(self.code)[-1]
+        if ext == '.py':
+            program='python'
+        elif ext == '.sh':
+            program='sh'
+        else:
+            raise Exception("...")
+
         if self.params is not None:
 
             for k,v in self.params.items():
@@ -56,7 +65,8 @@ class SimBuilder(object):
                     if not exists(jobdir): makedirs(jobdir)
 
                     run = join(jobdir,'run.sh')
-                    open(run,'w').write("python %s %g %s %s" % (self.code, i, args, self.extra))
+
+                    open(run,'w').write("%s %s %g %s %s" % (program,self.code, i, args, self.extra))
 
             submit_all = join(self.savedir,'submit_all.sh')
             open(submit_all,'w').write("submit_all */*/run.sh $@")
@@ -69,7 +79,7 @@ class SimBuilder(object):
                 if not exists(jobdir): makedirs(jobdir)
 
                 run = join(jobdir,'run.sh')
-                open(run,'w').write("python %s %g" % (self.code,i))
+                open(run,'w').write("%s %s %g" % (program,self.code,i))
 
             submit_all = join(self.savedir,'submit_all.sh')
             open(submit_all,'w').write("submit_all */run.sh $@")
@@ -94,11 +104,45 @@ class SimMerger(object):
                 >>> d = dict(a=dict(b=dict(c=[0,dict(a='treasure')])))
                 >>> print SimMerger.traverse(d, ['a', 'b', 'c', 1, 'a'])
                 treasure
+                >>> print SimMerger.traverse(d, ['non_existing'])
+                Traceback (most recent call last):
+                    ...
+                KeyError: 'Unable to traverse structure with key non_existing'
+
+            If one of the keys is a list of keys, this function will traverse the list
+            in whatever way it can:
+
+                >>> d = dict(a=dict(b1=dict(d=0)))
+                >>> print SimMerger.traverse(d, [ 'a', ['b1', 'b2'], 'd' ])
+                0
+                >>> print SimMerger.traverse(d, [ 'a', ['b2', 'b3'], 'd' ])
+                Traceback (most recent call last):
+                    ...
+                KeyError: "Unable to traverse structure with any of the keys ['b2', 'b3']"
+
         """
-        if len(keys) == 1:
-            return data[keys[0]]
+        k = keys[0]
+        if isinstance(k,list):
+            found=False
+            for i in k:
+                try:
+                    sub_data=data[i]
+                    found=True
+                    break
+                except:
+                    pass
+            if not found: 
+                raise KeyError("Unable to traverse structure with any of the keys %s" % k)
         else:
-            return SimMerger.traverse(data[keys[0]], keys[1:])
+            try:
+                sub_data=data[k]
+            except:
+                raise KeyError("Unable to traverse structure with key %s" % k)
+
+        if len(keys) == 1:
+            return sub_data
+        else:
+            return SimMerger.traverse(sub_data, keys[1:])
 
     def _merge(self):
         self.results = defaultdict(list)
