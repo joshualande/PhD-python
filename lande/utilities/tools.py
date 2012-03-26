@@ -27,13 +27,43 @@ def merge_dict(first,second):
 def tolist(x):
     """ convenience function that takes in a 
         nested structure of lists and dictionaries
-        and converst all
+        and converts everything to its base objects.
+        This is useful for dupming a file to yaml.
 
         (a) numpy arrays into python lists
-        (b) numpy strings into python scrings.
+
+            >>> type(tolist(np.asarray(123))) == int
+            True
+            >>> tolist(np.asarray([1,2,3])) == [1,2,3]
+            True
+
+        (b) numpy strings into python strings.
+
+            >>> tolist([np.asarray('cat')])==['cat']
+            True
+
         (c) an ordered dict to a dict
 
-        which is conveneint for duming a file to yaml.
+            >>> ordered=OrderedDict(a=1, b=2)
+            >>> type(tolist(ordered)) == dict
+            True
+
+        (d) converts unicode to regular strings
+
+            >>> type(u'a') == str
+            False
+            >>> type(tolist(u'a')) == str
+            True
+
+        (e) converts numbers & bools in strings to real represntation,
+            (i.e. '123' -> 123)
+
+            >>> type(tolist(np.asarray('123'))) == int
+            True
+            >>> type(tolist('123')) == int
+            True
+            >>> tolist('False') == False
+            True
     """
     if isinstance(x,list):
         return map(tolist,x)
@@ -41,13 +71,23 @@ def tolist(x):
         return dict((tolist(k),tolist(v)) for k,v in x.items())
     elif isinstance(x,np.ndarray) or \
             isinstance(x,np.number):
-        return x.tolist()
-    elif isinstance(x,np.str):
-        return str(x)
+        # note, call tolist again to convert strings of numbers to numbers
+        return tolist(x.tolist())
     elif isinstance(x,PhaseRange):
         return x.tolist(dense=True)
     elif isinstance(x,OrderedDict):
         return dict(x)
+    elif isinstance(x,basestring) or isinstance(x,np.str):
+        x=str(x) # convert unicode & numpy strings 
+        try:
+            return int(x)
+        except:
+            try:
+                return float(x)
+            except:
+                if x == 'True': return True
+                elif x == 'False': return False
+                else: return x
     else:
         return x
 
@@ -71,3 +111,6 @@ class OrderedDefaultdict(OrderedDict):
         self[key] = value = self.default_factory()
         return value
 
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
