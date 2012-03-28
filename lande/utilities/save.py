@@ -4,8 +4,9 @@ from os.path import expandvars
 import yaml
 from numpy.core.records import fromarrays
 import h5py
+from pyxml2obj import XMLin, XMLout
 
-from uw.utilities.makerec import makefits
+from uw.utilities.makerec import makefits, fitsrec
 
 from . tools import tolist
 
@@ -19,7 +20,11 @@ def loaddict(filename):
     elif extension == '.hdf5':
         return h5py.File(filename,'r')
     elif extension == '.fits':
-        raise Exception("...")
+        return fitsrec(filename)
+    elif extension == '.xml':
+        input=XMLin(open(filename).read())
+        # pass through tolist for automatic type conversion
+        return tolist(input)
     else:
         raise Exception("Unrecognized extension %s" % extension)
 
@@ -51,5 +56,7 @@ def savedict(filename, results):
         if not isinstance(results, dict): raise Exception("Can only save dicts to fits format.")
         rec = fromarrays(results.values(), names=results.keys())
         makefits(rec, filename, clobber=True)
+    elif extesnion == '.xml':
+        open(filename, 'w').write(XMLout(results))
     else:
         raise Exception("Unrecognized extension %s" % extension)
