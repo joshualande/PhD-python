@@ -10,7 +10,7 @@ from uw.utilities import keyword_options
 
 from . lists import flatten
 from . files import locate
-from . save import savedict
+from . save import savedict, loaddict
 
 class SimBuilder(object):
 
@@ -87,7 +87,14 @@ class SimBuilder(object):
 
 class SimMerger(object):
 
-    def __init__(self, savedir, keys):
+    defaults = (
+        ('filename', '*.yaml', 'Name of files to merge. Can allow wildcard matches.'),
+    )
+
+    @keyword_options.decorate(defaults)
+    def __init__(self, savedir, keys, **kwargs):
+        keyword_options.process(self, kwargs)
+
         self.savedir = expandvars(savedir)
         self.keys = keys
 
@@ -147,12 +154,12 @@ class SimMerger(object):
     def _merge(self):
         self.results = defaultdict(list)
 
-        all_results=locate('results_*.yaml', self.savedir)
+        all_results=locate(self.filename, self.savedir)
 
         for i,r in enumerate(all_results):
             if i % 10==0: print '%s' % i
 
-            x = yaml.load(open(r))
+            x = loaddict(r)
 
             if x is None: continue
 
