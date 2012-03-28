@@ -51,6 +51,7 @@ class Gtlike(object):
     common_defaults = (
         ("savedir",                 None, "Directory to put output files into. Default is to use a temporary file and delete it when done."),
         ("optimizer",           "MINUIT", "Optimizer to use when fitting."),
+        ("chatter",                    2, "Passed into the ScienceTools."),
     )
 
     defaults = common_defaults + (
@@ -58,7 +59,7 @@ class Gtlike(object):
             ("bigger_roi",             False, """If False, enscribe gtlike ROI in pointlike ROI. 
                                                  If True, enscribe pointlike ROI in gtlike ROI"""),
             ("proj",                   "ZEA", "Projection"),
-            ("coordsystem",SkyDir.EQUATORIAL, "Coordinate system"),
+            ("galactic",                False, "Coordinate system"),
             ("emin",                    None, "Minimum energy. Default is to get from ROI."),
             ("emax",                    None, "Maximum energy. Default is to get from ROI."),
             ("enumbins",                None, "Number of bins. Defualt is to get from ROI."),
@@ -96,14 +97,14 @@ class Gtlike(object):
     @staticmethod
     def save_xml(roi, input_srcmdl_file):
 
-        # shirnk all disk sources which are smaller than 0.02 degrees.
+        # shirnk all disk sources which are smaller than 0.05 degrees.
         # Otherwise, gtlike will crash. Anyway, no reason
         # to have extended source smaller than the binsize.
         shrink_list = [ source for source in roi.get_sources() if \
                        hasattr(source,'spatial_model') and \
                        isinstance(source.spatial_model,RadiallySymmetricModel) and \
-                       source.spatial_model['sigma'] < self.binsz ]
-        for src in shrink_list: src.spatial_model.shrink(size=self.binsz)
+                       source.spatial_model['sigma'] < 0.05  ]
+        for src in shrink_list: src.spatial_model.shrink(size=0.05)
 
         roi.toXML(input_srcmdl_file,convert_extended=True,expand_env_vars=True)
 
@@ -112,9 +113,9 @@ class Gtlike(object):
     @staticmethod
     def get_ft2(roi):
         """ for now, only one ft2 file. """
-        pd=roi.sa.pixeldata
-        if len(pd.ft2files) > 1: raise Exception("Only 1 ft2 file at a time, for now")
-        return pd.ft2files[0]
+        ft2files=roi.sa.pixeldata.ft2files
+        if len(ft2files) > 1: raise Exception("Only 1 ft2 file at a time, for now")
+        return ft2files[0]
 
 
     @keyword_options.decorate(defaults)
@@ -125,10 +126,6 @@ class Gtlike(object):
         self.roi = roi
 
         if not roi.quiet: print 'Running a gtlike followup'
-
-        if self.enable_edisp:
-            if not roi.quiet: print 'Enabeling energy dispersion'
-            os.environ['USE_BL_EDISP'] = "1" 
 
         self.old_dir=os.getcwd()
         if self.savedir is not None:
@@ -163,7 +160,7 @@ class Gtlike(object):
         else:
             npix=int(math.ceil(np.sqrt(2.0)*roi_radius/self.binsz))
 
-        ct = pd.conv_type
+        ct = roi.sa.pixeldata.conv_type
 
         cmap_file=join(self.savedir,'ccube.fits')
         srcmap_file=join(self.savedir,'srcmap.fits')
@@ -171,10 +168,9 @@ class Gtlike(object):
         input_srcmdl_file=join(self.savedir,'srcmdl.xml')
         cut_ft1=join(self.savedir,"ft1_cut.fits")
 
-        pd=roi.sa.pixeldata
 
         ft2=Gtlike.get_ft2(roi)
-        ltcube=pd.ltcube 
+        ltcube=roi.sa.pixeldata.ltcube 
 
         if self.fix_pointlike_ltcube:
             print 'Fixing pointlike ltcube %s' % ltcube
@@ -182,7 +178,7 @@ class Gtlike(object):
         
         irfs=Gtlike.get_gtlike_irfs(roi)
 
-        if self.coordsystem==SkyDir.GALACTIC:
+        if self.galactic:
             x,y,coordsys_str=roi.roi_dir.l(),roi.roi_dir.b(),'GAL'
         else:
             x,y,coordsys_str=roi.roi_dir.ra(),roi.roi_dir.dec(),'CEL'
@@ -199,7 +195,8 @@ class Gtlike(object):
                          ra=0, dec=0, rad=180,
                          tmin=0, tmax=0,
                          emin=self.emin, emax=self.emax,
-                         zmax=180, convtype=ct)
+                         zmax=180, convtype=ct,
+                         chatter=self.chatter)
         else:
             if not roi.quiet: print '... Skiping gtselect'
 
@@ -213,7 +210,8 @@ class Gtlike(object):
                       scfile=ft2,
                       xref=x, yref=y, axisrot=0, proj=self.proj,
                       ebinalg='LOG', emin=self.emin, emax=self.emax, enumbins=self.enumbins,
-                      coordsys=coordsys_str)
+                      coordsys=coordsys_str,
+                      chatter=self.chatter)
         else:
             if not roi.quiet: print '... Skiping gtbin (ccube)'
 
@@ -226,7 +224,8 @@ class Gtlike(object):
                           ebinalg='LOG', emin=self.emin, emax=self.emax, enumbins=self.enumbins,
                           outfile=bexpmap_file, proj='CAR',
                           nxpix=360, nypix=180, binsz=1,
-                          irfs=irfs)
+                          irfs=irfs,
+                          chatter=self.chatter)
         else:
             if not roi.quiet: print '... Skiping gtexpcube'
 
@@ -239,7 +238,8 @@ class Gtlike(object):
                           srcmdl=input_srcmdl_file,
                           bexpmap=bexpmap_file,
                           outfile=srcmap_file,
-                          irfs=irfs)
+                          irfs=irfs,
+                          chatter=self.chatter)
         else:
             if not roi.quiet: print '... Skiping gtsrcmaps'
 
@@ -247,6 +247,11 @@ class Gtlike(object):
         obs=BinnedObs(srcmap_file,ltcube,bexpmap_file,irfs)
 
         self.like = BinnedAnalysis(obs,input_srcmdl_file,self.optimizer)
+
+        if self.enable_edisp:
+            if not roi.quiet: print 'Enabeling energy dispersion'
+            self.like.logLike.set_edisp_flag(True)
+
 
         if not roi.quiet: print 'Binned LIKE Created!'
 
@@ -287,13 +292,11 @@ class UnbinnedGtlike(object):
         input_srcmdl_file=join(self.savedir,'srcmdl.xml')
         expmap = join(self.savedir,"expmap.fits")
 
-        pd=roi.sa.pixeldata
-
-        ltcube=pd.ltcube 
+        ltcube=roi.sa.pixeldata.ltcube 
         ft2=Gtlike.get_ft2(roi)
         irfs=Gtlike.get_gtlike_irfs(roi)
 
-        ct = pd.conv_type
+        ct = roi.sa.pixeldata.conv_type
         radius = roi.sa.maxROI
         ra = roi.roi_dir.ra()
         dec = roi.roi_dir.dec()
@@ -311,7 +314,8 @@ class UnbinnedGtlike(object):
                          ra=ra, dec=dec, rad=radius,
                          tmin=0, tmax=0,
                          emin=emin, emax=emax,
-                         zmax=180, convtype=ct)
+                         zmax=180, convtype=ct,
+                         chatter=self.chatter)
         else:
             if not roi.quiet: print '... Skiping gtselect'
 
@@ -330,10 +334,19 @@ class UnbinnedGtlike(object):
                          nlong=int(np.ceil(0.5*(radius+10)*2)),
                          nlat=int(np.ceil(0.5*(radius+10)*2)),
                          nenergies=int(np.ceil(np.log10(emax)-np.log10(emin)))*4,
-                         chatter=4,
+                         chatter=self.chatter,
                 )
         else:
             if not roi.quiet: print '... Skiping gtexpmap'
+
+        gtdiffrsp = GtApp('gtdiffrsp')
+        if not roi.quiet: print 'Running gtdiffrsp'
+        gtdiffrsp.run(evfile=cut_ft1,
+                      scfile=ft2,
+                      srcmdl=input_srcmdl_file,
+                      irfs=irfs,
+                      chatter=self.chatter,
+                     )
 
         if not roi.quiet: print 'Creating Unbinned LIKE'
         obs = UnbinnedObs(cut_ft1, ft2, expmap, ltcube, irfs)
