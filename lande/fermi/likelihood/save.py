@@ -190,7 +190,7 @@ def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg', errors
         logLikelihood=logLikelihood(like),
     )
     if save_TS:
-        d['TS']=like.Ts(name,reoptimize=True),
+        d['TS']=like.Ts(name,reoptimize=True)
 
     d['flux']=fluxdict(like,name,emin,emax,flux_units=flux_units, error=errors)
 
