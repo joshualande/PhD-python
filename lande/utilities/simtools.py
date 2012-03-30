@@ -4,6 +4,7 @@ from os import makedirs
 from collections import defaultdict
 from itertools import product
 
+import numpy as np
 import yaml
 
 from uw.utilities import keyword_options 
@@ -15,7 +16,7 @@ from . save import savedict, loaddict
 class SimBuilder(object):
 
     defaults = (
-        ('params', None, 'Extra params to pass into the script'),
+        ('params', {}, 'Extra params to pass into the script'),
         ('front', 'sim'),
         ('extra', ''),
     )
@@ -38,52 +39,46 @@ class SimBuilder(object):
         else:
             raise Exception("...")
 
-        if self.params is not None:
+        for k,v in self.params.items():
+            if not isinstance(v,list) and not isinstance(v,tuple):
+                self.params[k] = [v]
 
-            for k,v in self.params.items():
-                if not isinstance(v,list) and not isinstance(v,tuple):
-                    self.params[k] = [v]
+        keys = flatten(self.params.keys())
+        values = self.params.values()
 
-            keys = flatten(self.params.keys())
-            values = self.params.values()
+        no_multiples = not np.any([len(v)>1 for v in values])
 
-            for perm in product(*values):
-                perm = flatten(perm)
+        for perm in product(*values):
+            perm = flatten(perm)
 
-                f = lambda x: x if isinstance(x,str) else '%g' % x
+            f = lambda x: x if isinstance(x,str) else '%g' % x
 
-                base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,v in zip(keys,perm))
+            if no_multiples:
+                base = '.'
+            else:
+                base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,v in zip(keys,perm) if len(self.params[k])>1)
 
-                args= ' '.join('--%s=%s' % (f(k),f(v)) for k,v in zip(keys,perm))
+            args= ' '.join('--%s=%s' % (f(k),f(v)) for k,v in zip(keys,perm))
 
-                subdir = join(self.savedir, base)
+            subdir = join(self.savedir, base)
 
-                for i in range(self.num):
-                    istr='%0*d' % (5,i)
-
-                    jobdir = join(subdir,istr)
-                    if not exists(jobdir): makedirs(jobdir)
-
-                    run = join(jobdir,'run.sh')
-
-                    open(run,'w').write("%s %s %g %s %s" % (program,self.code, i, args, self.extra))
-
-            submit_all = join(self.savedir,'submit_all.sh')
-            open(submit_all,'w').write("submit_all */*/run.sh $@")
-
-        else:
             for i in range(self.num):
                 istr='%0*d' % (5,i)
 
-                jobdir = join(self.savedir,istr)
+                jobdir = join(subdir,istr)
                 if not exists(jobdir): makedirs(jobdir)
 
                 run = join(jobdir,'run.sh')
-                open(run,'w').write("%s %s %g" % (program,self.code,i))
 
-            submit_all = join(self.savedir,'submit_all.sh')
-            open(submit_all,'w').write("submit_all */run.sh $@")
+                open(run,'w').write("%s %s %g %s %s" % (program,self.code, i, args, self.extra))
 
+        submit_all = join(self.savedir,'submit_all.sh')
+                                      
+        if no_multiples:
+            run='*/run.sh'
+        else:
+            run='*/*/run.sh'
+        open(submit_all,'w').write("submit_all %s $@" % run)
 
 class SimMerger(object):
 
