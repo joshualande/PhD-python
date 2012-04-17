@@ -23,18 +23,22 @@ def convert_bytes(bytes, precision=1):
     return size
 
 
-def print_memory_usage(extra=None):
+def get_memory_usage(extra=None):
     """ Simple utility to monitor memory usage of my script. """
+    ret = ''
+
     p = psutil.Process(os.getpid())
 
     rss, vms = p.get_memory_info()
     if extra is not None:
-        print "Memory Usage %s:" % extra
+        ret += "Memory Usage %s:\n" % extra
     else:
-        print "Memory Usage:"
-    print ".. Resident memory: %s" % convert_bytes(rss)
-    print ".. Virtual memory: %s" % convert_bytes(vms)
+        ret += "Memory Usage:\n"
+    ret += ".. Resident memory: %s\n" % convert_bytes(rss)
+    ret += ".. Virtual memory: %s\n" % convert_bytes(vms)
     percent = p.get_memory_percent()
-    print ".. Memory percent %.1f%%" % percent
+    ret += ".. Memory percent %.1f%%" % percent
+    return ret
 
-
+def print_memory_usage(*args, **kwargs):
+    print get_memory_usage(*args, **kwargs)
