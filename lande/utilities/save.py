@@ -1,5 +1,6 @@
 import os
 from os.path import expandvars
+import argparse
 
 import yaml
 from numpy.core.records import fromarrays
@@ -9,6 +10,12 @@ from pyxml2obj import XMLin, XMLout
 from uw.utilities.makerec import makefits, fitsrec
 
 from . tools import tolist
+
+def argparse_kwargs(args):
+    """ Takes in an argparse 'args' object and returns a dictionary of the
+        parameters.  """
+    assert isinstance(args,argparse.Namespace)
+    return dict(args._get_kwargs())
 
 def loaddict(filename):
     filename = expandvars(filename)
