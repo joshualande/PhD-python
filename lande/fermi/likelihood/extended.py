@@ -3,12 +3,19 @@
 """
 import numpy as np
 import yaml
+import pywcs
+import pyfits
+
+from skymaps import SkyDir
 
 from uw.like.roi_plotting import DegreesFormatter
 from uw.like.roi_state import PointlikeState
+from uw.like.roi_image import ModelImage
+from uw.like.roi_monte_carlo import FitsShrinker
 from uw.utilities import keyword_options
 
 from lande.utilities.tools import tolist
+from lande.utilities.fits import expand_fits_header
 
 import pylab as P
 
@@ -214,3 +221,45 @@ class TSExtVsEnergy(object):
 
         if filename is not None:
             P.savefig(filename)
+
+
+
+def save_template_from_header(spatial_model, header, filename, factor=1, **kwargs):
+    """ Saves an extended source to a file with the same
+        projection and binning as an input pyfits header.
+
+        factor will cause image to be sampled on a grid factor**2 and then downsampled.
+        This is useful for function which vary rapidly over the pixels
+        of the files file.
+
+        kwargs can be used to pass clobber into writeto
+    """
+    assert abs(header['CDELT1']) == abs(header['CDELT2'])
+
+    if header['naxis'] == 3:
+        header = FitsShrinker.convert_header_2d(header)
+
+    expanded_header = expand_fits_header(header, factor)
+
+    lons,lats = FitsShrinker.pyfits_to_sky(expanded_header)
+
+    galactic = FitsShrinker.is_header_galactic(header)
+    coordsys = SkyDir.GALACTIC if galactic else SkyDir.EQUATORIAL
+
+    it = np.nditer([lons, lats, None])
+    for lon,lat,d in it:
+        skydir=SkyDir(float(lon),float(lat),coordsys)
+        d[...] = spatial_model(skydir)
+    data = it.operands[2]
+
+    data = ModelImage.downsample(data, factor)
+
+    pixelsize = header['CDELT1']
+    normalization = np.sum(data)*np.radians(pixelsize)**2
+    normed_data = data/normalization
+
+    hdu = pyfits.PrimaryHDU(header=header, data=data)
+
+    hdulist = pyfits.HDUList([hdu])
+    hdulist.writeto(filename, **kwargs)
+
