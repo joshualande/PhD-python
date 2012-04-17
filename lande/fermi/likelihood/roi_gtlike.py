@@ -66,6 +66,9 @@ class Gtlike(object):
             ("enable_edisp",           False, """ Enable energy dispersion. 
                                                   See https://confluence.slac.stanford.edu/display/ST/Energy+Dispersion+in+Binned+Likelihood"""),
             ("fix_pointlike_ltcube",   False, "Fix header of pointlike livetime cube so that it can be used by gtlike."),
+            ("rfactor",                    2, "Goes into gtsrcmaps."),
+            ("resample",               "yes", "Goes into gtsrcmaps."),
+            ("minbinsz",                 0.1, "Goes into gtsrcmaps."),
     )
 
 
@@ -239,6 +242,9 @@ class Gtlike(object):
                           bexpmap=bexpmap_file,
                           outfile=srcmap_file,
                           irfs=irfs,
+                          rfactor=self.rfactor,
+                          resample=self.resample,
+                          minbinsz=self.minbinsz,
                           chatter=self.chatter)
         else:
             if not roi.quiet: print '... Skiping gtsrcmaps'
