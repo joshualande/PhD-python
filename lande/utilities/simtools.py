@@ -9,25 +9,38 @@ import yaml
 
 from uw.utilities import keyword_options 
 
-from . lists import flatten
+from . lists import flatten, islist, duplicates
 from . files import locate
 from . save import savedict, loaddict
 
 class SimBuilder(object):
+    """ Example usage:
 
+        # version 27 - more options
+        params=dict(edisp=[True,False], simbg=[True,False], emin=[1e2,1e3], emax=1e5, flux=1e-5,
+                    index=[2,2.66], cuts=[True,False], zenithcut=[100,180], savedata=True)
+        params['time','phibins']=[['2fgl',0], ['my2fgl',0], ['my2fgl',9], ['2years',0], ['2years',9]]
+        b = SimBuilder(
+            savedir='$w44simdata/v27',
+            code='$w44simcode/simspec.py',
+            num=1,
+            params=params,
+            )
+        b.build()
+    """
     defaults = (
         ('params', {}, 'Extra params to pass into the script'),
         ('front', 'sim'),
         ('extra', ''),
+        ('num', None),
     )
 
     @keyword_options.decorate(defaults)
-    def __init__(self, savedir, code, num, **kwargs):
+    def __init__(self, savedir, code, **kwargs):
         keyword_options.process(self, kwargs)
 
         self.savedir = expandvars(savedir)
         self.code = code
-        self.num = num
 
     def build(self):
 
@@ -44,37 +57,63 @@ class SimBuilder(object):
                 self.params[k] = [v]
 
         keys = flatten(self.params.keys())
+        if len(duplicates(keys)) > 0:
+            raise Exception("Duplicate keys for params: %s" % (', '.join(duplicates(keys))))
         values = self.params.values()
+        num = flatten([len(v) if not islist(k) else [len(v)]*len(k) for k,v in self.params.items()])
 
-        no_multiples = not np.any([len(v)>1 for v in values])
+        no_multiples = not np.any([n>1 for n in num])
 
         for perm in product(*values):
             perm = flatten(perm)
 
-            f = lambda x: x if isinstance(x,str) else '%g' % x
+            def f(x):
+                if isinstance(x,str):
+                    return x
+                elif isinstance(x,bool):
+                    return str(x)
+                else:
+                    return '%g' % x
 
             if no_multiples:
                 base = '.'
             else:
-                base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,v in zip(keys,perm) if len(self.params[k])>1)
+                base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,n,v in zip(keys,num,perm) if n>1)
 
-            args= ' '.join('--%s=%s' % (f(k),f(v)) for k,v in zip(keys,perm))
+            args = []
+            for k,v in zip(keys,perm):
+                if v is True:
+                    args.append('--%s' % f(k))
+                elif v is False:
+                    pass # no flag
+                else:
+                    args.append('--%s=%s' % (f(k),f(v)))
+            args = ' '.join(args)
 
             subdir = join(self.savedir, base)
 
-            for i in range(self.num):
-                istr='%0*d' % (5,i)
+            if self.num == None:
 
-                jobdir = join(subdir,istr)
-                if not exists(jobdir): makedirs(jobdir)
+                run = join(subdir,'run.sh')
+                open(run,'w').write("%s %s %s %s" % (program, self.code, args, self.extra))
 
-                run = join(jobdir,'run.sh')
+            else:
+                for i in range(self.num):
+                    istr='%0*d' % (5,i)
 
-                open(run,'w').write("%s %s %g %s %s" % (program,self.code, i, args, self.extra))
+                    if self.num > 1:
+                        jobdir = join(subdir,istr)
+                    else:
+                        jobdir = subdir
+                    if not exists(jobdir): makedirs(jobdir)
+
+                    run = join(jobdir,'run.sh')
+
+                    open(run,'w').write("%s %s %g %s %s" % (program, self.code, i, args, self.extra))
 
         submit_all = join(self.savedir,'submit_all.sh')
                                       
-        if no_multiples:
+        if no_multiples or self.num == 1:
             run='*/run.sh'
         else:
             run='*/*/run.sh'
