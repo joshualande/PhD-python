@@ -1,3 +1,7 @@
+from collections import Counter
+
+def islist(x):
+    return hasattr(x, "__iter__") and not isinstance(x, basestring)
 
 def flatten(x):
     """flatten(sequence) -> list
@@ -17,11 +21,23 @@ def flatten(x):
 
     result = []
     for el in x:
-        if hasattr(el, "__iter__") and not isinstance(el, basestring):
+        if islist(el):
             result.extend(flatten(el))
         else:
             result.append(el)
     return result
+
+def duplicates(list):
+    """ Find all duplicate items in list.
+
+        >>> duplicates([1,2,3])
+        []
+        >>> duplicates([1,2,2,2,3])
+        [2]
+    """
+    c = Counter(list)
+    return [k for k,v in c.items() if v>1]
+
 
 if __name__ == "__main__":
     import doctest
