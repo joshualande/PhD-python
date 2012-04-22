@@ -59,7 +59,7 @@ class Gtlike(object):
             ("bigger_roi",             False, """If False, enscribe gtlike ROI in pointlike ROI. 
                                                  If True, enscribe pointlike ROI in gtlike ROI"""),
             ("proj",                   "ZEA", "Projection"),
-            ("galactic",                False, "Coordinate system"),
+            ("galactic",                True, "Coordinate system"),
             ("emin",                    None, "Minimum energy. Default is to get from ROI."),
             ("emax",                    None, "Maximum energy. Default is to get from ROI."),
             ("enumbins",                None, "Number of bins. Defualt is to get from ROI."),
@@ -228,6 +228,7 @@ class Gtlike(object):
                           outfile=bexpmap_file, proj='CAR',
                           nxpix=360, nypix=180, binsz=1,
                           irfs=irfs,
+                          coordsys=coordsys_str,
                           chatter=self.chatter)
         else:
             if not roi.quiet: print '... Skiping gtexpcube'
