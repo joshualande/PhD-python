@@ -1,10 +1,10 @@
-""" lande_roi.py contains a ROI subclass which does things the way Joshua Lande likes.
+""" myroi.py contains a ROI subclass which does things the way Joshua Lande likes.
 
     To create a landeROI object,
 
-    import lande_roi
+    from lande.fermi.likelihood import myroi
     sa = SpectralAnalysis(ds, ...)
-    roi=lande_roi.LandeROI(sa.roi_from_xml(...))
+    roi=myroi.LandeROI(sa.roi_from_xml(...))
 
     Author: Joshua Lande
 """
@@ -12,7 +12,7 @@ import numpy as np
 
 from lande.utilities.tools import tolist
 
-from lande_localize import *
+from . localize import *
 
 # import stuff generally useful
 from uw.like.Models import *
@@ -32,9 +32,9 @@ from uw.utilities import keyword_options
 from skymaps import *
 from os.path import *
 from roi_gtlike import *
-from lande_plotting import *
-from lande_extended import *
-from lande_decorators import *
+from . extended import *
+from lande.utilities.decorators import *
+from lande.utilities.plotting import *
 
 from . tools import galstr
 from . diffuse import get_background
