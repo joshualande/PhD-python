@@ -4,7 +4,6 @@ import argparse
 
 import yaml
 from numpy.core.records import fromarrays
-from pyxml2obj import XMLin, XMLout
 
 from uw.utilities.makerec import makefits, fitsrec
 
@@ -29,6 +28,7 @@ def loaddict(filename):
     elif extension == '.fits':
         return fitsrec(filename)
     elif extension == '.xml':
+        from pyxml2obj import XMLin
         input=XMLin(open(filename).read())
         # pass through tolist for automatic type conversion
         return tolist(input)
@@ -65,6 +65,7 @@ def savedict(filename, results):
         rec = fromarrays(results.values(), names=results.keys())
         makefits(rec, filename, clobber=True)
     elif extesnion == '.xml':
+        from pyxml2obj import XMLout
         open(filename, 'w').write(XMLout(results))
     else:
         raise Exception("Unrecognized extension %s" % extension)
