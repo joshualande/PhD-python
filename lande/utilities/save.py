@@ -4,7 +4,6 @@ import argparse
 
 import yaml
 from numpy.core.records import fromarrays
-import h5py
 from pyxml2obj import XMLin, XMLout
 
 from uw.utilities.makerec import makefits, fitsrec
@@ -25,6 +24,7 @@ def loaddict(filename):
     if extension == '.yaml':
         return yaml.load(open(filename,'r'))
     elif extension == '.hdf5':
+        import h5py
         return h5py.File(filename,'r')
     elif extension == '.fits':
         return fitsrec(filename)
@@ -56,6 +56,7 @@ def savedict(filename, results):
         open(filename, 'w').write(yaml.dump(tolist(results)))
     elif extension == '.hdf5':
         if not isinstance(results, dict): raise Exception("Can only save dicts to hdf5 format.")
+        import h5py
         f=h5py.File(filename,'w')
         for k,v in results.items(): f[k] = v
         f.close()
