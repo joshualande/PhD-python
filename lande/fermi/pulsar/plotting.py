@@ -4,9 +4,9 @@ import numpy as np
 from . data import get_phases, get_phases_and_times
 from uw.pulsar.phase_range import PhaseRange
 
-def plot_phaseogram(ft1, nbins=100, filename=None, title=None, off_peak=None, 
+def plot_phaseogram(ft1, nbins=100, filename=None, title=None, phase_range=None, 
                     data_kwargs=dict(),
-                    off_peak_kwargs=dict(), repeat_phase=False, axes=None, **kwargs):
+                    phase_range_kwargs=dict(), repeat_phase=False, axes=None, **kwargs):
     """ Simple code to plot a phaseogram. """
     phases = get_phases(ft1, **kwargs)
 
@@ -40,12 +40,12 @@ def plot_phaseogram(ft1, nbins=100, filename=None, title=None, off_peak=None,
 
     axes.grid=True
 
-    if off_peak is not None:
+    if phase_range is not None:
         kwargs=dict(alpha=0.25, color='blue')
-        kwargs.update(off_peak_kwargs)
-        PhaseRange(off_peak).axvspan(axes=axes, 
-                                     phase_offsets=[0,1] if repeat_phase else 0,
-                                     **kwargs)
+        kwargs.update(phase_range_kwargs)
+        PhaseRange(phase_range).axvspan(axes=axes, 
+                                        phase_offsets=[0,1] if repeat_phase else 0,
+                                        **kwargs)
 
     if filename is not None:
         P.savefig(filename)

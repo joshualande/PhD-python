@@ -4,6 +4,8 @@ import BayesianBlocks
 
 from uw.pulsar.phase_range import PhaseRange
 
+from . plotting import plot_phaseogram
+
 
 class OffPeakBB(object):
     """ Algorithm to compute the off peak window
@@ -36,6 +38,10 @@ class OffPeakBB(object):
         phase_min = xx[min_bin]
         phase_max = xx[min_bin+1]
 
+        # worry about possibility of wraping around
+        if (min_bin == 0) and np.allclose(yy[0],yy[-1]):
+            phase_min = xx[-2] - 1
+
         phase_range = phase_max - phase_min
         phase_min, phase_max = phase_min + 0.1*phase_range, phase_max - 0.1*phase_range
 
@@ -44,11 +50,15 @@ class OffPeakBB(object):
     @staticmethod
     def get_binned_blocks(phases, ncpPrior):
         """ Apply binned baysian blocks to the pulsar phases
-            Return the Bayesian block data. """
+            Return the Bayesian block data. 
+        
+            According to Jeff Scargal, a easy way to accomplish
+            Bayesian blocks on a periodic 
+        """
 
         phases = np.concatenate((phases, phases-1, phases+1))
 
-        nbins=50
+        nbins=200
 
         tstart=-1
         bins = np.linspace(-1,2,nbins*3+1)
@@ -69,8 +79,11 @@ class OffPeakBB(object):
         cut_yy = yy[first:last+1]
 
         # sanity checks
-        assert np.allclose(cut_yy[0],cut_yy[-1])
+
         assert (cut_xx[0] <= 0) and (cut_xx[-1] >= 1)
+
+        if not np.allclose(cut_yy[0],cut_yy[-1]):
+            print 'Warning, Bayesian blocks do not appear to be periodic!'
 
         cut_xx[0] = 0
         cut_xx[-1] = 1
@@ -90,3 +103,21 @@ class OffPeakBB(object):
         self.off_peak = self.find_phase_range(self.xx, self.yy)
 
         self.blocks = dict(xx = self.xx, yy = self.yy)
+
+
+def plot_phaseogram_blocks(ft1, blocks, blocks_kwargs=dict(), repeat_phase=False, **kwargs):
+
+    # plot bins
+    axes, bins = plot_phaseogram(ft1, repeat_phase=repeat_phase, **kwargs)
+    binsz = bins[1]-bins[0]
+
+    # plot blocks
+    xx=blocks['xx']
+    yy=blocks['yy']
+    if repeat_phase: xx, yy = np.append(xx, xx+1), np.append(yy, yy)
+
+    k=dict(color='blue')
+    k.update(blocks_kwargs)
+    axes.plot(np.asarray(xx),np.asarray(yy)*binsz, **k)
+
+
