@@ -92,24 +92,63 @@ def tolist(x):
         return x
 
 
-# Taken form http://stackoverflow.com/questions/4126348/how-do-i-rewrite-this-function-to-implement-ordereddict
-class OrderedDefaultdict(OrderedDict):
-    def __init__(self, *args, **kwargs):
-        newdefault = None
-        newargs = ()
-        if len(args):
-            newdefault = args[0]
-            if not callable(newdefault) and newdefault != None:
-                raise TypeError('first argument must be callable or None')
-            newargs = args[1:]
-        self.default_factory = newdefault
-        super(OrderedDefaultdict, self).__init__(*newargs, **kwargs)
+class OrderedDefaultDict(OrderedDict):
+    """ Ordered default dictionary:
 
-    def __missing__ (self, key):
+        Code orignally taken from:
+            http://stackoverflow.com/questions/4126348/how-do-i-rewrite-this-function-to-implement-ordereddict
+        But has been retaken from:
+            http://www.techques.com/question/1-6190331/Can-I-do-an-ordered,-default-dict-in-Python
+        to have a better __copy__ support.
+
+        Some simple tests
+
+            >>> x = OrderedDefaultDict(list)
+            >>> x[1].append(2)
+            >>> x['a'].append('b')
+            >>> print x.keys()
+            [1, 'a']
+
+        For a while, deepcopying these objects crashes. This has been fixed:
+            
+            >>> import copy
+            >>> y=copy.deepcopy(x)
+            >>> print y.keys()
+            [1, 'a']
+            
+    """
+    def __init__(self, default_factory=None, *a, **kw):
+        if (default_factory is not None and
+            not hasattr(default_factory, '__call__')):
+            raise TypeError('first argument must be callable')
+        OrderedDict.__init__(self, *a, **kw)
+        self.default_factory = default_factory
+
+    def __getitem__(self, key):
+        try:
+            return OrderedDict.__getitem__(self, key)
+        except KeyError:
+            return self.__missing__(key)
+
+    def __missing__(self, key):
         if self.default_factory is None:
             raise KeyError(key)
         self[key] = value = self.default_factory()
         return value
+
+    def __reduce__(self):
+        if self.default_factory is None:
+            args = tuple()
+        else:
+            args = self.default_factory,
+        return type(self), args, None, None, self.items()
+
+    def copy(self):
+        return self.__copy__()
+
+    def __copy__(self):
+        return type(self)(self.default_factory, self)
+
 
 if __name__ == "__main__":
     import doctest
