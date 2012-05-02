@@ -1,4 +1,5 @@
 import os
+import math
 
 import pylab as P
 import numpy as np
@@ -13,13 +14,24 @@ from uw.like.roi_state import PointlikeState
 
 class ROIBandPlotter(object):
 
-    def __init__(self,roi,bin_edges,**kwargs):
+    def __init__(self,roi,bin_edges,nrows=1,grid_kwargs=dict(),**kwargs):
+
+        default_grid_kwargs = dict(axes_pad=0.1, 
+                                   cbar_location="top",
+                                   cbar_mode="each",
+                                   cbar_size="7%",
+                                   cbar_pad="2%")
+
+        self.grid_kwargs = default_grid_kwargs.copy()
+        self.grid_kwargs.update(grid_kwargs)
 
         self.roi = roi
         keyword_options.process(self, kwargs)
+        self.nrows=nrows
 
         self.bin_edges = bin_edges
-        self.nplots = len(bin_edges) - 1
+        self.nplots = len(self.bin_edges)
+        self.ncols= int(math.ceil(self.nplots/self.nrows))
 
         for e in bin_edges:
             if not np.any(np.abs(e-roi.bin_edges) < 0.5):
@@ -46,14 +58,11 @@ class ROIBandPlotter(object):
         header = self.maps[0].header
 
         self.grid = grid = ImageGrid(fig, (1, 1, 1), 
-                                     nrows_ncols = (1, self.nplots),
-                                     axes_pad=0.1, share_all=True,
-                                     cbar_location="top",
-                                     cbar_mode="each",
-                                     cbar_size="7%",
-                                     cbar_pad="2%",
+                                     nrows_ncols = (self.nrows, self.ncols),
+                                     share_all=True,
                                      axes_class=(pywcsgrid2.Axes,
-                                                 dict(header=header)))
+                                                 dict(header=header)),
+                                    **self.grid_kwargs)
 
         for i,(map,lower,upper) in enumerate(zip(self.maps,self.lower_energies,self.upper_energies)):
             map.show(axes=grid[i], cax=grid[i].cax)
