@@ -18,17 +18,16 @@ def confluence_table(table_dict, units=None, **kwargs):
         ||    dim  | small  |
 
         >>> print confluence_table(d, units=dict(flux='[ergs]'))
-        ||   name ||   flux ||
-        ||         | [ergs]  |
-        || bright  |  large  |
-        ||    dim  |  small  |
+        ||   name || flux [ergs] ||
+        || bright  |       large  |
+        ||    dim  |       small  |
+
 
     """
 
     if units is not None:
-        table_dict = copy.deepcopy(table_dict)
-        for k in table_dict:
-            table_dict[k].insert(0,units.pop(k,''))
+        for k,v in units.items():
+            table_dict[k + ' %s' % v] = table_dict.pop(k)
 
     outtable=StringIO()
 
@@ -79,6 +78,63 @@ def latex_table(table_dict, units=None, latexdict=None, **kwargs):
                     )
     t=outtable.getvalue()
     return t.strip()
+
+class TableFormatter(object):
+    def __init__(self, confluence=False, precision=2):
+        """ Default is to format numbers for latex tables.
+            confluence=True will format numbers of confluence tables. 
+            
+            A few examples:
+
+                >>> conf_format=TableFormatter(confluence=True)
+                >>> latex_format=TableFormatter(confluence=False)
+
+                >>> print conf_format.value(-1, precision=2)
+                \-1.00
+                >>> print latex_format.value(-1, precision=2)
+                -1.00
+
+                >>> print conf_format.error(10,2, precision=0)
+                10 +/- 2
+                >>> print latex_format.error(10,2, precision=0)
+                $10 \pm 2$
+
+                >>> print conf_format.ul(-1, precision=1)
+                <\-1.0
+                >>> print latex_format.ul(-1, precision=1)
+                $<-1.0$
+        """
+        self.confluence = confluence
+        self.precision = precision
+    @staticmethod
+    def fix_negative(a):
+        return a.replace('-',r'\-')
+    def value(self,a,precision=None):
+        if precision is None: precision=self.precision
+        ret = '%.*f' % (precision,a)
+        if self.confluence:
+            ret = TableFormatter.fix_negative(ret)
+        return ret
+    def error(self,a,b,precision=None):
+        if precision is None: precision=self.precision
+        if self.confluence:
+            f1=TableFormatter.fix_negative('%.*f' % (precision,a))
+            f2=TableFormatter.fix_negative('%.*f' % (precision,b))
+            return '%s +/- %s' % (f1,f2)
+        else:
+            return '$%.*f \pm %.*f$' % (precision,a,precision,b)
+    def ul(self,ul,precision=None):
+        if precision is None: precision=self.precision
+        ret=r'<%.*f' % (precision,ul)
+        if not self.confluence:
+            ret = '$%s$' % ret
+        if self.confluence:
+            ret=TableFormatter.fix_negative(ret)
+        return ret
+
+    @property
+    def nodata(self):
+        return '' if self.confluence else r'\nodata'
     
 if __name__ == "__main__":
     import doctest
