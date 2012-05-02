@@ -30,12 +30,14 @@ def get_multiple_diffuse(dist, halo, TS, version,
             ... )
     """
     assert (dist in ['Lorimer', 'SNR']) and (halo in [4,10]) and (TS in [150, 100000]) and (version in [1,2])
-
-    gfile_base = '%s_z%s_Ts%s_v%s_mapcube_fixed_' % (dist,halo,TS, version)
+    if version==1:
+        gfile_base = '%s_z%s_Ts%s_v%s_mapcube_fixed_' % (dist,halo,TS, version)
+    else:
+        gfile_base = '%s_z%s_Ts%s_v%s_mapcube_' % (dist,halo,TS, version)
 
     diffuse = []
 
-    gal_components=["CO_1","CO_2","CO_3","CO_4","HI_1","HI_2","HI_3","HI_4","IC"]
+    gal_components=["CO_1","CO_2","CO_3","CO_4","HI_1","HI_2","HI_3","HI_4","ICnorm"]
     if add_loop:
         gal_components.append('LoopInorm')
     if add_lobes:
