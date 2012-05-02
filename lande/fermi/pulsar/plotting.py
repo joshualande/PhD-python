@@ -52,8 +52,8 @@ def plot_phaseogram(ft1, nbins=100, filename=None, title=None, phase_range=None,
 
     return axes, bins
 
-def plot_phase_vs_time(ft1, filename, title=None, off_peak=None, 
-                       off_peak_kwargs=dict(), **kwargs):
+def plot_phase_vs_time(ft1, filename, title=None, phase_range=None, 
+                       phase_range_kwargs=dict(), **kwargs):
     """ Simple code to plot phase vs time. """
     phases, times = get_phases_and_times(ft1, **kwargs)
 
@@ -68,10 +68,10 @@ def plot_phase_vs_time(ft1, filename, title=None, off_peak=None,
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1] ]
     axes.imshow(hist.T,extent=extent,interpolation='nearest',origin='lower', aspect='auto')
 
-    if off_peak is not None:
+    if phase_range is not None:
         kwargs=dict(alpha=0.5, color='white')
-        kwargs.update(off_peak_kwargs)
-        PhaseRange(off_peak).axvspan(axes=axes, **kwargs)
+        kwargs.update(phase_range_kwargs)
+        PhaseRange(phase_range).axvspan(axes=axes, **kwargs)
 
     axes.set_xlabel('phase')
     axes.set_ylabel('MJD')
