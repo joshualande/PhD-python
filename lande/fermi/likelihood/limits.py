@@ -13,6 +13,7 @@ from lande.pysed import units
 from . superstate import SuperState
 from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range
+from . fit import gtlike_fit_only_prefactor, paranoid_gtlike_fit
 
 def gtlike_upper_limit(like, name, cl, emin=None, emax=None, 
                        flux_units='erg', **kwargs):
