@@ -129,7 +129,7 @@ class SuperSED(SED):
         flux = lambda x: units.tosympy(x, units.fromstring(d['Ph_Flux']['Units']))
         eflux = lambda x: units.tosympy(x, units.fromstring(d['En_Flux']['Units']))
 
-        if d.has_key('name'): self.name = d['Name']
+        if d.has_key('Name'): self.name = d['Name']
 
         self.lower_energy = e(d['Energy']['Lower'])
         self.upper_energy = e(d['Energy']['Upper'])
