@@ -3,6 +3,9 @@
     
     Author: Joshua Lande
 """
+# this import has to come first (shrugs)
+from . roi_gtlike import Gtlike
+
 from os.path import join
 
 from skymaps import SkyDir
@@ -12,7 +15,6 @@ from uw.like.Models import PowerLaw
 from uw.like.roi_monte_carlo import SpectralAnalysisMC
 from uw.utilities import keyword_options
 
-from . roi_gtlike import Gtlike
 
 
 class FastROI(object):
@@ -36,6 +38,7 @@ class FastROI(object):
         ('seed', 0),
         ('maxROI', 5),
         ('simtime', 2629743.83, 'simulation time (in seconds)'),
+        ('irf','P7SOURCE_V6'),
     )
 
 
@@ -71,7 +74,7 @@ class FastROI(object):
                                 roi_dir=self.roi_dir,
                                 minROI=self.maxROI,
                                 maxROI=self.maxROI,
-                                irf='P7SOURCE_V6',
+                                irf=self.irf,
                                 use_weighted_livetime=True,
                                 savedir=self.savedir,
                                 tstart=0,
@@ -90,4 +93,7 @@ class FastROI(object):
 
     def get_like(self, *args, **kwargs):
 
-        return Gtlike(self, savedir=self.savedir, *args, **kwargs)
+        self.gtlike=Gtlike(self.roi, savedir=self.savedir, 
+                      fix_pointlike_ltcube=True,
+                      *args, **kwargs)
+        return self.gtlike.like
