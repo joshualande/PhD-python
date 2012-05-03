@@ -64,7 +64,7 @@ class SuperSED(SED):
             self.crashed = False
         except Exception, ex:
             print 'ERROR computing SED:', ex
-            for v in ['dnde', 'dnde_err', 'dnde_ul',
+            for v in ['dnde', 'dnde_err', 'dnde_lower_err', 'dnde_upper_err', 'dnde_ul',
                       'flux', 'flux_err', 'flux_ul',
                       'eflux','eflux_err', 'eflux_ul']:
                 self.__dict__[v] *= np.nan
@@ -75,7 +75,7 @@ class SuperSED(SED):
 
         for values, u in [
             [['lower_energy', 'upper_energy', 'energy'], units.MeV],
-            [['dnde', 'dnde_err', 'dnde_ul'], units.ph/units.cm**2/units.s/units.MeV],
+            [['dnde', 'dnde_err', 'dnde_lower_err', 'dnde_upper_err', 'dnde_ul'], units.ph/units.cm**2/units.s/units.MeV],
             [['flux', 'flux_err', 'flux_ul'], units.ph/units.cm**2/units.s],
             [['eflux','eflux_err', 'eflux_ul'], units.MeV/units.cm**2/units.s]]:
 
@@ -101,17 +101,19 @@ class SuperSED(SED):
                 Units='%s' % self.energy_units_str),
             dNdE=dict(
                 Value=c_dnde(self.dnde),
-                Error=c_dnde(self.dnde_err),
+                Average_Error=c_dnde(self.dnde_err),
+                Lower_Error=c_dnde(self.dnde_lower_err),
+                Upper_Error=c_dnde(self.dnde_upper_err),
                 Upper_Limit=c_dnde(self.dnde_ul),
                 Units='ph/cm^2/s/%s' % self.flux_units_str),
             Ph_Flux=dict(
                 Value=c_flux(self.flux),
-                Error=c_flux(self.flux_err),
+                Average_Error=c_flux(self.flux_err),
                 Upper_Limit=c_flux(self.flux_ul),
                 Units='ph/cm^2/s'),
             En_Flux=dict(
                 Value=c_eflux(self.eflux),
-                Error=c_eflux(self.eflux_err),
+                Average_Error=c_eflux(self.eflux_err),
                 Upper_Limit=c_eflux(self.eflux_ul),
                 Units='%s/cm^2/s' % self.flux_units_str),
             Test_Statistic=self.ts.tolist(),
@@ -136,17 +138,19 @@ class SuperSED(SED):
         self.energy = e(d['Energy']['Value'])
 
         self.dnde = dnde(d['dNdE']['Value'])
-        self.dnde_err = dnde(d['dNdE']['Error'])
+        self.dnde_err = dnde(d['dNdE']['Average_Error'])
+        self.dnde_lower_err = dnde(d['dNdE']['Lower_Error'])
+        self.dnde_upper_err = dnde(d['dNdE']['Upper_Error'])
         self.dnde_ul = dnde(d['dNdE']['Upper_Limit'])
 
         if d.has_key('Ph_flux'):
             self.flux = flux(d['Ph_Flux']['Value'])
-            self.flux_err = flux(d['Ph_Flux']['Error'])
+            self.flux_err = flux(d['Ph_Flux']['Average_Error'])
             self.flux_ul = flux(d['Ph_Flux']['Upper_Limit'])
 
         if d.has_key('En_flux'):
             self.eflux = eflux(d['En_Flux']['Value'])
-            self.eflux_err = eflux(d['En_Flux']['Error'])
+            self.eflux_err = eflux(d['En_Flux']['Average_Error'])
             self.eflux_ul = eflux(d['En_Flux']['Upper_Limit'])
 
         if d.has_key('Test_Statistic'):
@@ -193,7 +197,7 @@ class SuperSED(SED):
              fignum=None, figsize=(4,4),
              plot_spectral_fit=True,
              data_kwargs=dict(),
-             spectral_kwargs=dict(color='red')):
+             spectral_kwargs=dict(color='red',zorder=1.9)):
         """ Plot the SED using matpotlib. """
 
         if axes is None:
@@ -211,24 +215,25 @@ class SuperSED(SED):
                 y.multiply_elementwise(self.energy).multiply_elementwise(self.energy),
                 self.flux_units/units.cm**2/units.s)
 
-            SED._plot_points(
-                x=ce(self.energy), 
-                xlo=ce(self.lower_energy), 
-                xhi=ce(self.upper_energy), 
-                y=cf(self.dnde),
-                y_err=cf(self.dnde_err),
-                y_ul=cf(self.dnde_ul),
-                significant=self.significant,
-                energy_units=self.energy_units_str,
-                flux_units=self.flux_units_str,
-                axes=axes, **data_kwargs)
-
             if plot_spectral_fit and hasattr(self,'spectrum'):
                 # kind of ugly, but spectrum is ph/cm^2/s/MeV
                 # and it gets mutlplied by energy_units**2,
                 # so we need to multiple overall spectrum by
                 # flux_units*MeV/energy_units**2
                 self.plot_spectrum(self.spectrum, **spectral_kwargs)
+
+            SED._plot_points(
+                x=ce(self.energy), 
+                xlo=ce(self.lower_energy), 
+                xhi=ce(self.upper_energy), 
+                y=cf(self.dnde),
+                y_lower_err=cf(self.dnde_lower_err),
+                y_upper_err=cf(self.dnde_upper_err),
+                y_ul=cf(self.dnde_ul),
+                significant=self.significant,
+                energy_units=self.energy_units_str,
+                flux_units=self.flux_units_str,
+                axes=axes, **data_kwargs)
 
         if filename is not None: P.savefig(filename)
         return axes
