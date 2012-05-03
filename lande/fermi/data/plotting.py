@@ -30,8 +30,8 @@ class ROIBandPlotter(object):
         self.nrows=nrows
 
         self.bin_edges = bin_edges
-        self.nplots = len(self.bin_edges)
-        self.ncols= int(math.ceil(self.nplots/self.nrows))
+        self.nplots = len(self.bin_edges)-1
+        self.ncols= int(math.ceil(float(self.nplots)/self.nrows))
 
         for e in bin_edges:
             if not np.any(np.abs(e-roi.bin_edges) < 0.5):
