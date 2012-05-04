@@ -15,7 +15,7 @@ from uw.like.Models import PowerLaw
 from uw.like.roi_monte_carlo import SpectralAnalysisMC
 from uw.utilities import keyword_options
 
-
+from . diffuse import get_sreekumar
 
 class FastROI(object):
     """ Usage:
@@ -39,24 +39,17 @@ class FastROI(object):
         ('maxROI', 5),
         ('simtime', 2629743.83, 'simulation time (in seconds)'),
         ('irf','P7SOURCE_V6'),
+        ('flux',1e-7),
+        ('isotropic_bg',False, 'simulate on top of an isotropic background'),
+        ('conv_type',0)
     )
-
-
 
     @keyword_options.decorate(defaults)
     def __init__(self,**kwargs):
         keyword_options.process(self, kwargs)
 
-        model = PowerLaw()
-        model.set_flux(1e-8, self.emin, self.emax)
+        point_sources, diffuse_sources = self.get_sources()
 
-        ps = PointSource(
-            name = 'source',
-            model = model,
-            skydir = self.roi_dir)
-
-        point_sources = [ ps ] 
-        diffuse_sources = None
 
         ds = DataSpecification(
             ft1files = join(self.savedir,'ft1.fits'),
@@ -71,6 +64,7 @@ class FastROI(object):
                                 emax=self.emax,
                                 binsperdec=self.binsperdec,
                                 event_class=0,
+                                conv_type=self.conv_type,
                                 roi_dir=self.roi_dir,
                                 minROI=self.maxROI,
                                 maxROI=self.maxROI,
@@ -87,6 +81,26 @@ class FastROI(object):
                      diffuse_sources = diffuse_sources)
 
         self.roi = roi
+
+    def get_sources(self):
+
+        point_sources, diffuse_sources = [], []
+
+        model = PowerLaw()
+        model.set_flux(self.flux, self.emin, self.emax)
+        ps = PointSource(
+            name = 'source',
+            model = model,
+            skydir = self.roi_dir)
+        point_sources.append(ps)
+
+        if self.isotropic_bg:
+            ds = get_sreekumar()
+            diffuse_sources.append(ds)
+
+        if diffuse_sources == []: diffuse_sources = None
+
+        return point_sources, diffuse_sources
 
     def get_roi(self):
         return self.roi
