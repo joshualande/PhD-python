@@ -12,6 +12,17 @@ from uw.like.roi_state import PointlikeState
 from . fit import fit_prefactor
 from . tools import galstr
 
+
+def paranoid_localize(roi, *args, **kwargs):
+
+    state = PointlikeState(roi)
+    try:
+        roi.localize(*args, **kwargs)
+    except Exception, ex:
+        print 'ERROR localizing', ex
+        traceback.print_exc(file=sys.stdout)
+        state.restore()
+
 class GridLocalize(object):
     """ Simple class evalulates the TS of a source
         along a grid in position (a TS map) and find the 
