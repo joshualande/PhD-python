@@ -1,8 +1,17 @@
 import copy
+import sys
+from argparse import ArgumentParser
 from collections import OrderedDict
 
 from StringIO import StringIO
 import asciitable
+
+def get_confluence():
+    parser = ArgumentParser()
+    parser.add_argument("--confluence", action="store_true", default=False)
+    args,extra=parser.parse_known_args()
+    sys.argv=[sys.argv[0]]+extra # remove from argv the --confluence flag
+    return args.confluence
 
 
 def confluence_table(table_dict, units=None, **kwargs):
