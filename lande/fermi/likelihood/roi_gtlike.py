@@ -251,9 +251,9 @@ class Gtlike(object):
             if not roi.quiet: print '... Skiping gtsrcmaps'
 
         if not roi.quiet: print 'Creating Binned LIKE'
-        obs=BinnedObs(srcmap_file,ltcube,bexpmap_file,irfs)
+        obs=BinnedObs(srcMaps=srcmap_file,expCube=ltcube,binnedExpMap=bexpmap_file,irfs=irfs)
 
-        self.like = BinnedAnalysis(obs,input_srcmdl_file,self.optimizer)
+        self.like = BinnedAnalysis(binnedData=obs,srcModel=input_srcmdl_file,optimizer=self.optimizer)
 
         if self.enable_edisp:
             if not roi.quiet: print 'Enabeling energy dispersion'
@@ -356,9 +356,9 @@ class UnbinnedGtlike(object):
                      )
 
         if not roi.quiet: print 'Creating Unbinned LIKE'
-        obs = UnbinnedObs(cut_ft1, ft2, expmap, ltcube, irfs)
+        obs = UnbinnedObs(eventFile=cut_ft1, scFile=ft2, expMap=expmap, expCube=ltcube, irfs=irfs)
 
-        self.like = UnbinnedAnalysis(obs,input_srcmdl_file,self.optimizer)
+        self.like = UnbinnedAnalysis(observation=obs,srcModel=input_srcmdl_file,optimizer=self.optimizer)
 
         if not roi.quiet: print 'Unbinned LIKE Created!'
 
