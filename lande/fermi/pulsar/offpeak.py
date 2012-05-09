@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import poisson
 
 import BayesianBlocks
 
@@ -25,30 +26,46 @@ class OffPeakBB(object):
         structure in the pulsar light curve. """
 
     @staticmethod
-    def find_phase_range(xx, yy):
+    def find_phase_range(xx, yy, phases):
         """ xx and yy are the bayesian block decomposition of
             a pulsar light curve. 
             
             The off pulse phase range is defined 
             as the lowest block with 10% removed from either
             side. """
+        ranges = [PhaseRange(a,b) for a,b in zip(xx[0::2],xx[1::2])]
+        heights = yy[::2]
 
-        # first, get phase range by finding the lowest valey
-        min_bin = np.argmin(yy)
-        phase_min = xx[min_bin]
-        phase_max = xx[min_bin+1]
+        if np.allclose(heights[0],heights[-1]):
+            ranges[0] += ranges.pop(-1)
+            heights = heights[:-1]
 
-        # worry about possibility of wraping around
-        if (min_bin == 0) and np.allclose(yy[0],yy[-1]):
-            phase_min = xx[-2] - 1
+        for r in ranges: 
+            r.trim(fraction=0.1)
 
-        phase_range = phase_max - phase_min
-        phase_min, phase_max = phase_min + 0.1*phase_range, phase_max - 0.1*phase_range
+        sorted = np.argsort(heights)
+        min_phase = ranges[sorted[0]]
 
-        return PhaseRange(phase_min, phase_max)
+        if len(sorted) < 3:
+            # if only 2 blocks, no need to merge
+            return min_phase
+
+        second_min_phase = ranges[sorted[1]]
+
+        ncounts = len([p for p in phases if p in min_phase])
+        second_ncounts = len([p for p in phases if p in second_min_phase])
+
+        predicted_second_counts = ncounts*second_min_phase.phase_fraction/min_phase.phase_fraction
+
+        prob=0.01
+        if (poisson.sf(second_ncounts, predicted_second_counts) < prob) or \
+           second_min_phase.phase_fraction < 0.5*min_phase.phase_fraction:
+            return min_phase
+
+        return min_phase + second_min_phase
 
     @staticmethod
-    def get_binned_blocks(phases, ncpPrior):
+    def get_blocks(phases, ncpPrior, method='binned'):
         """ Apply binned baysian blocks to the pulsar phases
             Return the Bayesian block data. 
         
@@ -56,31 +73,65 @@ class OffPeakBB(object):
             Bayesian blocks on a periodic 
         """
 
+        if method == 'unbinned':
+            # use set(...) to remove duplicate phases which break baysian block algorithm.
+            # in principle, there shouldn't be any duplicate phases because we
+            # are measuring a continuous varaibale. But it is of negligible harm
+            # to strip out one or two photons if needed.
+            before=len(phases)
+            phases=np.sort(list(set(phases)))
+            after=len(phases)
+            if before != after:
+                print 'Warning, stripping %s/%s duplicate photons from the list' % (before-after,before)
+        elif method == 'binned':
+            if len(phases) < 25:
+                nbins=10
+            elif len(phases) < 50:
+                nbins=25
+            elif len(phases) < 100:
+                nbins=50
+            elif len(phases) < 1000:
+                nbins=100
+            else:
+                nbins=200
+
         phases = np.concatenate((phases, phases-1, phases+1))
 
-        nbins=200
+        if method == 'binned':
 
-        tstart=-1
-        bins = np.linspace(-1,2,nbins*3+1)
-        bin_content = np.histogram(phases, bins=bins)[0]
-        bin_sizes = np.ones_like(phases)*(bins[1]-bins[0])
-        bb = BayesianBlocks.BayesianBlocks(tstart,bin_content.tolist(),bin_sizes.tolist())
-        xx, yy = bb.lightCurve(ncpPrior)
+            tstart=-1
+            bins = np.linspace(-1,2,nbins*3+1)
+            bin_content = np.histogram(phases, bins=bins)[0]
+            bin_sizes = np.ones_like(phases)*(bins[1]-bins[0])
+            bb = BayesianBlocks.BayesianBlocks(tstart,bin_content.tolist(),bin_sizes.tolist())
+            xx, yy = bb.lightCurve(ncpPrior)
+
+        elif method == 'unbinned':
+
+            bb = BayesianBlocks.BayesianBlocks(phases)
+            xx, yy = bb.lightCurve(ncpPrior)
 
         xx = np.asarray(xx)
         yy = np.asarray(yy)
 
         assert not np.any(np.isinf(yy))
 
-        first = np.where(xx>0)[0][0]-1
-        last = np.where(xx<1)[0][-1]+1
+        bin_size = 1./nbins
+
+        # I ran into floating point problems with blocks that
+        # went just a hair above 0, so it would go from like [-0.75, 1e-10].
+        # And this would create unphysically small blocks. The
+        # easy solution to this is to just add this small tolerance.
+        tolerance = 1e-5*bin_size
+
+        first = np.where(xx>0 + tolerance)[0][0]-1
+        last = np.where(xx<1 - tolerance)[0][-1]+1
 
         cut_xx = xx[first:last+1]
         cut_yy = yy[first:last+1]
 
         # sanity checks
-
-        assert (cut_xx[0] <= 0) and (cut_xx[-1] >= 1)
+        assert (cut_xx[0] <= tolerance) and (cut_xx[-1] >= 1 - tolerance)
 
         if not np.allclose(cut_yy[0],cut_yy[-1]):
             print 'Warning, Bayesian blocks do not appear to be periodic!'
@@ -90,7 +141,7 @@ class OffPeakBB(object):
 
         return cut_xx, cut_yy
 
-    def __init__(self,phases,ncpPrior=5):
+    def __init__(self,phases,ncpPrior=6):
         """ phases is the numpy array of pulsar phases. """
 
         self.phases = phases
@@ -98,9 +149,9 @@ class OffPeakBB(object):
 
         assert np.all((phases < 1) & (phases >= 0))
 
-        self.xx, self.yy = self.get_binned_blocks(phases, ncpPrior)
+        self.xx, self.yy = self.get_blocks(phases, ncpPrior)
 
-        self.off_peak = self.find_phase_range(self.xx, self.yy)
+        self.off_peak = self.find_phase_range(self.xx, self.yy, self.phases)
 
         self.blocks = dict(xx = self.xx, yy = self.yy)
 
