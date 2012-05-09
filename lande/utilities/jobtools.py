@@ -13,20 +13,20 @@ from . lists import flatten, islist, duplicates
 from . files import locate
 from . save import savedict, loaddict
 
-class SimBuilder(object):
+class JobBuilder(object):
     """ Example usage:
 
-        # version 27 - more options
-        params=dict(edisp=[True,False], simbg=[True,False], emin=[1e2,1e3], emax=1e5, flux=1e-5,
-                    index=[2,2.66], cuts=[True,False], zenithcut=[100,180], savedata=True)
-        params['time','phibins']=[['2fgl',0], ['my2fgl',0], ['my2fgl',9], ['2years',0], ['2years',9]]
-        b = SimBuilder(
-            savedir='$w44simdata/v27',
-            code='$w44simcode/simspec.py',
-            num=1,
-            params=params,
-            )
-        b.build()
+            # version 27 - more options
+            params=dict(edisp=[True,False], simbg=[True,False], emin=[1e2,1e3], emax=1e5, flux=1e-5,
+                        index=[2,2.66], cuts=[True,False], zenithcut=[100,180], savedata=True)
+            params['time','phibins']=[['2fgl',0], ['my2fgl',0], ['my2fgl',9], ['2years',0], ['2years',9]]
+            b = JobBuilder(
+                savedir='$w44simdata/v27',
+                code='$w44simcode/simspec.py',
+                num=1,
+                params=params,
+                )
+            b.build()
     """
     defaults = (
         ('params', {}, 'Extra params to pass into the script'),
@@ -41,6 +41,8 @@ class SimBuilder(object):
 
         self.savedir = expandvars(savedir)
         self.code = code
+
+        print 'Putting jobs in %s' % self.savedir
 
     def build(self):
 
@@ -91,6 +93,7 @@ class SimBuilder(object):
             args = ' '.join(args)
 
             subdir = join(self.savedir, base)
+            if not exists(subdir): makedirs(subdir)
 
             if self.num == None:
 
@@ -119,7 +122,7 @@ class SimBuilder(object):
             run='*/*/run.sh'
         open(submit_all,'w').write("submit_all %s $@" % run)
 
-class SimMerger(object):
+class JobMerger(object):
 
     defaults = (
         ('filename', '*.yaml', 'Name of files to merge. Can allow wildcard matches.'),
@@ -143,9 +146,9 @@ class SimMerger(object):
             Example:
 
                 >>> d = dict(a=dict(b=dict(c=[0,dict(a='treasure')])))
-                >>> print SimMerger.traverse(d, ['a', 'b', 'c', 1, 'a'])
+                >>> print JobMerger.traverse(d, ['a', 'b', 'c', 1, 'a'])
                 treasure
-                >>> print SimMerger.traverse(d, ['non_existing'])
+                >>> print JobMerger.traverse(d, ['non_existing'])
                 Traceback (most recent call last):
                     ...
                 KeyError: 'Unable to traverse structure with key non_existing'
@@ -154,9 +157,9 @@ class SimMerger(object):
             in whatever way it can:
 
                 >>> d = dict(a=dict(b1=dict(d=0)))
-                >>> print SimMerger.traverse(d, [ 'a', ['b1', 'b2'], 'd' ])
+                >>> print JobMerger.traverse(d, [ 'a', ['b1', 'b2'], 'd' ])
                 0
-                >>> print SimMerger.traverse(d, [ 'a', ['b2', 'b3'], 'd' ])
+                >>> print JobMerger.traverse(d, [ 'a', ['b2', 'b3'], 'd' ])
                 Traceback (most recent call last):
                     ...
                 KeyError: "Unable to traverse structure with any of the keys ['b2', 'b3']"
@@ -183,7 +186,7 @@ class SimMerger(object):
         if len(keys) == 1:
             return sub_data
         else:
-            return SimMerger.traverse(sub_data, keys[1:])
+            return JobMerger.traverse(sub_data, keys[1:])
 
     def _merge(self):
         self.results = defaultdict(list)
@@ -203,9 +206,9 @@ class SimMerger(object):
                 # that each of the entries in the results file needs to 
                 # be parsed identically. I hope this is a reasonable assumption.
                 if isinstance(x,list):
-                    for i in x: self.results[k].append(SimMerger.traverse(i,v))
+                    for i in x: self.results[k].append(JobMerger.traverse(i,v))
                 else:
-                    self.results[k].append(SimMerger.traverse(x,v))
+                    self.results[k].append(JobMerger.traverse(x,v))
                     
 
     def save(self, filename):
