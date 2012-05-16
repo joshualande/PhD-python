@@ -39,6 +39,16 @@ def duplicates(list):
     return [k for k,v in c.items() if v>1]
 
 
+def recursive_map(func,list):
+    """ Like map, but applies recursively to subitems in list:
+        
+            >>> recursive_map(lambda x: x**2, [1,[2,[3,4],5],6])
+            [1, [4, [9, 16], 25], 36]
+            >>> recursive_map(lambda x: x+x, ['dog', ['cat', 'pig'], 'mouse'])
+            ['dogdog', ['catcat', 'pigpig'], 'mousemouse']
+    """
+    return [recursive_map(func,i) for i in list] if hasattr(list,'__iter__') else func(list)
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
