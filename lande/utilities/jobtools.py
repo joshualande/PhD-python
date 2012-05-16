@@ -30,7 +30,7 @@ class JobBuilder(object):
     """
     defaults = (
         ('params', {}, 'Extra params to pass into the script'),
-        ('front', 'sim'),
+        ('front', 'job'),
         ('extra', ''),
         ('num', None),
     )
@@ -116,7 +116,7 @@ class JobBuilder(object):
 
         submit_all = join(self.savedir,'submit_all.sh')
                                       
-        if no_multiples or self.num == 1:
+        if no_multiples or self.num in [1,None]:
             run='*/run.sh'
         else:
             run='*/*/run.sh'
