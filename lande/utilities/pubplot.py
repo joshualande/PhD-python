@@ -4,6 +4,8 @@ from argparse import ArgumentParser
 import pylab as P
 from matplotlib import rc
 
+from . tools import parse_strip_known_args
+
 def set_latex_defaults():
     rc('ps',usedistiller='xpdf')
     rc('text', usetex=True)
@@ -14,9 +16,7 @@ def set_latex_defaults():
 def get_bw():
     parser = ArgumentParser()
     parser.add_argument("--bw", action="store_true", default=False)
-    args,extra=parser.parse_known_args()
-    sys.argv=[sys.argv[0]]+extra # remove from argv the --bw flag
-
+    args=parse_strip_known_args(parser)
     global bw
     bw=args.bw
     return bw
