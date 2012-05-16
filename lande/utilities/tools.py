@@ -2,26 +2,58 @@
     can't think of a better place to put. 
     
     Author: Joshua Lande <joshualande@gmail.com> """
-import yaml
+import sys
 from collections import OrderedDict
+
+import yaml
+
 import numpy as np
+
 from uw.pulsar.phase_range import PhaseRange
 
 
-def merge_dict(first,second):
+def merge_dict(*args):
     """ recursivly merge two dictionaries. If two conflicting non-dictionary 
-        items are present, read in from first by default. """
-    ret={}
-    for k in set(first.keys()+second.keys()):
-        if not first.has_key(k):
-            ret[k]=second[k]
-        elif not second.has_key(k):
-            ret[k]=first[k]
-        elif type(first[k])==dict and type(second[k]):
-            ret[k]=merge_dict(first[k],second[k])
-        else:
-            ret[k]=first[k]
-    return ret
+        items are present, read in from first by default. 
+
+        The input to merge_dict is not very picky:
+
+            >>> merge_dict(dict(a=1), dict(b=2))
+            {'a': 1, 'b': 2}
+            >>> merge_dict(dict(a=1), dict(b=2), dict(c=3))
+            {'a': 1, 'c': 3, 'b': 2}
+            >>> merge_dict([dict(a=1), dict(b=2), dict(c=3)])
+            {'a': 1, 'c': 3, 'b': 2}
+
+        And you can nicely recursivly merge things:
+            >>> merge_dict(dict(a=dict(x=1)), dict(a=dict(y=1)))
+            {'a': {'y': 1, 'x': 1}}
+        
+    """
+    if len(args) < 1:
+        raise Exception("Must be passed one or more dicts")
+    if len(args) == 1:
+        if not isinstance(args[0],list):
+            raise Exception("When only one item is passted to merge_dict, it must be a list of dicts.")
+        return merge_dict(*args[0])
+    elif len(args) > 2:
+        return reduce(merge_dict,args)
+    else:
+        first,second=args
+        if not isinstance(first,dict) or not isinstance(second,dict):
+            raise Exception("Input to merge_dict must be dictionaries.")
+
+        ret={}
+        for k in set(first.keys()+second.keys()):
+            if not first.has_key(k):
+                ret[k]=second[k]
+            elif not second.has_key(k):
+                ret[k]=first[k]
+            elif type(first[k])==dict and type(second[k]):
+                ret[k]=merge_dict(first[k],second[k])
+            else:
+                ret[k]=first[k]
+        return ret
 
 
 def tolist(x):
@@ -148,6 +180,21 @@ class OrderedDefaultDict(OrderedDict):
 
     def __copy__(self):
         return type(self)(self.default_factory, self)
+
+
+def parse_strip_known_args(parser):
+    """ parser is an argparse object.
+        Parse the args that have been spcified and return
+        the Namespace object attributed from it. But
+        also remove those arguments from the command line
+        arguments so a future argument parser can
+        work on the remaining arguments. Useful if 
+        you want you function to just grab one or two
+        arguments hand pass the others to some more 
+        general parsing code. """
+    args,extra=parser.parse_known_args()
+    sys.argv=[sys.argv[0]]+extra # remove from argv the parsed flags
+    return args
 
 
 if __name__ == "__main__":
