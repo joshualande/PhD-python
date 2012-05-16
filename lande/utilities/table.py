@@ -6,11 +6,12 @@ from collections import OrderedDict
 from StringIO import StringIO
 import asciitable
 
+from . tools import parse_strip_known_args
+
 def get_confluence():
     parser = ArgumentParser()
     parser.add_argument("--confluence", action="store_true", default=False)
-    args,extra=parser.parse_known_args()
-    sys.argv=[sys.argv[0]]+extra # remove from argv the --confluence flag
+    args=parse_strip_known_args(parser)
     return args.confluence
 
 
