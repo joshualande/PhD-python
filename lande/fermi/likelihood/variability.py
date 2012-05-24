@@ -38,6 +38,8 @@ from . limits import gtlike_upper_limit, pointlike_upper_limit
 from . fit import fit_only_prefactor
 from . superstate import SuperState
 
+from lande.fermi.data.livetime import pointlike_ltcube
+
 
 class VariabilityTester(object):
     """ Code to compute varability for for a pointlike ROI
@@ -64,6 +66,7 @@ class VariabilityTester(object):
         ("do_gtlike",            True, """ Run gtlike varaibility test. """),
         ("refit_background",     True, """ Fit the background sources in each energy bin."""),
         ("refit_other_sources",  True, """ Fit other sources in each energy bin. """),
+        ("use_pointlike_ltcube",    False, """ Make the ltcubes with pointlike. """)
     )
 
     @keyword_options.decorate(defaults)
@@ -304,7 +307,7 @@ class VariabilityTester(object):
 
             self.bands.append(band)
 
-            smaller_roi = VariabilityTester.time_cut(roi, tstart, tstop, subdir)
+            smaller_roi = VariabilityTester.time_cut(roi, tstart, tstop, subdir, self.use_pointlike_ltcube)
 
             band['pointlike'] = self.each_time_fit_pointlike(smaller_roi, tstart, tstop)
             if self.do_gtlike:
@@ -357,7 +360,7 @@ class VariabilityTester(object):
         return tmin, tmax
 
     @staticmethod
-    def time_cut(roi, tstart, tstop, subdir):
+    def time_cut(roi, tstart, tstop, subdir, use_pointlike_ltcube):
         """ Create a new ROI given a time cut. """
 
         sa = roi.sa
@@ -376,12 +379,11 @@ class VariabilityTester(object):
 
         # * cut ft1file on time using gtselect
 
-        ft1files=roi.sa.pixeldata.ft1files
         ft2files=roi.sa.pixeldata.ft2files
         if len(ft2files) > 1: raise Exception("...")
         ft2file=ft2files[0]
 
-        evfile=Gtlike.make_evfile(ft1files,subdir)
+        evfile=Gtlike.make_evfile(roi,subdir)
 
         cut_evfile=join(subdir,"cut_ft1_%s_%s.fits" % (tstart, tstop))
 
@@ -411,12 +413,23 @@ class VariabilityTester(object):
 
         if not exists(new_ltcube):
             if not roi.quiet: print 'Running gtltcube for %s to %s' % (tstart,tstop)
-            gtltcube=GtApp('gtltcube', 'Likelihood')
-            gtltcube.run(evfile=cut_evfile,
-                         scfile=ft2file,
-                         outfile=new_ltcube,
-                         dcostheta=0.025, 
-                         binsz=1)
+
+            if use_pointlike_ltcube:
+                pointlike_ltcube(evfile=cut_evfile,
+                                 scfile=ft2file,
+                                 outfile=new_ltcube,
+                                 dcostheta=0.025, 
+                                 binsz=1,
+                                 zmax=roi.sa.zenithcut,
+                                 cone_angle=roi.sa.exp_radius,
+                                 dir=roi.roi_dir)
+            else:
+                gtltcube=GtApp('gtltcube', 'Likelihood')
+                gtltcube.run(evfile=cut_evfile,
+                             scfile=ft2file,
+                             outfile=new_ltcube,
+                             dcostheta=0.025, 
+                             binsz=1)
         else:
             print '... Skiping gtltcube for %s to %s' % (tstart,tstop)
 
