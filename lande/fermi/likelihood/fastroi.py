@@ -41,14 +41,19 @@ class FastROI(object):
         ('irf','P7SOURCE_V6'),
         ('flux',1e-7),
         ('isotropic_bg',False, 'simulate on top of an isotropic background'),
-        ('conv_type',0)
+        ('conv_type',0),
+        ('point_sources',None),
+        ('diffuse_sources',None),
     )
 
     @keyword_options.decorate(defaults)
     def __init__(self,**kwargs):
         keyword_options.process(self, kwargs)
 
-        point_sources, diffuse_sources = self.get_sources()
+        if self.point_sources is None and self.diffuse_sources is None:
+            self.point_sources, self.diffuse_sources = self.get_default_sources()
+        else:
+            if self.point_sources is None: self.point_sources=[]
 
 
         ds = DataSpecification(
@@ -77,12 +82,12 @@ class FastROI(object):
                                )
 
         roi = sa.roi(roi_dir=self.roi_dir,
-                     point_sources = point_sources,
-                     diffuse_sources = diffuse_sources)
+                     point_sources = self.point_sources,
+                     diffuse_sources = self.diffuse_sources)
 
         self.roi = roi
 
-    def get_sources(self):
+    def get_default_sources(self):
 
         point_sources, diffuse_sources = [], []
 
