@@ -42,7 +42,6 @@ from GtApp import GtApp
 from BinnedAnalysis import BinnedObs,BinnedAnalysis
 from UnbinnedAnalysis import UnbinnedObs, UnbinnedAnalysis
 from pyLikelihood import ParameterVector
-from SED import SED
 
 from lande.fermi.data import livetime
 
