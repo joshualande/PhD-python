@@ -86,7 +86,7 @@ def pointlike_test_cutoff(roi, which, flux_units='erg'):
     d['model_0']=spectrum()
     d['flux_0']=fluxdict(roi,which,emin,emax,flux_units)
 
-    m=ExpCutoff(n0=1e-11, gamma=1, cutoff=1000, e0=1000)
+    m=ExpCutoff(norm=1e-11, index=1, cutoff=1000, e0=1000)
     m.set_flux(old_flux,emin,emax)
     roi.modify(which=which, 
                model=m,keep_old_flux=False)
