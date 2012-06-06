@@ -9,7 +9,6 @@ from skymaps import DiffuseFunction,IsotropicSpectrum,IsotropicPowerLaw,Isotropi
 from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
-from uw.like.Models import DefaultModelValues
 
 from SED import SED
 
@@ -29,7 +28,7 @@ def pointlike_spectrum_to_dict(model, errors=False):
         python dictionary.
 
             >>> from uw.like.Models import PowerLaw
-            >>> m=PowerLaw(norm=1, index=.5, index_offset=1)
+            >>> m=PowerLaw(norm=1, index=-.5)
             >>> d=pointlike_spectrum_to_dict(m)
             >>> print d['Norm']
             1.0
@@ -40,23 +39,12 @@ def pointlike_spectrum_to_dict(model, errors=False):
             False
     """
     d = dict(name = model.name)
-    default = DefaultModelValues.simple_models[model.name]
-    for k,v in default.items():
-        if k == '_p': continue
-        elif k == 'param_names': 
-            for p in v: 
-                d[p]=model[p]
-                if errors:
-                    d['%s_err' % p]=model.error(p)
-        else: 
-            d[k]=getattr(model,k)
-
-    # stupid kluge:
-    if d.has_key('index_offset'):
-        index_offset = d.pop('index_offset')
-        d['Index'] -= index_offset
+    for p in model.param_names:
+        d[p] = model[p]
         if errors:
-            d['Index_err'] -= index_offset
+            d['%s_err' % p] = model.error(p)
+    for p in model.default_extra_params.keys():
+        d[p] = getattr(model,p)
 
     return tolist(d)
 
