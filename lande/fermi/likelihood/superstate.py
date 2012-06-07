@@ -51,8 +51,7 @@ class SuperState(object):
             parameters=pyLikelihood.ParameterVector()
             spectrum.getParams(parameters)
 
-            type = spectrum.genericName()
-            self.sources[name] = d = dict(type = type, parameters=dict())
+            self.sources[name] = d = dict(parameters=dict(), spectrum=spectrum)
             for p in parameters:
                 d['parameters'][p.getName()] = _Parameter(p)
 
@@ -61,16 +60,13 @@ class SuperState(object):
 
         for sname,v in self.sources.items():
 
-            type = v['type']
+            spectrum = v['spectrum']
             parameters = v['parameters']
 
+            # Set back to old spectrum
+            like.setSpectrum(sname,spectrum)
 
-            if type != "FileFunction":
-                # Bad idea to replace FileFunction objects
-                # since that will remove the file part
-                # of the spectrum.
-                like.setSpectrum(sname,type)
-
+            # Reset all parameters
             for pname,pcache in parameters.items():
                 index = like.par_index(sname, pname)
                 like_par = like.params()[index]
