@@ -25,7 +25,7 @@ class ApproximateIsotropic(DiffuseSource):
             sources. """
 
         self.name = name
-        self.smodel = PowerLaw(p=[1,1],index_offset=1)
+        self.smodel = PowerLaw(norm=1, index=0)
         self.scaling_factor = scaling_factor
 
         for ds in diffuse_sources:
