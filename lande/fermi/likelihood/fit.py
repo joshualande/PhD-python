@@ -49,7 +49,7 @@ def paranoid_gtlike_fit(like, covar=True):
                 saved_state.restore()
 
 
-def gtlike_fit_only_prefactor(like, name):
+def gtlike_allow_fit_only_prefactor(like, name):
     """ Freeze everything but norm of source with name
         in pyLikelihood object. """
     gtlike_modify(like, name, free=False)
@@ -57,14 +57,14 @@ def gtlike_fit_only_prefactor(like, name):
     par.setFree(True)
     like.syncSrcParams(name)
 
-def pointlike_fit_only_prefactor(roi, which):
+def pointlike_allow_fit_only_prefactor(roi, which):
     model = roi.get_model(which)
     old_free = model.free
     new_free = np.zeros_like(old_free).astype(bool)
     new_free[0] = True
     roi.modify(which=which, free=new_free)
 
-def fit_prefactor(roi, which, *args, **kwargs):
+def pointlike_fit_only_source(roi, which, fit_only_prefactor=False, **kwargs):
     """ Fit the prefactor of source 'which'
         without varying any other parmters.
         
@@ -81,20 +81,24 @@ def fit_prefactor(roi, which, *args, **kwargs):
             frozen_sources[other_source.name]=other_model.free.copy()
             roi.modify(which=other_source,free=False)
 
-    old_free = model.free.copy()
-    new_free = np.zeros_like(model.free).astype(bool)
-    new_free[0] = True
-    roi.modify(which=which, free=new_free)
+    if fit_only_prefactor:
+        old_free = roi.get_model(which).free.copy()
+        allow_fit_only_prefactor(roi, which)
 
-    roi.fit(*args, **kwargs)
+    roi.fit(**kwargs)
 
-    roi.modify(which=which, free=old_free)
+    if fit_only_prefactor:
+        roi.modify(which=which, free=old_free)
 
     for other_name,other_free in frozen_sources.items():
         roi.modify(which=other_name,free=other_free)
 
-def fit_only_prefactor(*args, **kwargs):
-    return gtlike_or_pointlike(gtlike_fit_only_prefactor, pointlike_fit_only_prefactor, *args, **kwargs)
+# for now, no gtlike implementation
+fit_prefactor = lambda *args, **kwargs: pointlike_fit_only_source(*args, fit_only_prefactor=True, **kwargs)
+fit_only_source = pointlike_fit_only_source
+
+def allow_fit_only_prefactor(*args, **kwargs):
+    return gtlike_or_pointlike(gtlike_allow_fit_only_prefactor, pointlike_allow_fit_only_prefactor, *args, **kwargs)
 
 def gtlike_modify(like, name, free=True):
     """ Freeze a source in a gtlike ROI. 
@@ -140,7 +144,7 @@ def freeze_insignificant_to_catalog(roi,catalog,exclude_names=[], min_ts=25):
             else:
                 print 'Freezing spectra of %s to 2FGL prediction b/c it is insignificant' % name
                 roi.modify(which=name, model=catalog_source.model, keep_old_flux=False)
-                fit_only_prefactor(roi, name)
+                allow_fit_only_prefactor(roi, name)
                 any_changed=True
     return any_changed
 
@@ -165,7 +169,7 @@ def freeze_bad_index_to_catalog(roi,catalog,exclude_names=[], min_ts=25):
                 else:
                     print 'Freezing spectra of %s to 2FGL prediction b/c fit index is bad' % name
                     roi.modify(which=name, model = catalog_source.model, keep_old_flux=False)
-                    fit_only_prefactor(roi, name)
+                    allow_fit_only_prefactor(roi, name)
                     any_changed=True
     return any_changed
 
