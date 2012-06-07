@@ -84,8 +84,10 @@ class GridLocalize(object):
         self.state.restore(just_spectra=True)
 
         # Try a new model with a more standard starting value
-        new_model = best_model.__class__()
-        new_model.free = best_model.free.copy()
+        # This implementation is better than previous because
+        # it works for FileFunction
+        new_model = best_model.copy()
+        new_model.set_all_parameters(new_model.default_p)
 
         roi.modify(which=which, model=new_model)
         fit()
