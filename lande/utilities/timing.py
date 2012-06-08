@@ -2,7 +2,12 @@
 from datetime import datetime
 from dateutil import relativedelta
 class StopWatch(object):
-    """ Simple object for timing code"""
+    """ Simple object for timing code
+
+            example:
+                s = StopWatch()
+                print s
+        """
     def __init__(self):
         self.start_time = self.__lap = datetime.now()
   
