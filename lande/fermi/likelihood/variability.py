@@ -35,7 +35,7 @@ from lande.utilities.tools import tolist
 from . fit import paranoid_gtlike_fit, gtlike_modify
 from . save import fluxdict, diffusedict, get_background, get_sources, sourcedict
 from . limits import gtlike_upper_limit, pointlike_upper_limit
-from . fit import fit_only_prefactor
+from . fit import allow_fit_only_prefactor
 from . superstate import SuperState
 
 from lande.fermi.data.livetime import pointlike_ltcube
@@ -196,7 +196,7 @@ class VariabilityTester(object):
         results['ll_0'] = ll()
 
         # Fit prefactor of source of interest
-        fit_only_prefactor(smaller_roi, which)
+        allow_fit_only_prefactor(smaller_roi, which)
 
         print "Performing pointlike spectral analyis with source of interest's prefactor free"
 
@@ -261,7 +261,7 @@ class VariabilityTester(object):
         results['ll_0'] = ll()
 
         # Fit prefactor of source of interest
-        fit_only_prefactor(like, name)
+        allow_fit_only_prefactor(like, name)
 
         print "Performing gtlike spectral analyis with source of interest's prefactor free"
 
