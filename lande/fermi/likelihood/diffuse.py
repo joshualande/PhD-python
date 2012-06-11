@@ -2,9 +2,9 @@ import numpy as np
 import re
 from os.path import basename
 
-from skymaps import IsotropicSpectrum, IsotropicPowerLaw, IsotropicConstant
+from skymaps import IsotropicConstant
 
-from uw.like.Models import PowerLaw, Constant
+from uw.like.Models import PowerLaw, FileFunction
 from uw.like.roi_diffuse import DiffuseSource
 from uw.like.pointspec_helpers import get_diffuse_source
 
@@ -25,7 +25,6 @@ class ApproximateIsotropic(DiffuseSource):
             sources. """
 
         self.name = name
-        self.smodel = PowerLaw(norm=1, index=0)
         self.scaling_factor = scaling_factor
 
         for ds in diffuse_sources:
@@ -37,7 +36,8 @@ class ApproximateIsotropic(DiffuseSource):
             )
         self.file.close()
 
-        self.dmodel = [IsotropicSpectrum(file)]
+        self.smodel = FileFunction(file=file)
+        self.dmodel = [IsotropicConstant()]
 
     @staticmethod
     def get_dnde(diffuse_sources, skydir, energy, scaling_factor):
