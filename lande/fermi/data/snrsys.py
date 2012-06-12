@@ -15,7 +15,7 @@ def get_multiple_diffuse(dist, halo, TS, version,
                          diffdir="/afs/slac/g/glast/groups/diffuse/SNRCatalog",
                          ifile = '/afs/slac/g/glast/groups/diffuse/rings/2year/isotrop_2year_P76_source_v0.txt',
                          fit_index = False,
-                         fit_isotropic = False,
+                         #fit_isotropic = False,
                          add_loop=True, add_lobes=True,
                ):
     """ Code to load in Gulli's diffuse files for Pointlike analysis 
@@ -57,9 +57,9 @@ def get_multiple_diffuse(dist, halo, TS, version,
             get_diffuse_source('MapCubeFunction',file,gmodel,None,name=basename(file))
         )
 
-    imodel = Constant(free=[fit_isotropic])
+    #imodel = Constant(free=[fit_isotropic])
     diffuse.append(
-        get_diffuse_source('ConstantValue',None,imodel,ifile,name=basename(ifile))
+        get_diffuse_source('ConstantValue',None,'FileFunction',ifile,name=basename(ifile))
     )
 
     return diffuse
@@ -76,7 +76,7 @@ def delete_insignificant_diffuse(roi, allowed_fraction=0.01, quiet=False):
         mc=model_counts(roi,source)
         fraction=float(mc)/oc
         if not quiet:
-            print 'Source %s predicts %s%% of total counts' % fraction,
+            print 'Source %s predicts %s%% of total counts' % (source,fraction),
         if fraction < allowed_fraction:
             print '... delete source.'
             roi.del_source(source)
