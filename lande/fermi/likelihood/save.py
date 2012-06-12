@@ -9,6 +9,7 @@ from skymaps import DiffuseFunction,IsotropicSpectrum,IsotropicPowerLaw,Isotropi
 from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
+from uw.like.Models import CompositeModel
 
 from SED import SED
 
@@ -29,24 +30,44 @@ def pointlike_spectrum_to_dict(model, errors=False):
 
             >>> from uw.like.Models import PowerLaw
             >>> m=PowerLaw(norm=1, index=-.5)
-            >>> d=pointlike_spectrum_to_dict(m)
+            >>> d=spectrum_to_dict(m)
             >>> print d['Norm']
             1.0
             >>> print d['Index']
             -0.5
-            >>> d=pointlike_spectrum_to_dict(m, errors=False)
+            >>> d=spectrum_to_dict(m, errors=False)
             >>> d.has_key('Index_err')
             False
+
+        Note, the way to save a ComositeModel is a little different.
+
+            >>> from uw.like.Models import SumModel,LogParabola
+            >>> pl=PowerLaw()
+            >>> lp=LogParabola()
+            >>> c = SumModel(pl,lp)
+            >>> s=spectrum_to_dict(c)
+            >>> s.keys()
+            ['models', 'name']
+            >>> len(s['models'])
+            2
+            >>> s['models'][0] == spectrum_to_dict(pl)
+            True
+            >>> s['models'][1] == spectrum_to_dict(lp)
+            True
     """
     d = dict(name = model.name)
-    for p in model.param_names:
-        d[p] = model[p]
-        if errors:
-            d['%s_err' % p] = model.error(p)
-    for p in model.default_extra_params.keys():
-        d[p] = getattr(model,p)
+    if isinstance(model,CompositeModel):
+        d['models'] = map(pointlike_spectrum_to_dict,model.models)
+        return d
+    else:
+        for p in model.param_names:
+            d[p] = model[p]
+            if errors:
+                d['%s_err' % p] = model.error(p)
+        for p in model.default_extra_params.keys():
+            d[p] = getattr(model,p)
 
-    return tolist(d)
+        return tolist(d)
 
 gtlike_spectrum_to_dict = SED.spectrum_to_dict
 
