@@ -55,18 +55,18 @@ class VariabilityTester(object):
     f = 0.02
 
     defaults = (
-        ("savedir",              None, """ Directory to put output files into. 
-                                           Default is to use a temporary file and 
-                                           delete it when done."""),
-        ("nbins",                None, """ Number of time bins. """),
-        ("always_upper_limit",  False, """ Always compute an upper limit. """),
-        ("min_ts",                  4, """ minimum ts in which to quote a SED points instead of an upper limit."""),
-        ("ul_confidence",        0.95, """ confidence level for upper limit."""),
-        ("gtlike_kwargs",          {}, """ Kwargs to specify creating of gtlike object. """),
-        ("do_gtlike",            True, """ Run gtlike varaibility test. """),
-        ("refit_background",     True, """ Fit the background sources in each energy bin."""),
-        ("refit_other_sources",  True, """ Fit other sources in each energy bin. """),
-        ("use_pointlike_ltcube",    False, """ Make the ltcubes with pointlike. """)
+        ("savedir",               None, """ Directory to put output files into. 
+                                            Default is to use a temporary file and 
+                                            delete it when done."""),
+        ("nbins",                 None, """ Number of time bins. """),
+        ("always_upper_limit",   False, """ Always compute an upper limit. """),
+        ("min_ts",                   4, """ minimum ts in which to quote a SED points instead of an upper limit."""),
+        ("ul_confidence",         0.95, """ confidence level for upper limit."""),
+        ("gtlike_kwargs",           {}, """ Kwargs to specify creating of gtlike object. """),
+        ("do_gtlike",             True, """ Run gtlike varaibility test. """),
+        ("refit_background",      True, """ Fit the background sources in each energy bin."""),
+        ("refit_other_sources",   True, """ Fit other sources in each energy bin. """),
+        ("use_pointlike_ltcube", False, """ Make the ltcubes with pointlike. """)
     )
 
     @keyword_options.decorate(defaults)
@@ -591,9 +591,6 @@ class VariabilityTester(object):
         sigma = fmin(f,[1], xtol=1e-10000, ftol=1e-10000, 
                      full_output=False, disp=False)[0]
         return sigma
-
-        
-
 
     def plot(self, 
               filename=None, 
