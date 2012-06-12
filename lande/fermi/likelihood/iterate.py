@@ -10,7 +10,7 @@ from uw.like.Models import PowerLaw
 
 from . fit import fit_prefactor
 
-def new_ps(roi, name, l, b, tsmap_kwargs=dict()):
+def new_ps(roi, name, l, b, tsmap_kwargs=dict(size=10)):
     """ A 'throw away' convenience function to add a new source to
         the ROI, localize it, and then print out a string which can be
         used to modify an ROI to add a new source. """
@@ -64,7 +64,7 @@ Code to recreate point source:
                    **tsmap_kwargs)
 
 
-def free_src(roi, name, tsmap_kwargs=dict()):
+def free_src(roi, name, tsmap_kwargs=dict(size=10)):
     """ Throw away function to free a source in the ROI, refit
         the ROI, save it to a file and make a TS map. """
 
