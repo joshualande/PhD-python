@@ -8,6 +8,9 @@ from os.path import basename, join as j, exists
 from uw.like.pointspec_helpers import get_diffuse_source
 from uw.like.Models import PowerLaw, Constant
 
+from lande.fermi.likelihood.counts import model_counts,observed_counts
+from lande.fermi.likelihood.save import get_background
+
 def get_multiple_diffuse(dist, halo, TS, version,
                          diffdir="/afs/slac/g/glast/groups/diffuse/SNRCatalog",
                          ifile = '/afs/slac/g/glast/groups/diffuse/rings/2year/isotrop_2year_P76_source_v0.txt',
@@ -49,7 +52,7 @@ def get_multiple_diffuse(dist, halo, TS, version,
 
         if not exists(file): raise Exception("ERROR: file %s does not exist." % file)
 
-        gmodel = PowerLaw(p=[1,1],index_offset=1) if fit_index else Constant()
+        gmodel = PowerLaw(norm=1, index=0) if fit_index else Constant()
         diffuse.append(
             get_diffuse_source('MapCubeFunction',file,gmodel,None,name=basename(file))
         )
@@ -60,5 +63,24 @@ def get_multiple_diffuse(dist, halo, TS, version,
     )
 
     return diffuse
+
+
+def delete_insignificant_diffuse(roi, allowed_fraction=0.01, quiet=False):
+    """ Delete insignificant components of the galactic diffuse
+        model following the algorithm proposed by Jean Ballet:
+
+            https://confluence.slac.stanford.edu/display/SCIGRPS/gtlike+with+many+diffuse+components
+    """
+    oc=observed_counts(roi)
+    for source in get_background(roi):
+        mc=model_counts(roi,source)
+        fraction=float(mc)/oc
+        if not quiet:
+            print 'Source %s predicts %s%% of total counts' % fraction,
+        if fraction < allowed_fraction:
+            print '... delete source.'
+            roi.del_source(source)
+        else:
+            print '... keep source.'
 
 
