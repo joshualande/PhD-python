@@ -20,7 +20,12 @@ def spatial_model_to_string(model):
             >>> m=Gaussian(sigma=1, l=2, b=3)
             >>> print spatial_model_to_string(m)
             Gaussian(sigma=1, l=2, b=3)
-            >>> 
+
+            >>> tempfile = NamedTemporaryFile()
+            >>> m.save_template(tempfile.name)
+            >>> m=SpatialMap(file=m)
+            >>> print spatial_model_to_string(m).replace(tempfile.name,'[FILENAME'])
+            SpatialMap(file='[FILENAME]')
     """
     assert isinstance(model,SpatialModel)
     return model.name + '(' + \
@@ -38,7 +43,9 @@ def soruce_to_model(source):
     pass
 
 def tostring(model):
-    """ Intellegently converts to a string the object.
+    """ Intellegently converts to a string any of the allowed
+        objects.
+    """
     if isinstance(model,Model):
         return model_to_string(model)
     elif isinstance(model,SpatialModel):

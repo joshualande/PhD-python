@@ -99,3 +99,13 @@ Code to recreate free sources:"
                    **tsmap_kwargs)
 
 
+def fix_convergence(roi, name, model, tsmap_kwargs=dict(size=10)):
+    roi.modify(which='PSRJ0248+6021', model=PowerLaw(norm=8.81e-14, index=2.63, e0=3162)
+                         )
+
+    roi.fit(use_gradient=False)
+
+    roi.print_summary()
+
+    print roi
+
