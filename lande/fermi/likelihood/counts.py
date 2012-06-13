@@ -23,3 +23,11 @@ def pointlike_model_counts(roi,which):
 def pointlike_total_model_counts(roi):
     model_counts=sum(b.bg_all_counts+b.ps_all_counts for b in roi.bands)
     return model_counts
+
+
+
+# Kluge for now
+# TODO, write gtlike equivalent code
+observed_counts=pointlike_observed_counts
+model_counts=pointlike_model_counts
+total_model_counts=pointlike_total_model_counts
