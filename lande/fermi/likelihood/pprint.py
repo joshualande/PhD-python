@@ -1,7 +1,7 @@
 from uw.like.Models import Model,PowerLaw
 from uw.like.SpatialModels import SpatialModel,Gaussian
 
-def model_to_string(model):
+def pprint_model(model):
     """ Convert a spectral model to a python string which could be used
         to recate the object.
 
