@@ -17,6 +17,7 @@ def get_multiple_diffuse(dist, halo, TS, version,
                          fit_index = False,
                          #fit_isotropic = False,
                          add_loop=True, add_lobes=True,
+                         gal_components=None,
                ):
     """ Code to load in Gulli's diffuse files for Pointlike analysis 
         and also one isotropic file. 
@@ -40,7 +41,9 @@ def get_multiple_diffuse(dist, halo, TS, version,
 
     diffuse = []
 
-    gal_components=["CO_1","CO_2","CO_3","CO_4","HI_1","HI_2","HI_3","HI_4","ICnorm"]
+    if gal_components is None:
+        gal_components=["CO_1","CO_2","CO_3","CO_4","HI_1","HI_2","HI_3","HI_4","ICnorm"]
+
     if add_loop:
         gal_components.append('LoopInorm')
     if add_lobes:
