@@ -1,12 +1,22 @@
 import sys
 
+from skymaps import SkyDir
 from uw.like.Models import Model,PowerLaw
 from uw.like.SpatialModels import SpatialModel,Gaussian,SpatialMap
 from uw.like.pointspec_helpers import PointSource 
 from uw.like.roi_extended import ExtendedSource
 
 def f(x):
-    return pprint.pformat(x)
+    if isinstance(x,str):
+        return "'%s'" % x
+    else:
+        return str(x)
+
+def pformat_skydir(skydir,galactic=True):
+    if galactic:
+        return 'SkyDir(%s,%s,SkyDir.GALACTIC)' % (skydir.l(),skydir.b())
+    else:
+        return 'SkyDir(%s,%s)' % (skydir.ra(),skydir.dec())
 
 def pformat_model(model):
     """ Convert a spectral model to a python string which could be used
@@ -30,19 +40,38 @@ def pformat_spatial_model(model):
                 ')'
 
 def pformat_point_source(ps):
-    pass
+    return 'PointSource(name=%s, skydir=%s, model=%s)' % (f(ps.name),
+                                                          pformat_skydir(ps.skydir),
+                                                          pformat_model(ps.model))
 
 def pformat_extended_source(ps):
-    pass
+    return 'ExtendedSource(name=%s, spatial_model=%s, model=%s)' % (f(ps.name),
+                                                                    pformat_spatial_model(ps.spatial_model),
+                                                                    pformat_model(ps.model))
 
 def pformat_source(source):
-    pass
+    if isinstance(source,PointSource):
+        return pformat_point_source(source)
+    elif isinstance(source,ExtendedSource):
+        return pformat_extended_source(source)
+    else:
+        raise Exception("Unrecognized type %s" % type(source))
 
-def pformat(model):
+def pformat(model, *args, **kwargs):
     """ Intellegently converts to a string any of the allowed
         objects.
 
-        Example, pformat a spectral model
+        Example, pformat a skydir:
+
+            >>> sd=SkyDir(0,0)
+            >>> print pformat(sd,galactic=False)
+            SkyDir(0.0,0.0)
+
+            >>> sd=SkyDir(0,0,SkyDir.GALACTIC)
+            >>> print pformat(sd)
+            SkyDir(6.36110936293e-15,-1.59027734073e-15,SkyDir.GALACTIC)
+        
+        pformat a spectral model:
 
             >>> m=PowerLaw(norm=8.81e-14, index=2.63, e0=3162)
             >>> print pformat(m)
@@ -54,33 +83,45 @@ def pformat(model):
             >>> from uw.like.Models import FileFunction
             >>> tempfile = NamedTemporaryFile()
             >>> m.save_profile(tempfile.name, 10, 1e6)
-            >>> m=FileFunction(normalization=1.0, file=tempfile.name)
-            >>> print pformat(m).replace(tempfile.name,'[FILENAME]')
+            >>> ff=FileFunction(normalization=1.0, file=tempfile.name)
+            >>> print pformat(ff).replace(tempfile.name,'[FILENAME]')
             FileFunction(normalization=1.0, file='[FILENAME]')
 
         pformat a spatial model
 
-            >>> m=Gaussian(sigma=1, l=2, b=3)
-            >>> print pformat(m)
+            >>> sm=Gaussian(sigma=1, l=2, b=3)
+            >>> print pformat(sm)
             Gaussian(l=2.0, b=3.0, sigma=1.0)
 
         pformat a SpatialMap (tricky because a filename)
 
             >>> tempfile = NamedTemporaryFile()
-            >>> m.save_template(tempfile.name)
-            >>> m=SpatialMap(file=tempfile.name)
-            >>> print pformat(m).replace(tempfile.name,'[FILENAME]')
+            >>> sm.save_template(tempfile.name)
+            >>> map=SpatialMap(file=tempfile.name)
+            >>> print pformat(map).replace(tempfile.name,'[FILENAME]')
             SpatialMap(file='[FILENAME]')
 
+        pformat a PointSource:
+
+            >>> ps = PointSource(name='source',skydir=sd, model=m)
+            >>> print pformat(ps)
+            PointSource(name='source', skydir=SkyDir(6.36110936293e-15,-1.59027734073e-15,SkyDir.GALACTIC), model=PowerLaw(norm=8.81e-14, index=2.63, e0=3162))
+
+            >>> es = ExtendedSource(name='source',spatial_model=sm, model=m)
+            >>> print pformat(es)
+            ExtendedSource(name='source', spatial_model=Gaussian(l=2.0, b=3.0, sigma=1.0), model=PowerLaw(norm=8.81e-14, index=2.63, e0=3162))
     """
-    if isinstance(model,Model):
-        return pformat_model(model)
+    if isinstance(model,SkyDir):
+        func=pformat_skydir
+    elif isinstance(model,Model):
+        func=pformat_model
     elif isinstance(model,SpatialModel):
-        return pformat_spatial_model(model)
+        func=pformat_spatial_model
     elif isinstance(model,PointSource) or isinstance(model,ExtendedSource):
-        return pformat_source(model)
+        func=pformat_source
     else:
         raise Exception("Unrecognized type %s" % type(model))
+    return func(model, *args, **kwargs)
 
 def pprint(model,out=sys.stdout):
     out.write(pformat(model))
