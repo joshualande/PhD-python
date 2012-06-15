@@ -1,4 +1,5 @@
 import os
+import math
 from os.path import exists, join
 from textwrap import dedent
 from tempfile import NamedTemporaryFile
@@ -7,10 +8,11 @@ import numpy as np
 import pyfits
 
 from GtApp import GtApp
+import skymaps
 
 from uw.like.roi_monte_carlo import MonteCarlo
 
-from lande.utilities.simtools import SimBuilder
+from lande.utilities.jobtools import JobBuilder
 from lande.utilities.shell import format_command
 
 def fix_pointlike_ltcube(ltcube):
@@ -119,4 +121,24 @@ def recursive_gtltsum(infiles, outfile):
         os.remove(tempfile)
 
 
+def pointlike_ltcube(evfile,scfile,outfile,dcostheta,binsz, zmax, cone_angle,dir,quiet=False):
+    """ Run the pointlike ltcube code. """
 
+    gti = skymaps.Gti(evfile)
+
+    for weighted,clobber in [[False,True],[True,False]]:
+
+        lt = skymaps.LivetimeCube(
+            cone_angle = cone_angle,
+            dir        = dir,
+            zcut       = math.cos(math.radians(zmax)),
+            pixelsize  = binsz,
+            quiet      = quiet,
+            weighted   = weighted)
+
+        lt.load(scfile,gti)
+
+        extension = 'WEIGHTED_EXPOSURE' if weighted else 'EXPOSURE'
+        lt.write(outfile,extension,clobber)
+
+    fix_pointlike_ltcube(outfile)

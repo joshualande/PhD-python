@@ -44,10 +44,11 @@ class ROIBandPlotter(object):
  
         # step 1, test consistentcy of each energy with binning in pointlike
 
+        kwargs['title'] = '' # dont title the subplots
         self.maps = []
         for i,(lower,upper) in enumerate(zip(self.lower_energies, self.upper_energies)):
             roi.change_binning(fit_emin=lower,fit_emax=upper)
-            self.maps.append(self.object(roi,title='',**kwargs))
+            self.maps.append(self.object(roi,**kwargs))
 
         state.restore()
 
@@ -71,6 +72,10 @@ class ROIBandPlotter(object):
             upper_string=format_energy(upper)
             grid[i].add_inner_title("%s-%s GeV" % (lower_string,upper_string), loc=2)
 
+        if self.title is not None:
+            fig.suptitle(self.title)
+
+        fig.tight_layout()
         if filename is not None: P.savefig(filename)
 
 class ROITSMapBandPlotter(ROIBandPlotter):
