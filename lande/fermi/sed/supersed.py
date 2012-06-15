@@ -13,6 +13,8 @@ import pyLikelihood
 from SED import SED
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 
+from uw.like.Models import Model
+
 from lande.pysed import units
 from lande.utilities.tools import tolist
 
@@ -167,6 +169,15 @@ class SuperSED(SED):
         return yaml.dump(results)
 
     @staticmethod
+    def get_dnde(spectrum,energies):
+        if isinstance(spectrum,pyLikelihood.Function):
+            return SED.get_dnde(spectrum,energies)
+        elif isinstance(spectrum,Model):
+            return spectrum(energies)
+        else:
+            raise Exception("Unrecognized type %s for spectrum." % type(spectrum))
+
+    @staticmethod
     def _plot_spectrum(spectrum, axes, energy_units, flux_units, npts=100, **kwargs):
         """ Plot a pyLikelihood spectrum onto a matplotlib axes
             whose x axis has units energy_units and y_axes has units
@@ -182,15 +193,17 @@ class SuperSED(SED):
         energies_mev = units.tonumpy(e_units, units.MeV)
 
         # (a) convert to acutal units. gtlike spectra take energy in MeV, return flux in ph/cm^2/s/MeV
-        dnde = units.tosympy(SED.get_dnde(spectrum,energies_mev),units.ph/units.cm**2/units.s/units.MeV)
+        dnde = units.tosympy(SuperSED.get_dnde(spectrum,energies_mev),units.ph/units.cm**2/units.s/units.MeV)
         # (b) create E^2 dN/dE in acutal units
         e2_dnde = dnde.multiply_elementwise(e_units).multiply_elementwise(e_units)
         # (c) convert to desired units
         e2_dnde = units.tonumpy(e2_dnde,flux_units/units.cm**2/units.s)
         axes.plot(energies, e2_dnde, **kwargs)
 
-    def plot_spectrum(self, spectrum, **kwargs):
-        SuperSED._plot_spectrum(spectrum, self.axes, self.energy_units, self.flux_units, **kwargs)
+    def plot_spectrum(self, spectrum, axes, **kwargs):
+        if axes is None: 
+            axes=self.axes
+        SuperSED._plot_spectrum(spectrum, axes, self.energy_units, self.flux_units, **kwargs)
 
     def plot(self, filename=None,
              axes=None, 
