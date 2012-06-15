@@ -120,6 +120,7 @@ class TableFormatter(object):
     def fix_negative(a):
         return a.replace('-',r'\-')
     def value(self,a,precision=None):
+        if a is None: return "None"
         if precision is None: precision=self.precision
         ret = '%.*f' % (precision,a)
         if self.confluence:

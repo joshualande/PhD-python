@@ -33,6 +33,8 @@ class JobBuilder(object):
         ('front', 'job'),
         ('extra', ''),
         ('num', None),
+        ('short_folder_names', False, """ By default, folder names are long: emin_1e2_emax_1e5. 
+                                         short_folder_names will make folder names shorter: 1e2_1e5. """)
     )
 
     @keyword_options.decorate(defaults)
@@ -80,16 +82,19 @@ class JobBuilder(object):
             if no_multiples:
                 base = '.'
             else:
-                base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,n,v in zip(keys,num,perm) if n>1)
+                if self.short_folder_names:
+                    base = '_'.join(f(v) for k,n,v in zip(keys,num,perm) if n>1)
+                else:
+                    base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,n,v in zip(keys,num,perm) if n>1)
 
             args = []
             for k,v in zip(keys,perm):
                 if v is True:
-                    args.append('--%s' % f(k))
+                    args.append('\\\n    --%s' % f(k))
                 elif v is False:
                     pass # no flag
                 else:
-                    args.append('--%s=%s' % (f(k),f(v)))
+                    args.append('\\\n    --%s=%s' % (f(k),f(v)))
             args = ' '.join(args)
 
             subdir = join(self.savedir, base)

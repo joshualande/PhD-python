@@ -33,9 +33,11 @@ def merge_dict(*args):
     if len(args) < 1:
         raise Exception("Must be passed one or more dicts")
     if len(args) == 1:
-        if not isinstance(args[0],list):
-            raise Exception("When only one item is passted to merge_dict, it must be a list of dicts.")
-        return merge_dict(*args[0])
+        if isinstance(args[0],dict):
+            return args[0]
+        elif isinstance(args[0],list):
+            return merge_dict(*args[0])
+        raise Exception("When only one item is passted to merge_dict, it must be a list of dicts.")
     elif len(args) > 2:
         return reduce(merge_dict,args)
     else:
