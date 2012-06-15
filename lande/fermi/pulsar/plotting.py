@@ -52,15 +52,16 @@ def plot_phaseogram(ft1, nbins=100, filename=None, title=None, phase_range=None,
 
     return axes, bins
 
-def plot_phase_vs_time(ft1, filename, title=None, phase_range=None, 
-                       phase_range_kwargs=dict(), **kwargs):
+def plot_phase_vs_time(ft1, filename=None, title=None, phase_range=None, 
+                       phase_range_kwargs=dict(), axes=None, **kwargs):
     """ Simple code to plot phase vs time. """
     phases, times = get_phases_and_times(ft1, **kwargs)
 
-    # here, put a 2d histogram
-    fig = P.figure(None, figsize=(5,5))
-    fig.subplots_adjust(left=0.2)
-    axes = fig.add_subplot(111)
+    if axes is None:
+        # here, put a 2d histogram
+        fig = P.figure(None, figsize=(5,5))
+        fig.subplots_adjust(left=0.2)
+        axes = fig.add_subplot(111)
 
     # Note about 2D histograms: 
     #  http://www.physics.ucdavis.edu/~dwittman/Matplotlib-examples/
@@ -79,5 +80,6 @@ def plot_phase_vs_time(ft1, filename, title=None, phase_range=None,
     if title is not None: 
         axes.set_title(title)
 
-    P.savefig(filename)
+    if filename is not None:
+        P.savefig(filename)
     return axes

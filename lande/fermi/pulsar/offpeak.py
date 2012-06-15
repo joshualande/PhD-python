@@ -40,29 +40,29 @@ class OffPeakBB(object):
             ranges[0] += ranges.pop(-1)
             heights = heights[:-1]
 
-        for r in ranges: 
-            r.trim(fraction=0.1)
-
         sorted = np.argsort(heights)
         min_phase = ranges[sorted[0]]
 
         if len(sorted) < 3:
             # if only 2 blocks, no need to merge
-            return min_phase
+            phase = min_phase
+        else:
 
-        second_min_phase = ranges[sorted[1]]
+            second_min_phase = ranges[sorted[1]]
 
-        ncounts = len([p for p in phases if p in min_phase])
-        second_ncounts = len([p for p in phases if p in second_min_phase])
+            ncounts = len([p for p in phases if p in min_phase])
+            second_ncounts = len([p for p in phases if p in second_min_phase])
 
-        predicted_second_counts = ncounts*second_min_phase.phase_fraction/min_phase.phase_fraction
+            predicted_second_counts = ncounts*second_min_phase.phase_fraction/min_phase.phase_fraction
 
-        prob=0.01
-        if (poisson.sf(second_ncounts, predicted_second_counts) < prob) or \
-           second_min_phase.phase_fraction < 0.5*min_phase.phase_fraction:
-            return min_phase
+            prob=0.01
+            if (poisson.sf(second_ncounts, predicted_second_counts) < prob) or \
+               second_min_phase.phase_fraction < 0.5*min_phase.phase_fraction:
+                phase = min_phase
+            else:
+                phase  = min_phase + second_min_phase
 
-        return min_phase + second_min_phase
+        return phase.trim(fraction=0.1)
 
     @staticmethod
     def get_blocks(phases, ncpPrior, method='binned'):

@@ -10,8 +10,8 @@ class OptimizePhases(object):
         best pulsations. """
 
     def __init__(self, ft1, skydir, emax,
-                 emins=np.linspace(100,1000,21),
-                 rads=np.linspace(0.1,2,20),
+                 emins=np.logspace(2,4,17),
+                 rads=np.linspace(0.1,4,40),
                  verbose=False,
                 ):
 
@@ -25,7 +25,7 @@ class OptimizePhases(object):
             for irad,radius in enumerate(rads):
                 phases = get_phases(ft1, skydir, emin, emax, radius)
                 stat = hm(phases) if len(phases) > 0 else 0
-                if verbose: print 'emin=%s, radius=%s, stat=%s, len=%s, n0=%s' % (emin,radius,stat,len(phases),np.sum(phases==0))
+                if verbose: print 'emin=%s, radius=%s, stat=%s, len=%s' % (emin,radius,stat,len(phases))
                 stats[iemin,irad] = stat
 
         a = np.argmax(stats)
