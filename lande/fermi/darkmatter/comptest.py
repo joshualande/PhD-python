@@ -45,12 +45,8 @@ class ComprehensiveTest(object):
         self.model0=model0.copy()
         self.model1=model1.copy()
 
-        # simpler model needs an e0
-        assert hasattr(self.model0,'e0')
-
         self.compute()
-
-        #state.restore()
+        state.restore()
 
     def fit(self):
         roi=self.roi
@@ -87,6 +83,8 @@ class ComprehensiveTest(object):
         self.comprehensive_model = ComprehensiveModel(self.model0.copy(), self.model1.copy())
         self.comprehensive_model.theta=0.5
 
+        self.comprehensive_model_start = self.comprehensive_model.copy()
+
         if not self.quiet: print 'fit source %s with model1 (%s)' % (which,self.model1.name)
         roi.modify(which=self.which, model=self.comprehensive_model, keep_old_flux=False)
 
@@ -114,6 +112,7 @@ class ComprehensiveTest(object):
         # Plot model0, model1
         sed.plot_spectrum(self.model0, axes=axes, label='model0')
         sed.plot_spectrum(self.comprehensive_model, axes=axes, label='model1')
+        sed.plot_spectrum(self.comprehensive_model_start, axes=axes, label='model1 (start)')
         axes.legend()
         P.savefig(filename)
 
