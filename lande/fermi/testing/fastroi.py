@@ -4,7 +4,7 @@
     Author: Joshua Lande
 """
 # this import has to come first (shrugs)
-from . roi_gtlike import Gtlike
+from lande.fermi.likelihood.roi_gtlike import Gtlike
 
 from os.path import join
 
@@ -15,7 +15,7 @@ from uw.like.Models import PowerLaw
 from uw.like.roi_monte_carlo import SpectralAnalysisMC
 from uw.utilities import keyword_options
 
-from . diffuse import get_sreekumar
+from lande.fermi.likelihood.diffuse import get_sreekumar
 
 class FastROI(object):
     """ Usage:
