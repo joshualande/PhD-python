@@ -9,6 +9,7 @@ from uw.like.pointspec_helpers import PointSource
 from uw.like.Models import PowerLaw
 
 from . fit import fit_prefactor
+from . pretty import pformat
 
 def new_ps(roi, name, l, b, tsmap_kwargs=dict(size=10)):
     """ A 'throw away' convenience function to add a new source to
@@ -48,14 +49,12 @@ def new_ps(roi, name, l, b, tsmap_kwargs=dict(size=10)):
 
     path=os.path.abspath(sys.argv[0])
     print """
-Code to recreate point source:
+Code to create point source:
 
     # Analysis came from %s
-    model=PowerLaw(norm=%g, index=%g, e0=%g)
-    skydir=SkyDir(%s,%s,SkyDir.GALACTIC)
-    ps=PointSource(name="%s", model=model, skydir=skydir)
+    ps=%s
     roi.add_source(ps)
-""" % (path,model['norm'],model['index'],model.e0, ps.skydir.l(),ps.skydir.b(),name)
+""" % (path,pformat(ps))
 
     roi.save('roi.dat')
 
@@ -80,7 +79,7 @@ def free_src(roi, name, tsmap_kwargs=dict(size=10)):
 
     path=os.path.abspath(sys.argv[0])
     print """
-Code to recreate free sources:"
+Code to free sources:"
 
     # Analysis came from %s""" % (path)
 
@@ -99,13 +98,28 @@ Code to recreate free sources:"
                    **tsmap_kwargs)
 
 
-def fix_convergence(roi, name, model, tsmap_kwargs=dict(size=10)):
-    roi.modify(which='PSRJ0248+6021', model=PowerLaw(norm=8.81e-14, index=2.63, e0=3162)
-                         )
+def fix_convergence(roi, which, model, tsmap_kwargs=dict(size=10)):
+    """ Fix the convergence for a source. """
+
+    roi.modify(which=which, model=model, keep_old_flux=keep_old_flux)
 
     roi.fit(use_gradient=False)
 
     roi.print_summary()
-
     print roi
+
+    path=os.path.abspath(sys.argv[0])
+    print """
+Code to fix convergence
+
+    # Analysis came from %s
+
+    roi.modify(which='%s', model=%s, keep_old_flux=False)
+    """ % (path,which,pformat(model))
+
+    roi.save('roi.dat')
+
+    roi.plot_tsmap(filename='residual_tsmap.pdf', 
+                   fitsfile='residual_tsmap.fits',
+                   **tsmap_kwargs)
 
