@@ -233,7 +233,7 @@ class SuperSED(SED):
                 # and it gets mutlplied by energy_units**2,
                 # so we need to multiple overall spectrum by
                 # flux_units*MeV/energy_units**2
-                self.plot_spectrum(self.spectrum, **spectral_kwargs)
+                self.plot_spectrum(self.spectrum, axes=axes, **spectral_kwargs)
 
             SED._plot_points(
                 x=ce(self.energy), 
