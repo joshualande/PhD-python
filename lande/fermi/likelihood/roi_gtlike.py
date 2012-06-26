@@ -220,7 +220,7 @@ class Gtlike(object):
         if not os.path.exists(bexpmap_file):
             # Use the default binning all sky, 1deg/pixel
             if not roi.quiet: print 'Running gtexpcube'
-            gtexpcube=GtApp('gtexpcube2')
+            gtexpcube=GtApp('gtexpcube2','Likelihood')
             gtexpcube.run(infile=ltcube,
                           cmap='none',
                           ebinalg='LOG', emin=self.emin, emax=self.emax, enumbins=self.enumbins,
