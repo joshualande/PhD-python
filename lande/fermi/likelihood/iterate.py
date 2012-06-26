@@ -3,6 +3,8 @@
 import os
 import sys
 
+import numpy as np
+
 from skymaps import SkyDir
 
 from uw.like.pointspec_helpers import PointSource
@@ -20,7 +22,9 @@ def new_ps(roi, name, l, b, tsmap_kwargs=dict(size=10)):
 
     roi.print_summary(galactic=True)
 
-    model=PowerLaw()
+    emin,emax=roi.bin_edges[[0,-1]]
+
+    model=PowerLaw(e0=np.sqrt(emin*emax))
 
     ps = PointSource(
         name=name,
@@ -101,7 +105,7 @@ Code to free sources:"
 def fix_convergence(roi, which, model, tsmap_kwargs=dict(size=10)):
     """ Fix the convergence for a source. """
 
-    roi.modify(which=which, model=model, keep_old_flux=keep_old_flux)
+    roi.modify(which=which, model=model, keep_old_flux=False)
 
     roi.fit(use_gradient=False)
 
@@ -113,7 +117,6 @@ def fix_convergence(roi, which, model, tsmap_kwargs=dict(size=10)):
 Code to fix convergence
 
     # Analysis came from %s
-
     roi.modify(which='%s', model=%s, keep_old_flux=False)
     """ % (path,which,pformat(model))
 
