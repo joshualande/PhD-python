@@ -104,7 +104,7 @@ def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=Non
     e = np.sqrt(emin*emax)
 
     # assume a canonical dnde=1e-11 at 1GeV index 2 starting value
-    dnde = PowerLaw(norm=1e-11, index=2,e_scale=1e3)
+    dnde = PowerLaw(norm=1e-11, index=2,e0=1e3)
 
     like.setSpectrum(name,'PowerLaw')
 
