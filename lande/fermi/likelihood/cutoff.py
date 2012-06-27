@@ -45,8 +45,8 @@ def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=No
 
     model_0 = SuperSED.dict_to_spectrum(cutoff_results['model_0'])
     model_1 = SuperSED.dict_to_spectrum(cutoff_results['model_1'])
-    sed.plot_spectrum(model_0, **model_0_kwargs)
-    sed.plot_spectrum(model_1, **model_1_kwargs)
+    sed.plot_spectrum(model_0, axes=axes, **model_0_kwargs)
+    sed.plot_spectrum(model_1, axes=axes, **model_1_kwargs)
 
     if title is None:
         axes.set_title('Gtlike Cutoff test for %s' % sed.name)
