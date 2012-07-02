@@ -8,6 +8,15 @@ import asciitable
 
 from . tools import parse_strip_known_args
 
+def fixed_width_table(table_dict, table_kwargs=dict(bookend=False, delimiter=None)):
+    outtable=StringIO()
+    asciitable.write(table_dict, outtable,
+                     Writer=asciitable.FixedWidth,
+                     names=table_dict.keys(),
+                     **table_kwargs)
+    t=outtable.getvalue()
+    return t
+
 def get_confluence():
     parser = ArgumentParser()
     parser.add_argument("--confluence", action="store_true", default=False)
