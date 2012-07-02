@@ -1,5 +1,6 @@
 import sys
 from argparse import ArgumentParser
+from os.path import expandvars
 
 import pylab as P
 from matplotlib import rc
@@ -23,6 +24,7 @@ def get_bw():
 
 
 def save(base):
+    base=expandvars(base)
     if bw:
         P.savefig('%s_bw.pdf' % base)
         P.savefig('%s_bw.eps' % base)
