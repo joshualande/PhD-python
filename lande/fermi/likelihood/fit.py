@@ -13,13 +13,20 @@ from . superstate import SuperState
 
 from . tools import gtlike_or_pointlike
 
-def paranoid_gtlike_fit(like, covar=True):
+def paranoid_gtlike_fit(like, covar=True, niter=1):
     """ Perform a sepctral fit in gtlike in
         a paranoid manner. 
         
         See here for description of method:
             http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Likelihood/Fitting_Models.html
     """
+    if niter > 1:
+        print 'Fitting %s times' % niter
+        for i in range(niter):
+            print "Fitting for the %s'th time" % i
+            paranoid_gtlike_fit(like, covar, niter=1)
+        return
+
     saved_state = SuperState(like)
     try:
         print 'First, fitting with minuit'
