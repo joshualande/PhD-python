@@ -96,7 +96,7 @@ class BandFitter(object):
 
             paranoid_gtlike_fit(like)
 
-            self.ts[i]=like.Ts(name,reoptimize=False)
+            self.ts[i]=like.Ts(name,reoptimize=False, verbosity=4)
 
             index=get('Index')
             self.index[i] = index.getTrueValue()
