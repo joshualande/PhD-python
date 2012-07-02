@@ -272,7 +272,7 @@ class VariabilityTester(object):
         results['ll_1'] = ll()
         results['flux'] = fluxdict(like,name)
 
-        results['TS'] = TS = like.Ts(name,reoptimize=True)
+        results['TS'] = TS = like.Ts(name,reoptimize=True,verbosity=4)
         results['diffuse'] = diffusedict(like)
 
         if TS < self.min_ts or self.always_upper_limit:
