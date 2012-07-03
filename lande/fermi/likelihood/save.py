@@ -3,8 +3,10 @@ import sys
 
 import pylab as P
 import numpy as np
+import pyfits
 
 from skymaps import DiffuseFunction,IsotropicSpectrum,IsotropicPowerLaw,IsotropicConstant
+from pyLikelihood import ParameterVector, SpatialMap_cast, PointSource_cast
 
 from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
@@ -190,7 +192,6 @@ def diffusedict(like_or_roi):
     return tolist(f)
 
 def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg', errors=True, save_TS=True):
-    from pyLikelihood import ParameterVector
 
     if emin is None and emax is None:
         emin, emax = get_full_energy_range(like)
@@ -311,6 +312,49 @@ def gtlike_logLikelihood(like): return like.logLike.value()
 
 def logLikelihood(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_logLikelihood, pointlike_logLikelihood, *args, **kwargs)
+
+def gtlike_get_roi_dir(like):
+    dir=like.binnedData.countsMap.refDir()
+    return dir
+def pointlike_get_roi_dir(roi):
+    return roi.roi_dir
+
+def get_roi_dir(*args, **kwargs):
+    return gtlike_or_pointlike(gtlike_get_roi_dir, pointlike_get_roi_dir, *args, **kwargs)
+
+
+def gtlike_get_skydir(like, name):
+    """ Get the skydir for a gtlike point or extended source. """
+    if not name in get_sources(like):
+        raise Exception("Unable to get skydir because %s is not a point or extended source." % name)
+
+    spatial_model = get_spatial_model_name(like, name)
+    assert spatial_model in ['SkyDirFunction', 'SpatialMap']
+
+    source = like.logLike.getSource(name)
+
+    if spatial_model == 'SkyDirFunction':
+        return PointSource_cast(source).getDir()
+
+    elif spatial_model == 'SpatialMap':
+        spatial_map=SpatialMap_cast(source.getSrcFuncs()['SpatialDist'])
+        
+        # This is kind of ugly, but I can't find out how to get m_refDir out of WcsMap2 object
+        filename = spatial_map.fitsFile()
+        pf=pyfits.open(filename)
+        h=pf['PRIMARY'].header
+        crpix1=h['CRPIX1']
+        crpix2=h['CRPIX2']
+        return spatial_map.wcsmap().skyDir(crpix1,crpix2)
+
+def pointlike_get_skydir(roi, name):
+    source = roi.get_source(name)
+    if not isinstance(source,PointSource) and not isinstance(source,ExtendedSource):
+        raise Exception("Unable to get skydir because %s is not a point or extended source." % name)
+    return source.skydir
+
+def get_skydir(*args, **kwargs):
+    return gtlike_or_pointlike(gtlike_get_skydir, pointlike_get_skydir, *args, **kwargs)
 
 if __name__ == "__main__":
     import doctest
