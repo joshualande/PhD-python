@@ -8,14 +8,22 @@ import asciitable
 
 from . tools import parse_strip_known_args
 
-def fixed_width_table(table_dict, table_kwargs=dict(bookend=False, delimiter=None)):
+def fixed_width_table(table_dict, table_kwargs=dict(bookend=False, delimiter=None), indent=None):
     outtable=StringIO()
     asciitable.write(table_dict, outtable,
                      Writer=asciitable.FixedWidth,
                      names=table_dict.keys(),
                      **table_kwargs)
     t=outtable.getvalue()
-    return t
+
+    # remove final newline
+    assert t[-1] == '\n'
+    t=t[:-1]
+    if indent is None:
+        return t
+
+    t=t.split('\n')
+    return '\n'.join(['%s%s' % (indent,i) for i in t])
 
 def get_confluence():
     parser = ArgumentParser()
