@@ -18,6 +18,8 @@ from . superstate import SuperState
 from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range, spectrum_to_dict, fluxdict
 from . fit import paranoid_gtlike_fit
+from . printing import summary
+
 
 def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=None, 
                             model_0_kwargs=dict(color='red', zorder=0),
@@ -57,18 +59,22 @@ def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=No
     if filename is not None: P.savefig(filename)
     return axes
 
-def pointlike_test_cutoff(roi, which, flux_units='erg'):
+def pointlike_test_cutoff(roi, which, model0=None, model1=None, flux_units='erg'):
     print 'Testing cutoff in pointlike'
     emin,emax=get_full_energy_range(roi)
     d = {}
 
     saved_state = PointlikeState(roi)
 
-    print 'these are probably not good startin values!'
     old_flux = roi.get_model(which).i_flux(emin,emax)
-    m=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax))
-    m.set_flux(old_flux,emin,emax)
-    roi.modify(which=which, model=m,keep_old_flux=False)
+
+    if model0 is None:
+        model0=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax))
+        model0.set_flux(old_flux,emin,emax)
+
+    print "model0 is ",model0
+
+    roi.modify(which=which, model=model0, keep_old_flux=False)
 
     fit = lambda: roi.fit(estimate_errors=False)
     ll = lambda: -1*roi.logLikelihood(roi.parameters())
@@ -80,18 +86,35 @@ def pointlike_test_cutoff(roi, which, flux_units='erg'):
 
     spectrum = lambda: spectrum_to_dict(roi.get_model(which), errors=True)
 
+    print 'About to fit Model0'
+    roi.print_summary()
+
     fit()
+    
+    print 'Done fitting Model0'
+    roi.print_summary()
+
     d['ll_0'] = ll_0 = ll()
     d['TS_0'] = ts()
     d['model_0']=spectrum()
     d['flux_0']=fluxdict(roi,which,emin,emax,flux_units)
 
-    m=ExpCutoff(norm=1e-11, index=1, cutoff=1000, e0=1000)
-    m.set_flux(old_flux,emin,emax)
-    roi.modify(which=which, 
-               model=m,keep_old_flux=False)
+    if model1 is None:
+        model1=ExpCutoff(norm=1e-11, index=1, cutoff=1000, e0=1000)
+        model1.set_flux(old_flux,emin,emax)
+
+    print "model1 is ",model1
+
+    roi.modify(which=which, model=model1, keep_old_flux=False)
+
+    print 'About to fit Model1'
+    roi.print_summary()
 
     fit()
+
+    print 'Done fitting Model1'
+    roi.print_summary()
+
     d['ll_1'] = ll_1 = ll()
     d['TS_1'] = ts()
     d['model_1']=spectrum()
@@ -103,7 +126,8 @@ def pointlike_test_cutoff(roi, which, flux_units='erg'):
 
     return tolist(d)
 
-def gtlike_test_cutoff(like, name, flux_units='erg'):
+def gtlike_test_cutoff(like, name, spectrum0=None, spectrum1=None, flux_units='erg'):
+    """ spectrum0 and spectrum1 must be gtlike spectrum objects. """
     print 'Testing cutoff in gtlike'
 
     saved_state = SuperState(like)
@@ -143,34 +167,49 @@ def gtlike_test_cutoff(like, name, flux_units='erg'):
             like.syncSrcParams(name)
 
         ll = lambda: like.logLike.value()
-        ts = lambda: like.Ts(name,reoptimize=True)
+        ts = lambda: like.Ts(name,reoptimize=True, verbosity=4)
 
         def spectrum():
             source = like.logLike.getSource(name)
             s=source.spectrum()
             return spectrum_to_dict(s, errors=True)
 
-        old_flux = get_flux()
+        if spectrum0 is None:
+            old_flux = get_flux()
+            like.setSpectrum(name,'PowerLaw')
+            fix('Scale', np.sqrt(emin*emax))
+            set('Prefactor',1e-11,1e-11, 1e-5, 1e5)
+            set('Index',       -2,    1,   -5,   5)
+            set_flux(old_flux)
+        else:
+            like.setSpectrum(name,spectrum0)
 
-        like.setSpectrum(name,'PowerLaw')
-        fix('Scale', np.sqrt(emin*emax))
-        set('Prefactor',1e-11,1e-11, 1e-5, 1e5)
-        set('Index',       -2,    1,   -5,   5)
-        set_flux(old_flux)
+        print 'About to fit spectrum0'
+        print summary(like)
 
         paranoid_gtlike_fit(like)
+
+        print 'Done fitting spectrum0'
+        print summary(like)
+
         d['ll_0'] = ll_0 = ll()
         d['TS_0'] = ts()
         d['model_0']=spectrum()
         d['flux_0']=fluxdict(like,name,emin,emax,flux_units)
-        
-        like.setSpectrum(name,'PLSuperExpCutoff')
-        set('Prefactor', 1e-9,  1e-11,   1e-5,1e5)
-        set('Index1',      -1,      1,     -5,  5)
-        fix('Scale',     1000)
-        set('Cutoff',    1000,      1,    1e2,1e8)
-        fix('Index2',       1)
-        set_flux(old_flux)
+
+        if spectrum1 is None:
+            like.setSpectrum(name,'PLSuperExpCutoff')
+            set('Prefactor', 1e-9,  1e-11,   1e-5,1e5)
+            set('Index1',      -1,      1,     -5,  5)
+            fix('Scale',     1000)
+            set('Cutoff',    1000,      1,    1e2,1e8)
+            fix('Index2',       1)
+            set_flux(old_flux)
+        else:
+            like.setSpectrum(name,spectrum1)
+
+        print 'About to fit spectrum1'
+        print summary(like)
 
         paranoid_gtlike_fit(like)
 
@@ -185,6 +224,9 @@ def gtlike_test_cutoff(like, name, flux_units='erg'):
             set('Cutoff',               1e6,      1,    1e2,1e8)
             fix('Index2',                 1)
             paranoid_gtlike_fit(like)
+
+        print 'Done fitting spectrum1'
+        print summary(like)
 
         d['ll_1'] = ll_1 = ll()
         d['TS_1'] = ts()
