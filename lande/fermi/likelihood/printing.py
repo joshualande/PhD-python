@@ -13,16 +13,12 @@ def gtlike_summary(like, sdir=None, galactic=True, maxdist=5, sep='-'*90, indent
 
     emin,emax=get_full_energy_range(like)
 
-    #name               dist         l         b        TS     flux8     index      beta    cutoff
-    #PSRJ1119-6127       0.0   292.152    -0.537       149      5.05*     2.00?
-
     if sdir is None:
         sdir = get_roi_dir(like)
     
     sources = np.asarray(get_sources(like))
     diffs = np.degrees([get_skydir(like, name).difference(sdir) for name in sources])
-    diffs = diffs[diffs <= maxdist]
-    sources = sources[np.argsort(diffs)]
+    sources = sources[np.argsort(diffs)[diffs <= maxdist]]
 
     background = get_background(like)
     
