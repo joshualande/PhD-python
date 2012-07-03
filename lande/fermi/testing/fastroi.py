@@ -34,7 +34,7 @@ class FastROI(object):
         ('emax', 1e5),
         ('binsperdec', 1),
         ('roi_dir', SkyDir()),
-        ('savedir', 'savedir'),
+        ('tempdir', 'tempdir'),
         ('seed', 0),
         ('maxROI', 5),
         ('simtime', 2629743.83, 'simulation time (in seconds)'),
@@ -57,10 +57,10 @@ class FastROI(object):
 
 
         ds = DataSpecification(
-            ft1files = join(self.savedir,'ft1.fits'),
-            ft2files = join(self.savedir,'ft2.fits'),
-            ltcube = join(self.savedir,'ltcube.fits'),
-            binfile = join(self.savedir,'binfile.fits')
+            ft1files = join(self.tempdir,'ft1.fits'),
+            ft2files = join(self.tempdir,'ft2.fits'),
+            ltcube = join(self.tempdir,'ltcube.fits'),
+            binfile = join(self.tempdir,'binfile.fits')
         )
 
         sa = SpectralAnalysisMC(ds,
@@ -75,7 +75,7 @@ class FastROI(object):
                                 maxROI=self.maxROI,
                                 irf=self.irf,
                                 use_weighted_livetime=True,
-                                savedir=self.savedir,
+                                savedir=self.tempdir,
                                 tstart=0,
                                 tstop=self.simtime,
                                 ltfrac=0.9,
@@ -112,7 +112,7 @@ class FastROI(object):
 
     def get_like(self, *args, **kwargs):
 
-        self.gtlike=Gtlike(self.roi, savedir=self.savedir, 
+        self.gtlike=Gtlike(self.roi, savedir=self.tempdir, 
                       fix_pointlike_ltcube=True,
                       *args, **kwargs)
         return self.gtlike.like
