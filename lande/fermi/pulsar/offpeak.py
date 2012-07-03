@@ -241,8 +241,8 @@ def plot_phaseogram_blocks(ft1, blocks, blocks_kwargs=dict(), repeat_phase=False
     binsz = bins[1]-bins[0]
 
     # plot blocks
-    xx=blocks['xx']
-    yy=blocks['yy']
+    xx=np.asarray(blocks['xx'])
+    yy=np.asarray(blocks['yy'])
     if repeat_phase: xx, yy = np.append(xx, xx+1), np.append(yy, yy)
 
     k=dict(color='blue')
