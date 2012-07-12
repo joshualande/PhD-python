@@ -18,11 +18,19 @@ def gtlike_summary(like, sdir=None, galactic=True, maxdist=5, sep='-'*90, indent
     
     sources = np.asarray(get_sources(like))
     diffs = np.degrees([get_skydir(like, name).difference(sdir) for name in sources])
-    sources = sources[np.argsort(diffs)[diffs <= maxdist]]
+
+    # cut on distance
+    sources, diffs = sources[diffs <= maxdist], diffs[diffs <= maxdist]
+
+    # sort
+    sources = sources[np.argsort(diffs)]
 
     background = get_background(like)
     
     def format(names, do_position, do_ts, do_flux, do_norm):
+        if len(names) < 1:
+            return ''
+
         dat = OrderedDefaultDict(list)
         for name in names:
             dat['name'].append(name)
