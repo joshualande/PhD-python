@@ -3,7 +3,7 @@ import sys
 
 import numpy as np
 
-from uw.like.Models import PowerLaw
+from uw.like.Models import PowerLaw, PLSuperExpCutoff
 from uw.like.roi_state import PointlikeState
 
 from lande.utilities.tools import tolist
@@ -14,8 +14,9 @@ from . superstate import SuperState
 from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range
 from . fit import gtlike_allow_fit_only_prefactor, paranoid_gtlike_fit
+from . models import build_gtlike_model
 
-def gtlike_upper_limit(like, name, cl, emin=None, emax=None, 
+def gtlike_upper_limit(like, name, cl=.95, emin=None, emax=None, 
                        flux_units='erg', **kwargs):
     """
         N.B. spectral fit in this function instead
@@ -82,7 +83,6 @@ def gtlike_upper_limit(like, name, cl, emin=None, emax=None,
 
 
 def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=None, emax=None, 
-                                flux_units='erg',
                                 **kwargs):
     """ Wrap up calculating the flux upper limit for a powerlaw
         source.  This function employes the pyLikelihood function
@@ -126,7 +126,7 @@ def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=Non
 
     like.syncSrcParams(name)
 
-    results = gtlike_upper_limit(like, name, cl, emin, emax, flux_units, **kwargs)
+    results = gtlike_upper_limit(like, name, emin=emin, emax=emax, **kwargs)
     if results is not None:
         results['powerlaw_index']=powerlaw_index
 
@@ -134,7 +134,38 @@ def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=Non
 
     return tolist(results)
 
-def pointlike_upper_limit(roi, name, cl, emin=None, emax=None, flux_units='erg', **kwargs):
+def gtlike_cutoff_upper_limit(like, name, Index1, Cutoff, Index2 , emin=None, emax=None, **kwargs):
+    print 'Calculating gtlike cutoff  upper limit'
+
+    saved_state = SuperState(like)
+
+    if emin is None and emax is None: 
+        emin, emax = get_full_energy_range(like)
+
+    e = np.sqrt(emin*emax)
+
+    cutoff_model = PLSuperExpCutoff.from_gtlike(Index1=Index1,Cutoff=Cutoff,Index2=Index2,set_default_limits=True)
+    cutoff_spectrum = build_gtlike_model(cutoff_model)
+
+    like.setSpectrum(name,cutoff_spectrum)
+    like.syncSrcParams(name)
+
+    results = gtlike_upper_limit(like, name, emin=emin, emax=emax, **kwargs)
+    if results is not None:
+        results['Index1']=Index1
+        results['Cutoff']=Cutoff
+        results['Index2']=Index2
+
+    saved_state.restore()
+
+    return tolist(results)
+
+
+def pointlike_upper_limit(roi, name, cl=.95, emin=None, emax=None, flux_units='erg', **kwargs):
+
+    # Just to be safe, make sure integral is over VERY large range
+    if 'integral_min' not in kwargs: kwargs['integral_min']=-20
+    if 'integral_max' not in kwargs: kwargs['integral_max']=-5
 
     if emin is None and emax is None:
         emin, emax = get_full_energy_range(roi)
@@ -161,8 +192,7 @@ def pointlike_upper_limit(roi, name, cl, emin=None, emax=None, flux_units='erg',
     return tolist(ul)
 
 
-def pointlike_powerlaw_upper_limit(roi, name, powerlaw_index=2, cl=0.95, emin=None, emax=None, 
-                                   flux_units='erg', **kwargs):
+def pointlike_powerlaw_upper_limit(roi, name, powerlaw_index=2, emin=None, emax=None, **kwargs):
     print 'Calculating pointlike upper limit'
 
     saved_state = PointlikeState(roi)
@@ -175,15 +205,38 @@ def pointlike_powerlaw_upper_limit(roi, name, powerlaw_index=2, cl=0.95, emin=No
         the best value. """
     roi.modify(which=name, model=PowerLaw(index=powerlaw_index), keep_old_flux=True)
 
-    ul = pointlike_upper_limit(roi, name, cl, emin, emax, flux_units, **kwargs)
+    ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
     ul['powerlaw_index']=powerlaw_index
 
     saved_state.restore()
 
     return tolist(ul)
 
+def pointlike_cutoff_upper_limit(roi, name, Index, Cutoff, b, emin=None, emax=None, **kwargs):
+    print 'Calculating pointlike upper limit'
+
+    saved_state = PointlikeState(roi)
+
+    model = PLSuperExpCutoff(Index=Index, Cutoff=Cutoff, b=b)
+    roi.modify(which=name, model=model, keep_old_flux=True)
+
+    ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
+
+    if ul is not None:
+        ul['Index']=Index
+        ul['Cutoff']=Cutoff
+        ul['b']=b
+
+    saved_state.restore()
+
+    return tolist(ul)
+
+
 def powerlaw_upper_limit(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_powerlaw_upper_limit, pointlike_powerlaw_upper_limit, *args, **kwargs)
+
+def cutoff_upper_limit(*args, **kwargs):
+    return gtlike_or_pointlike(gtlike_cutoff_upper_limit, pointlike_cutoff_upper_limit, *args, **kwargs)
 
 def upper_limit(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_upper_limit, pointlike_upper_limit, *args, **kwargs)
