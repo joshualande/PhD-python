@@ -174,8 +174,8 @@ def gtlike_test_cutoff(like, name, spectrum0=None, spectrum1=None, flux_units='e
             s=source.spectrum()
             return spectrum_to_dict(s, errors=True)
 
+        old_flux = get_flux()
         if spectrum0 is None:
-            old_flux = get_flux()
             like.setSpectrum(name,'PowerLaw')
             fix('Scale', np.sqrt(emin*emax))
             set('Prefactor',1e-11,1e-11, 1e-5, 1e5)
@@ -234,6 +234,8 @@ def gtlike_test_cutoff(like, name, spectrum0=None, spectrum1=None, flux_units='e
         d['flux_1']=fluxdict(like,name,emin,emax,flux_units)
 
         d['TS_cutoff']=2*(ll_1-ll_0)
+
+        print 'For cutoff test, TS_cutoff = ', d['TS_cutoff']
     except Exception, ex:
         print 'ERROR gtlike test cutoff: ', ex
         traceback.print_exc(file=sys.stdout)
