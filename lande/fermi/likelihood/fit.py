@@ -23,7 +23,7 @@ def paranoid_gtlike_fit(like, covar=True, niter=1):
     if niter > 1:
         print 'Fitting %s times' % niter
         for i in range(niter):
-            print "Fitting for the %s'th time" % i
+            print "Fitting iteration %s" % i
             paranoid_gtlike_fit(like, covar, niter=1)
         return
 
