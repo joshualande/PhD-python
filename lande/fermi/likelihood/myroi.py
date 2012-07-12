@@ -24,6 +24,7 @@ from uw.like.roi_monte_carlo import *
 from uw.like.roi_localize import *
 from uw.like.roi_catalogs import *
 from uw.like.roi_plotting import *
+from uw.like.mapplots import *
 from uw.like.pointspec import *
 from uw.like.pointspec_helpers import *
 from uw.utilities.convolution import *
