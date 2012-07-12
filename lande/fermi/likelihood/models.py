@@ -70,7 +70,6 @@ def build_gtlike_model(model):
 
 
     for p,g in zip(model.param_names,model.gtlike['param_names']):
-
         param=gtlike_model.getParam(g)
 
         scale=model.get_scale_gtlike(p)
@@ -78,9 +77,12 @@ def build_gtlike_model(model):
 
         lower,upper=model.get_limits_gtlike(p)
         lower,upper=lower/scale,upper/scale
-        param.setBounds(lower,upper)
+        if upper < lower: 
+            lower, upper = upper, lower
 
+        # NB, most robust to set scale, then value, then bounds
         param.setTrueValue(model.getp_gtlike(p))
+        param.setBounds(lower,upper)
 
         param.setFree(model.get_free(p))
 
