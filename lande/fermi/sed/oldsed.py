@@ -1,4 +1,4 @@
-""" Old SED code.
+""" Old SED code. Do not use
 
     Author: Joshua Lande <joshualande@gmail.com>
 """
