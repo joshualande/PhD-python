@@ -9,7 +9,7 @@ from mpl_toolkits.axes_grid1.axes_grid import ImageGrid
 
 from uw.utilities import keyword_options
  
-from uw.like.roi_plotting import ROITSMapPlotter, ROISmoothedSources, ROISmoothedSource, ROISignificance
+from uw.like.mapplots import ROITSMapPlotter, ROISmoothedSources, ROISmoothedSource, ROISignificance
 from uw.like.roi_state import PointlikeState
 
 class ROIBandPlotter(object):
