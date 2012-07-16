@@ -13,7 +13,7 @@ from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
 from uw.like.Models import CompositeModel
 
-from SED import SED
+from SED import SED as BaseGtlikeSED
 
 from lande.pysed import units
 from lande.utilities.tools import tolist
@@ -71,7 +71,7 @@ def pointlike_spectrum_to_dict(model, errors=False):
 
         return tolist(d)
 
-gtlike_spectrum_to_dict = SED.spectrum_to_dict
+gtlike_spectrum_to_dict = BaseGtlikeSED.spectrum_to_dict
 
 
 def gtlike_name_to_dict(like, name, *args, **kwargs):
