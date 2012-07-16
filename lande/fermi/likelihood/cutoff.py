@@ -11,7 +11,7 @@ from lande.utilities.tools import tolist
 from SED import SED
 
 from lande.pysed import units
-from lande.fermi.sed.supersed import SuperSED
+from lande.fermi.spectra.sed import SED
 
 from . superstate import SuperState
 
@@ -32,21 +32,21 @@ def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=No
 
         Input:
             cutoff_dict: created by gtlike_test_cutoff
-            sed_dict: created by SuperSED.todict(). Can also be a yaml
-              file created by SuperSED.save().
+            sed_dict: created by GtlikeSED.todict(). Can also be a yaml
+              file created by GtlikeSED.save().
 
             model_0_kwargs: kwargs for model_0's plot 
             model_1_kwargs: kwargs for model_0's plot 
-            sed_kwargs: kwargs to pass into SuperSED
+            sed_kwargs: kwargs to pass into SED
               E.G. flux_units, flux_units, figsize, ...
     """
-    sed=SuperSED(sed_results,**sed_kwargs)
+    sed=SED(sed_results,**sed_kwargs)
 
     axes=sed.plot(plot_spectral_fit=False, **plot_kwargs)
     axes.autoscale(enable=False)
 
-    model_0 = SuperSED.dict_to_spectrum(cutoff_results['model_0'])
-    model_1 = SuperSED.dict_to_spectrum(cutoff_results['model_1'])
+    model_0 = SED.dict_to_spectrum(cutoff_results['model_0'])
+    model_1 = SED.dict_to_spectrum(cutoff_results['model_1'])
     sed.plot_spectrum(model_0, axes=axes, **model_0_kwargs)
     sed.plot_spectrum(model_1, axes=axes, **model_1_kwargs)
 
