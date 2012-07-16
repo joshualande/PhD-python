@@ -10,6 +10,8 @@ import pylab as P
 import numpy as np
 
 import pyLikelihood
+
+# overload SED namespace for our base object
 from SED import SED as BaseGtlikeSED
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 
@@ -20,15 +22,22 @@ from lande.utilities.tools import tolist
 from uw.utilities import keyword_options
 
 
-class SED(results, energy_units, flux_units)
+class SED(object):
+    """ Base object for plotting SEDs.
 
+        The input must be XXX
+        Additional input
+
+        Something about optional significant flag, what to do with asymetrical errors.
+
+    """
     defaults= (
         ('energy_units', 'MeV', 'default units to plot energy flux (y axis) in.'),
         ('flux_units',  'erg', 'default units to plot energy (x axis) in'),
     )
 
     @keyword_options.decorate(defaults)
-    def __init__(self, like, *args, **kwargs):
+    def __init__(self, results, *args, **kwargs):
         keyword_options.process(self, kwargs)
 
         self.energy_units_str = self.energy_units
@@ -44,96 +53,62 @@ class SED(results, energy_units, flux_units)
     def dict_to_spectrum(d):
         """ Load back as a pyLikelihood spectrum object
             a spectrum that has been saved by the spectrum_to_string
-            object. This undoes the conversion of PyLikeSED.spectrum_to_dict """
+            object. This undoes the conversion of BaseGtlikeSED.spectrum_to_dict """
         spectrum=_funcFactory.create(d['name'])
         for k,v in d.items(): 
             if k != 'name' and k[-4:] != '_err': spectrum.getParam(k).setTrueValue(v)
         return spectrum
 
 
-    def fromdict(self,d):
+    def fromdict(self,results):
         """ Update the internal values in this object
             from a dictionary of SED points. """
 
-        if isinstance(d, str): d = yaml.load(open(expandvars(d)))
+        if isinstance(results, str): results = yaml.load(open(expandvars(results)))
 
-        e = lambda x: units.tosympy(x, units.fromstring(d['Energy']['Units']))
-        dnde = lambda x: units.tosympy(x, units.fromstring(d['dNdE']['Units']))
-        flux = lambda x: units.tosympy(x, units.fromstring(d['Ph_Flux']['Units']))
-        eflux = lambda x: units.tosympy(x, units.fromstring(d['En_Flux']['Units']))
+        edict = results['Energy']
+        fdict = results['dNdE']
 
-        if d.has_key('Name'): self.name = d['Name']
+        e = lambda x: units.tosympy(x, units.fromstring(edict['Units']))
+        dnde = lambda x: units.tosympy(x, units.fromstring(fdict['Units']))
 
-        self.lower_energy = e(d['Energy']['Lower'])
-        self.upper_energy = e(d['Energy']['Upper'])
-        self.energy = e(d['Energy']['Value'])
+        if results.has_key('Name'): self.name = results['Name']
 
-        self.dnde = dnde(d['dNdE']['Value'])
-        self.dnde_err = dnde(d['dNdE']['Average_Error'])
-        self.dnde_lower_err = dnde(d['dNdE']['Lower_Error'])
-        self.dnde_upper_err = dnde(d['dNdE']['Upper_Error'])
-        self.dnde_ul = dnde(d['dNdE']['Upper_Limit'])
+        self.energy = e(edict['Value'])
 
-        if d.has_key('Ph_flux'):
-            self.flux = flux(d['Ph_Flux']['Value'])
-            self.flux_err = flux(d['Ph_Flux']['Average_Error'])
-            self.flux_ul = flux(d['Ph_Flux']['Upper_Limit'])
+        if 'Lower' in edict and 'Upper' in edict:
+            self.lower_energy = e(edict['Lower'])
+            self.upper_energy = e(edict['Upper'])
+            self.has_assymetric_errors = True
+        else:
+            self.has_assymetric_errors = False
 
-        if d.has_key('En_flux'):
-            self.eflux = eflux(d['En_Flux']['Value'])
-            self.eflux_err = eflux(d['En_Flux']['Average_Error'])
-            self.eflux_ul = eflux(d['En_Flux']['Upper_Limit'])
+        self.dnde = dnde(fdict['Value'])
+        self.dnde_err = dnde(fdict['Average_Error'])
 
-        if d.has_key('Test_Statistic'):
-            self.ts = np.asarray(d['Test_Statistic'])
-        self.significant = np.asarray(d['Significant'])
+        if 'Lower_Error' in fdict and 'Upper_Error' in fdict:
+            # assymetric errors
+            self.dnde_lower_err = dnde(fdict['Lower_Error'])
+            self.dnde_upper_err = dnde(fdict['Upper_Error'])
+            self.has_energy_errors = True
+        else:
+            self.has_energy_errors = False
 
-        if d.has_key('Spectrum'):
-            self.spectrum = SED.dict_to_spectrum(d['Spectrum'])
+        # get limits, otherwise assume all significant
+        if 'Upper_Limit' in fdict and 'Significant' in results:
+            self.dnde_ul = dnde(fdict['Upper_Limit'])
+            self.significant = np.asarray(results['Significant'])
 
-        self.crashed = False
+            self.has_upper_limits=True
+        else:
+            self.has_upper_limits=False
 
-    def __str__(self):
-        results = self.todict()
-        return yaml.dump(results)
+        if 'spectrum' in results:
+            self.spectrum = results['spectrum']
+            self.has_spectrum=True
+        else:
+            self.has_spectrum=False
 
-    def todict(self):
-        """ Return a dictionary of the SED points with the desired units. """
-
-        if self.crashed: return dict()
-
-        c_energy=lambda x: units.tonumpy(x,self.energy_units).tolist()
-        c_dnde=lambda x: units.tonumpy(x,units.ph/units.cm**2/units.s/self.flux_units).tolist()
-        c_flux=lambda x: units.tonumpy(x,units.ph/units.cm**2/units.s).tolist()
-        c_eflux=lambda x: units.tonumpy(x,self.flux_units/units.cm**2/units.s).tolist()
-
-        return dict(
-            Name=self.name,
-            Energy=dict(
-                Value=c_energy(self.energy),
-                Lower=c_energy(self.lower_energy),
-                Upper=c_energy(self.upper_energy),
-                Units='%s' % self.energy_units_str),
-            dNdE=dict(
-                Value=c_dnde(self.dnde),
-                Average_Error=c_dnde(self.dnde_err),
-                Lower_Error=c_dnde(self.dnde_lower_err),
-                Upper_Error=c_dnde(self.dnde_upper_err),
-                Upper_Limit=c_dnde(self.dnde_ul),
-                Units='ph/cm^2/s/%s' % self.flux_units_str),
-            Ph_Flux=dict(
-                Value=c_flux(self.flux),
-                Average_Error=c_flux(self.flux_err),
-                Upper_Limit=c_flux(self.flux_ul),
-                Units='ph/cm^2/s'),
-            En_Flux=dict(
-                Value=c_eflux(self.eflux),
-                Average_Error=c_eflux(self.eflux_err),
-                Upper_Limit=c_eflux(self.eflux_ul),
-                Units='%s/cm^2/s' % self.flux_units_str),
-            Test_Statistic=self.ts.tolist(),
-            Significant=self.significant.tolist(),
-            Spectrum=SED.spectrum_to_dict(self.spectrum))
 
     @staticmethod
     def get_dnde(spectrum,energies):
@@ -183,44 +158,45 @@ class SED(results, energy_units, flux_units)
         if axes is None:
             fig = P.figure(fignum,figsize)
             axes = fig.add_axes((0.22,0.15,0.75,0.8))
-            self.set_xlim(axes,
-                          float(self.lower_energy[0]/self.energy_units),
-                          float(self.upper_energy[-1]/self.energy_units))
+            
+            if self.has_assymetric_errors:
+                lower = float(self.lower_energy[0]/self.energy_units)
+                upper = float(self.upper_energy[-1]/self.energy_units)
+                axes.set_xlim(lower,upper)
+
         self.axes = axes
 
-        if not self.crashed:
+        ce = lambda x: units.tonumpy(x, self.energy_units)
+        cf = lambda y: units.tonumpy(
+            y.multiply_elementwise(self.energy).multiply_elementwise(self.energy),
+            self.flux_units/units.cm**2/units.s)
 
-            ce = lambda x: units.tonumpy(x, self.energy_units)
-            cf = lambda y: units.tonumpy(
-                y.multiply_elementwise(self.energy).multiply_elementwise(self.energy),
-                self.flux_units/units.cm**2/units.s)
+        if plot_spectral_fit and self.has_spectrum:
+            # kind of ugly, but spectrum is ph/cm^2/s/MeV
+            # and it gets mutlplied by energy_units**2,
+            # so we need to multiple overall spectrum by
+            # flux_units*MeV/energy_units**2
+            self.plot_spectrum(self.spectrum, axes=axes, **spectral_kwargs)
 
-            if plot_spectral_fit and hasattr(self,'spectrum'):
-                # kind of ugly, but spectrum is ph/cm^2/s/MeV
-                # and it gets mutlplied by energy_units**2,
-                # so we need to multiple overall spectrum by
-                # flux_units*MeV/energy_units**2
-                self.plot_spectrum(self.spectrum, axes=axes, **spectral_kwargs)
-
-            PyLikeSED._plot_points(
-                x=ce(self.energy), 
-                xlo=ce(self.lower_energy), 
-                xhi=ce(self.upper_energy), 
-                y=cf(self.dnde),
-                y_lower_err=cf(self.dnde_lower_err),
-                y_upper_err=cf(self.dnde_upper_err),
-                y_ul=cf(self.dnde_ul),
-                significant=self.significant,
-                energy_units=self.energy_units_str,
-                flux_units=self.flux_units_str,
-                axes=axes, **data_kwargs)
+        BaseGtlikeSED._plot_points(
+            x=ce(self.energy),
+            xlo=ce(self.lower_energy) if self.has_energy_errors else None,
+            xhi=ce(self.upper_energy) if self.has_energy_errors else None,
+            y=cf(self.dnde),
+            y_lower_err=cf(self.dnde_lower_err) if self.has_assymetric_errors else cf(self.dnde_err),
+            y_upper_err=cf(self.dnde_upper_err) if self.has_assymetric_errors else cf(self.dnde_err),
+            y_ul=cf(self.dnde_ul) if self.has_upper_limits else None,
+            significant=self.significant if self.has_upper_limits else np.ones(len(self.energy),dtype=bool),
+            energy_units=self.energy_units_str,
+            flux_units=self.flux_units_str,
+            axes=axes, **data_kwargs)
 
         if filename is not None: P.savefig(filename)
         return axes
 
 
 
-class GtlikeSED(BaseSED,GtlikeSED):
+class GtlikeSED(SED,BaseGtlikeSED):
     """ object to make SEDs using pyLikelihood. 
     
         Currently, this object only allows the SED
@@ -237,7 +213,7 @@ class GtlikeSED(BaseSED,GtlikeSED):
         self.energy_units     = units.fromstring(self.energy_units_str)
         self.flux_units       = units.fromstring(self.flux_units_str)
 
-        super(Gtlike,self).__init__(like, *args, **kwargs)
+        BaseGtlikeSED.__init__(self, like, *args, **kwargs)
 
     def _calculate(self,*args,**kwargs):
         """ Convert all units into sympy arrays after the initial calculation. """
@@ -248,7 +224,7 @@ class GtlikeSED(BaseSED,GtlikeSED):
         self.eflux_ul=np.nan*self.eflux_ul
 
         try:
-            super(Gtlike,self)._calculate(*args,**kwargs)
+            super(GtlikeSED,self)._calculate(*args,**kwargs)
             self.crashed = False
         except Exception, ex:
             print 'ERROR computing SED:', ex
@@ -269,3 +245,46 @@ class GtlikeSED(BaseSED,GtlikeSED):
 
             for v in values:
                 self.__dict__[v] = units.tosympy(self.__dict__[v], u)
+
+    def __str__(self):
+        results = self.todict()
+        return yaml.dump(results)
+
+    def todict(self):
+        """ Return a dictionary of the SED points with the desired units. """
+
+        if self.crashed: return dict()
+
+        c_energy=lambda x: units.tonumpy(x,self.energy_units).tolist()
+        c_dnde=lambda x: units.tonumpy(x,units.ph/units.cm**2/units.s/self.flux_units).tolist()
+        c_flux=lambda x: units.tonumpy(x,units.ph/units.cm**2/units.s).tolist()
+        c_eflux=lambda x: units.tonumpy(x,self.flux_units/units.cm**2/units.s).tolist()
+
+        return dict(
+            Name=self.name,
+            Energy=dict(
+                Value=c_energy(self.energy),
+                Lower=c_energy(self.lower_energy),
+                Upper=c_energy(self.upper_energy),
+                Units='%s' % self.energy_units_str),
+            dNdE=dict(
+                Value=c_dnde(self.dnde),
+                Average_Error=c_dnde(self.dnde_err),
+                Lower_Error=c_dnde(self.dnde_lower_err),
+                Upper_Error=c_dnde(self.dnde_upper_err),
+                Upper_Limit=c_dnde(self.dnde_ul),
+                Units='ph/cm^2/s/%s' % self.flux_units_str),
+            Ph_Flux=dict(
+                Value=c_flux(self.flux),
+                Average_Error=c_flux(self.flux_err),
+                Upper_Limit=c_flux(self.flux_ul),
+                Units='ph/cm^2/s'),
+            En_Flux=dict(
+                Value=c_eflux(self.eflux),
+                Average_Error=c_eflux(self.eflux_err),
+                Upper_Limit=c_eflux(self.eflux_ul),
+                Units='%s/cm^2/s' % self.flux_units_str),
+            Test_Statistic=self.ts.tolist(),
+            Significant=self.significant.tolist(),
+            Spectrum=BaseGtlikeSED.spectrum_to_dict(self.spectrum))
+
