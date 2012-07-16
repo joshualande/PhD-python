@@ -12,8 +12,8 @@ from uw.utilities import keyword_options
 from lande.fermi.likelihood.fit import fit_prefactor 
 from lande.fermi.likelihood.save import get_full_energy_range, spectrum_to_dict
 
-from lande.fermi.sed.pointlike import pointlike_sed_to_dict
-from lande.fermi.sed.supersed import SuperSED
+from lande.fermi.spectra.pointlike import pointlike_sed_to_dict
+from lande.fermi.spectra.sed import SED
 
 from lande.utilities.tools import tolist
 
@@ -106,7 +106,7 @@ class ComprehensiveTest(object):
         ))
 
     def plot(self, filename):
-        sed = SuperSED(self.sed_points)
+        sed = SED(self.sed_points)
         # Plot SED points
         axes=sed.plot()
         # Plot model0, model1
