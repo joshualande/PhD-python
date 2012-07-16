@@ -113,7 +113,7 @@ class SED(object):
     @staticmethod
     def get_dnde(spectrum,energies):
         if isinstance(spectrum,pyLikelihood.Function):
-            return SED.get_dnde(spectrum,energies)
+            return BaseGtlikeSED.get_dnde(spectrum,energies)
         elif isinstance(spectrum,Model):
             return spectrum(energies)
         else:
@@ -226,6 +226,12 @@ class GtlikeSED(SED,BaseGtlikeSED):
         try:
             super(GtlikeSED,self)._calculate(*args,**kwargs)
             self.crashed = False
+
+            self.has_assymetric_errors=True
+            self.has_energy_errors=True
+            self.has_spectrum=True
+            self.has_upper_limits=True
+
         except Exception, ex:
             print 'ERROR computing SED:', ex
             for v in ['dnde', 'dnde_err', 'dnde_lower_err', 'dnde_upper_err', 'dnde_ul',
