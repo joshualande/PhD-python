@@ -242,6 +242,11 @@ class GtlikeSED(SED,BaseGtlikeSED):
             self.crashed = True
             self.significant = np.zeros_like(self.energy).astype(bool)
 
+            self.has_assymetric_errors=False
+            self.has_energy_errors=False
+            self.has_spectrum=False
+            self.has_upper_limits=False
+
 
         for values, u in [
             [['lower_energy', 'upper_energy', 'energy'], units.MeV],
