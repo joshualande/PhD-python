@@ -20,6 +20,7 @@ from lande.fermi.likelihood.diffuse import get_sreekumar
 class FastROI(object):
     """ Usage:
 
+            from lande.fermi.testing.fastroi import FastROI
             fast = FastROI()
 
             # pointlike
@@ -92,7 +93,7 @@ class FastROI(object):
         point_sources, diffuse_sources = [], []
 
         model = PowerLaw()
-        model.set_flux(self.flux, self.emin, self.emax)
+        model.set_flux(self.flux, emin=self.emin, emax=self.emax)
         ps = PointSource(
             name = 'source',
             model = model,
