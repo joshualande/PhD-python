@@ -263,3 +263,25 @@ def save_template_from_header(spatial_model, header, filename, factor=1, **kwarg
     hdulist = pyfits.HDUList([hdu])
     hdulist.writeto(filename, **kwargs)
 
+
+def fit_extension_fast(roi, which, *args, **kwargs):
+    """ Perform an extension fit with all other
+        localizable sources in the ROI frozen. 
+        
+        This implementation will nevertheless
+        fit the diffuse background and the source
+        of interest during the extension fit 
+        so should be a bit faster without too much
+        loss of accuracy. """
+    name = roi.get_source(which).name
+
+    frozen_sources = dict()
+    for other_source in roi.get_sources():
+        if np.any(other_source.model.free) and other_source.name != name:
+            frozen_sources[other_source.name]=other_source.model.free.copy()
+            roi.modify(which=other_source,free=False)
+
+    roi.fit_extension(which=which, *args, **kwargs)
+    for other_name,other_free in frozen_sources.items():
+        roi.modify(which=other_name,free=other_free)
+
