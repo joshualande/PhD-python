@@ -78,8 +78,8 @@ class ComprehensiveTest(object):
 
         emin,emax=get_full_energy_range(roi)
 
-        flux=self.model0.i_flux(emin,emax)
-        self.model1.set_flux(flux,emin,emax)
+        flux=self.model0.i_flux(emin=emin,emax=emax)
+        self.model1.set_flux(flux,emin=emin,emax=emax)
         self.comprehensive_model = ComprehensiveModel(self.model0.copy(), self.model1.copy())
         self.comprehensive_model.theta=0.5
 
