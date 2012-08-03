@@ -4,13 +4,16 @@ import sys
 from uw.utilities import keyword_options
 import numpy as np
 
-from uw.like.roi_plotting import ROISlice
+from skymaps import SkyDir
 from skymaps import SkyImage
 
 from uw.like.roi_state import PointlikeState
+from uw.like.roi_localize import DualLocalizer
+from uw.utilities import rotations
 
 from . fit import fit_prefactor
 from . tools import galstr
+from . save import logLikelihood
 
 
 def paranoid_localize(roi, *args, **kwargs):
@@ -77,7 +80,7 @@ class GridLocalize(object):
                 traceback.print_exc(file=sys.stdout)
 
         fit()
-        ll = -roi.logLikelihood(roi.parameters())
+        ll = logLikelihood(roi)
 
         best_model = roi.get_model(which).copy()
 
@@ -91,7 +94,7 @@ class GridLocalize(object):
 
         roi.modify(which=which, model=new_model)
         fit()
-        ll_alt = -roi.logLikelihood(roi.parameters())
+        ll_alt = logLikelihood(roi)
 
         if ll_alt > ll:
             ll = ll_alt
@@ -108,7 +111,7 @@ class GridLocalize(object):
         roi = self.roi
         self.state = PointlikeState(roi)
 
-        self.ll_0 = -roi.logLikelihood(roi.parameters())
+        self.ll_0 = logLikelihood(roi)
 
         self.old_quiet = roi.quiet
         roi.quiet = True
@@ -147,136 +150,82 @@ class GridLocalize(object):
         return self.all_models[int(np.argmax(self.all_ll))]
         
 
-class MultiLocalizer():
-    """ Object that can simultanously fit the poistion + extension
-        of an arbitrary number of point and extended sources. """
+class MinuitLocalizer(object):
+    """ Fit two point sources at the same time. Fit the center of position
+        and relative difference since they are more robust parameters.
+
+        This method is only suitable for sources relativly nearby (~<1 degree).
+
+        Note, bandfits is not allowed for fitting because the bandfits
+        algorithm does not really work when fitting two really nearby
+        sources. """
 
     defaults = (
-            ('tolerance',        0.01, "Fit tolerance to use when fitting"),
-            ('verbose',          True, "Print more stuff during fit.")
+        ('fit_kwargs', dict(), 'kwargs into fit function'),
+        ('tolerance',    0.01, "Fit tolerance to use when fitting"),
+        ('verbose',      True, "Print more stuff during fit.")
     )
 
+
     @keyword_options.decorate(defaults)
-    def __init__(self, roi, *sources, **kwargs):
+    def __init__(self, roi, which, **kwargs):
         keyword_options.process(self, kwargs)
 
-        print "Warning: this code doesn't really work"
-
-        self.roi=roi
-
-        if len(sources)<2:
-            raise Exception("Must be passed in more than one source to localize.")
-
-        for source in sources:
-            try:
-                roi.get_source(source)
-            except:
-                raise Exception("Unrecognized source %s" % source)
-
-        self.sources = [roi.get_source(source) for source in sources]
-
-    def update_roi(self,p):
-        """ Takes in a list of paramters and updates all
-            of the sources in the ROI. """
-        for source in self.sources:
-            antirotated=DualLocalizer.anti_rotate_equator(SkyDir(p[0],p[1]),self.middle)
-
-            print source.name
-            if isinstance(source,PointSource):
-                p=p[2:]
-                self.roi.modify(which=source,skydir=antirotated)
-            else:
-                spatial_model=self.roi.get_source(which=source).spatial_model
-                nparam=len(spatial_model.p)
-                spatial_model.set_parameters(p=p[2:nparam],center=antirotated,absolute=False)
-                p=p[nparam:]
-                self.roi.modify(which=source,spatial_model=spatial_model,preserve_center=False)
-        assert(len(p)==0)
-
-    @staticmethod
-    def get_rotated_paramters(sources,middle):
-        """ Returns a list of spatial paramters for all the sources (in the rotated
-            coordiante system). """
-        p=[]
-        for source in sources:
-            rotated=DualLocalizer.rotate_equator(source.skydir,middle)
-            if isinstance(source,ExtendedSource):
-                p += [rotated.ra(),rotated.dec()] + source.spatial_model.get_parameters(absolute=False)[2:].tolist()
-            else:
-                p += [rotated.ra(),rotated.dec()]
-        return p
+        self.roi = roi
+        self.which = which
+        self.source = roi.get_source(self.which)
 
     def fit(self,p):
-        print 'update roi'
+        roi=self.roi
 
-        self.update_roi(p)
+        x,y = p
+        s = SkyDir(x,y)
+        rot_back = rotations.anti_rotate_equator(s,self.start)
 
-        print 'fit'
+        self.init_state.restore(just_spectra=True)
+        roi.modify(which=self.which,skydir=rot_back)
 
-        ll=self.roi.fit(estimate_errors=False)
+        roi.fit(estimate_errors=False, **self.fit_kwargs)
+        ll=logLikelihood(roi)
 
-        if ll < self.ll_0:
-            prev= [source.model.get_parameters() for source in self.sources]
-            for source,p in zip(self.sources,self.init_spectral):
-                source.model.set_parameters(p)
-
-            ll_alt=self.roi.fit(estimate_errors=False)
-
-            if ll_alt > ll: 
-                ll=ll_alt
-            else: 
-                for source,p in zip(self.sources,prev):
-                    source.model.set_parameters(p)
-
-        if self.verbose: 
-            print_str=[]
-            for source in self.sources:
-                if isinstance(source,PointSource):
-                    print_str.append('%s: [%.3f,%.3f] f=%.1e' % \
-                            (source.name,source.skydir.l(),source.skydir.b(),
-                                DualLocalizer.print_flux(source,self.roi)))
-                else:
-                    print_str.append('%s: [%s] f=%.1e' % \
-                            (source.name,source.spatial_model.full_spatial_string(),
-                                DualLocalizer.print_flux(source,self.roi)))
-            print_str.append('logL=%.3f' % ll)
-            print_str.append('dlogL=%.3f' % (ll-self.ll_0))
-            print ', '.join(print_str)
+        if self.verbose: print 'd=%s f=%.1e, dist=%.3f logL=%.3f dlogL=%.3f' % \
+                (rot_back, DualLocalizer.print_flux(self.source,roi),
+                 np.degrees(rot_back.difference(self.start)),
+                 ll,ll-self.ll_0)
 
         return -ll # minimize negative log likelihood
 
-
     def localize(self):
+        roi=self.roi
+        source = self.source
 
-        # Fit in a rotated coordinate system which is somewhere between all of
-        # the sources being fit.
-        self.middle = DualLocalizer.approx_mid_point(*[source.skydir for source in self.sources])
+        if not roi.quiet: print 'Localizing source %s' % (self.source.name)
+
+        self.start = self.source.skydir
 
 
-        self.init_spectral = [source.model.get_parameters() for source in self.sources]
+        self.ll_0=logLikelihood(roi)
+        self.init_state = PointlikeState(roi)
 
-        p0 = MultiLocalizer.get_rotated_paramters(self.sources,self.middle)
+        old_quiet=roi.quiet
+        roi.quiet=True
 
-        old_quiet= self.roi.quiet
-        self.roi.quiet=True
-
-        steps=reduce(operator.add,
-                [[0.1,0.1] if isinstance(source,PointSource) 
-                    else source.spatial_model.get_steps().tolist()
-                    for source in self.sources])
-
-        self.ll_0=-1*self.roi.logLikelihood(self.roi.parameters())
-
-        m = Minuit(self.fit, p0,
+        from uw.utilities.minuit import Minuit
+        steps=[0.1,0.1] # expect to fit sources ~ 0.1 degrees away.
+        p0 = [0,0]
+        m = Minuit(self.fit,
+                   p0,
                    tolerance = self.tolerance,
                    maxcalls  = 500,
                    printMode = True, 
-                   steps     = steps
-                   )
+                   steps     = steps)
 
         best_spatial,fval = m.minimize(method="SIMPLEX")
 
-        self.roi.quiet = old_quiet
+        roi.quiet = old_quiet
 
         return
 
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
