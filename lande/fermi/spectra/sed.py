@@ -21,6 +21,9 @@ from lande.pysed import units
 from lande.utilities.tools import tolist
 from uw.utilities import keyword_options
 
+class SEDException(Exception): 
+    pass
+
 
 class SED(object):
     """ Base object for plotting SEDs.
@@ -117,7 +120,7 @@ class SED(object):
         elif isinstance(spectrum,Model):
             return spectrum(energies)
         else:
-            raise Exception("Unrecognized type %s for spectrum." % type(spectrum))
+            raise SEDException("Unrecognized type %s for spectrum." % type(spectrum))
 
     @staticmethod
     def _plot_spectrum(spectrum, axes, energy_units, flux_units, npts=100, **kwargs):
@@ -299,3 +302,8 @@ class GtlikeSED(SED,BaseGtlikeSED):
             Significant=self.significant.tolist(),
             Spectrum=BaseGtlikeSED.spectrum_to_dict(self.spectrum))
 
+    def plot(self, *args, **kwargs):
+        if self.crashed:
+            raise SEDException("Cannot plot SED because SED crashed.")
+
+        super(GtlikeSED,self).plot(*args, **kwargs)
