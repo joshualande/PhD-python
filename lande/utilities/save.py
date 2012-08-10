@@ -60,11 +60,11 @@ def savedict(filename, results):
         f=h5py.File(filename,'w')
         for k,v in results.items(): f[k] = v
         f.close()
-    elif extesion == '.fits':
+    elif extension == '.fits':
         if not isinstance(results, dict): raise Exception("Can only save dicts to fits format.")
         rec = fromarrays(results.values(), names=results.keys())
         makefits(rec, filename, clobber=True)
-    elif extesnion == '.xml':
+    elif extension == '.xml':
         from pyxml2obj import XMLout
         open(filename, 'w').write(XMLout(results))
     else:
