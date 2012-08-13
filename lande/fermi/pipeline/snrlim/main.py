@@ -1,7 +1,8 @@
 
 from lande.fermi.likelihood.save import savedict
 
-from snrhelp import pointlike_analysis, gtlike_analysis, pointlike_plots
+from . setup import build_roi
+from . help import pointlike_analysis, gtlike_analysis, pointlike_plots
 
 def run(name, snrdata):
 
