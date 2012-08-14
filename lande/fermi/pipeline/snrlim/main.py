@@ -1,17 +1,22 @@
 
-from lande.fermi.likelihood.save import savedict
+from lande.utilities.save import savedict
+from lande.fermi.likelihood.tools import force_gradient
 
 from . setup import build_roi
 from . help import pointlike_analysis, gtlike_analysis, pointlike_plots
 
-def run(name, snrdata):
+def run(name, snrdata, latdata):
 
-    roi = build_roi()
+    force_gradient(use_gradient=False)
+
+    roi = build_roi(name, snrdata, latdata)
 
     results = dict()
 
-    results['pointlike']=pointlike_analysis(roi,name)
+    kwargs = dict(plotdir='plotdir')
+
+    results['pointlike']=pointlike_analysis(roi,name, **kwargs)
     pointlike_plots(roi)
-    results['gtlike']=gtlike_analysis(roi,name)
+    results['gtlike']=gtlike_analysis(roi,name, **kwargs)
 
     savedict(results, 'results_%s.yaml' % name)

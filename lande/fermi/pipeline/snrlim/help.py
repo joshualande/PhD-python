@@ -1,5 +1,7 @@
 from lande.fermi.likelihood.save import sourcedict
-from lande.fermi.likelihood.printing import summary
+from lande.fermi.likelihood.printing import print_summary
+from lande.fermi.likelihood.fit import paranoid_gtlike_fit, fit_prefactor
+from lande.fermi.likelihood.limits import powerlaw_upper_limit
 
 def pointlike_counts(roi, name, plotdir,size):
 
@@ -25,12 +27,14 @@ def pointlike_analysis(roi, name, plotdir):
     print_summary = lambda: roi.print_summary(galactic=True, maxdist=10)
 
     print_summary()
-    roi.fit(use_gradient=False)
+    fit_prefactor(roi, name) 
+    roi.fit()
     print_summary()
 
     results  = sourcedict(roi, name)
 
-    results['powerlaw_upper_limit'] = powerlaw_upper_limit(roi, name, emin=emin, emax=emax, cl=.95)
+    results['powerlaw_upper_limit'] = powerlaw_upper_limit(roi, name, powerlaw_index=2.1, 
+                                                           emin=emin, emax=emax, cl=.95)
 
     roi.plot_sed(which=name, filename='%s/sed_pointlike_%s.png' % (plotdir,name), use_ergs=True)
 
@@ -40,7 +44,7 @@ def gtlike_analysis(roi, name, plotdir):
     gtlike = Gtlike(roi)
     like = gtlike
 
-    print_summary = lambda: print summary(like, maxdist=10)
+    print_summary = lambda: print_summary(like, maxdist=10)
 
     print_summary()
     paranoid_gtlike_fit(like)
@@ -48,7 +52,8 @@ def gtlike_analysis(roi, name, plotdir):
 
     results=sourcedict(like, name)
 
-    results['powerlaw_upper_limit'] = powerlaw_upper_limit(like, name, emin=emin, emax=emax, cl=.95, delta_log_like_limits=10)
+    results['powerlaw_upper_limit'] = powerlaw_upper_limit(like, name, powerlaw_index=2.1,
+                                                           emin=emin, emax=emax, cl=.95, delta_log_like_limits=10)
 
     sed = GtlikeSED(like, name, always_upper_limit=True)
     sed.plot('%s/sed_gtlike_%s.png' % (plotdir,name))
