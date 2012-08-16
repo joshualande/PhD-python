@@ -12,12 +12,33 @@ from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
 from uw.like.Models import CompositeModel
+import uw.like.Models
 
 from SED import SED as BaseGtlikeSED
 
 from lande.pysed import units
 from lande.utilities.tools import tolist
 from . tools import gtlike_or_pointlike
+
+
+def pointlike_dict_to_spectrum(d):
+    model = uw.like.Models.__dict__[d['name']]()
+    for k,v in d.items(): 
+        if k != 'name':
+            if k[-4:] == '_err': 
+                model.set_error(k[:-4],v)
+            else:
+                model[k]=v
+    return model
+    
+def gtlike_dict_to_spectrum(d):
+    """ Load back as a pyLikelihood spectrum object
+        a spectrum that has been saved by the spectrum_to_string
+        object. This undoes the conversion of spectrum_to_dict """
+    spectrum=_funcFactory.create(d['name'])
+    for k,v in d.items(): 
+        if k != 'name' and k[-4:] != '_err': spectrum.getParam(k).setTrueValue(v)
+    return spectrum
 
 
 def gtlike_get_full_energy_range(like): return like.energies[[0,-1]]
@@ -200,7 +221,10 @@ def gtlike_sourcedict(like, name, emin=None, emax=None, flux_units='erg', errors
         logLikelihood=logLikelihood(like),
     )
     if save_TS:
-        d['TS']=like.Ts(name,reoptimize=True, verbosity=4)
+        d['TS']=dict(
+            reoptimize=like.Ts(name,reoptimize=True, verbosity=4),
+            noreoptimize=like.Ts(name,reoptimize=False, verbosity=4)
+        )
 
     d['flux']=fluxdict(like,name,emin,emax,flux_units=flux_units, error=errors)
 
@@ -259,7 +283,7 @@ def pointlike_sourcedict(roi, name, emin=None, emax=None, flux_units='erg', erro
 
     old_quiet = roi.quiet; roi.quiet=True
     if save_TS:
-        d['TS'] = roi.TS(name,quick=False)
+        d['TS']=roi.TS(name,quick=False)
 
     roi.quiet = old_quiet
 
