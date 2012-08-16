@@ -8,7 +8,6 @@ from uw.like.Models import Model,PowerLaw,PLSuperExpCutoff
 from uw.like.roi_state import PointlikeState
 
 from lande.utilities.tools import tolist
-from SED import SED
 
 from lande.pysed import units
 from lande.fermi.spectra.sed import SED
@@ -69,8 +68,13 @@ def pointlike_test_cutoff(roi, which, model0=None, model1=None, flux_units='erg'
 
     old_flux = roi.get_model(which).i_flux(emin,emax)
 
-    if model0 is None:
-        model0=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax), set_default_limits=True)
+    if model0 is not None:
+        pass
+    elif isinstance(roi.get_model(which),PowerLaw):
+        model0 = roi.get_model(which)
+    else:
+        model0=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax))
+        model0.set_mapper('Index', PowerLaw.default_limits['Index'])
         model0.set_flux(old_flux,emin=emin,emax=emax)
 
     print "model0 is ",model0
@@ -100,8 +104,12 @@ def pointlike_test_cutoff(roi, which, model0=None, model1=None, flux_units='erg'
     d['model_0']=spectrum()
     d['flux_0']=fluxdict(roi,which,emin,emax,flux_units)
 
-    if model1 is None:
-        model1=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1, set_default_limits=True)
+    if model1 is not None:
+        pass
+    else:
+        model1=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1)
+        for p in ['Index', 'Cutoff', 'b']:
+            model1.set_mapper(p, PLSuperExpCutoff.default_limits[p])
         model1.set_free('b', False)
         model1.set_flux(old_flux,emin=emin,emax=emax)
 
