@@ -170,7 +170,8 @@ def pointlike_upper_limit(roi, name, cl=.95, emin=None, emax=None, flux_units='e
     if emin is None and emax is None:
         emin, emax = get_full_energy_range(roi)
 
-    params = roi.parameters().copy()
+    saved_state = PointlikeState(roi)
+
     try:
         flux_ul = roi.upper_limit(which=name, confidence=cl, emin=emin, emax=emax, **kwargs)
 
@@ -186,8 +187,7 @@ def pointlike_upper_limit(roi, name, cl=.95, emin=None, emax=None, flux_units='e
         traceback.print_exc(file=sys.stdout)
         ul = None
     finally:
-        roi.set_parameters(params)
-        roi.__update_state__()
+        saved_state.restore(just_spectra=True)
 
     return tolist(ul)
 
@@ -206,9 +206,11 @@ def pointlike_powerlaw_upper_limit(roi, name, powerlaw_index=2, emin=None, emax=
     roi.modify(which=name, model=PowerLaw(index=powerlaw_index), keep_old_flux=True)
 
     ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
-    ul['powerlaw_index']=powerlaw_index
 
-    saved_state.restore()
+    if ul is not None:
+        ul['powerlaw_index']=powerlaw_index
+
+    saved_state.restore(just_spectra=True)
 
     return tolist(ul)
 
@@ -227,7 +229,7 @@ def pointlike_cutoff_upper_limit(roi, name, Index, Cutoff, b, emin=None, emax=No
         ul['Cutoff']=Cutoff
         ul['b']=b
 
-    saved_state.restore()
+    saved_state.restore(just_spectra=True)
 
     return tolist(ul)
 

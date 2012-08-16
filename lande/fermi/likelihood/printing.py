@@ -96,3 +96,6 @@ def gtlike_summary(like, sdir=None, galactic=True, maxdist=5, sep='-'*90, indent
         sep,])
 
 summary=gtlike_summary
+
+def print_summary(*args, **kwargs):
+    print summary(*args, **kwargs)
