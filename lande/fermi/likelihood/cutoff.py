@@ -59,7 +59,7 @@ def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=No
     if filename is not None: P.savefig(filename)
     return axes
 
-def pointlike_test_cutoff(roi, which, model0=None, model1=None, flux_units='erg'):
+def pointlike_test_cutoff(roi, which, model1=None, flux_units='erg'):
     print 'Testing cutoff in pointlike'
     emin,emax=get_full_energy_range(roi)
     d = {}
@@ -68,18 +68,15 @@ def pointlike_test_cutoff(roi, which, model0=None, model1=None, flux_units='erg'
 
     old_flux = roi.get_model(which).i_flux(emin,emax)
 
-    if model0 is not None:
-        pass
-    elif isinstance(roi.get_model(which),PowerLaw):
-        model0 = roi.get_model(which)
-    else:
+    if not isinstance(roi.get_model(which),PowerLaw):
+
         model0=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax))
         model0.set_mapper('Index', PowerLaw.default_limits['Index'])
         model0.set_flux(old_flux,emin=emin,emax=emax)
 
-    print "model0 is ",model0
+        print "model0 is ",model0
 
-    roi.modify(which=which, model=model0, keep_old_flux=False)
+        roi.modify(which=which, model=model0, keep_old_flux=False)
 
     fit = lambda: roi.fit(estimate_errors=False)
     ll = lambda: -1*roi.logLikelihood(roi.parameters())
@@ -136,7 +133,7 @@ def pointlike_test_cutoff(roi, which, model0=None, model1=None, flux_units='erg'
 
     return tolist(d)
 
-def gtlike_test_cutoff(like, name, model0=None, model1=None, flux_units='erg'):
+def gtlike_test_cutoff(like, name, model1=None, flux_units='erg'):
     """ model0 and model1 must be pointlike model objects. """
     print 'Testing cutoff in gtlike'
 
@@ -159,14 +156,17 @@ def gtlike_test_cutoff(like, name, model0=None, model1=None, flux_units='erg'):
             return spectrum_to_dict(s, errors=True)
 
         old_flux = get_flux()
-        if model0 is None:
+
+        if spectrum()['name'] == 'PowerLaw':
+            pass
+        else:
             model0=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax), set_default_limits=True)
             model0.set_flux(old_flux,emin=emin,emax=emax)
 
-        print 'model0 is',model0
+            print 'model0 is',model0
 
-        spectrum0=build_gtlike_model(model0)
-        like.setSpectrum(name,spectrum0)
+            spectrum0=build_gtlike_model(model0)
+            like.setSpectrum(name,spectrum0)
 
         print 'About to fit spectrum0'
         print summary(like)
@@ -200,12 +200,13 @@ def gtlike_test_cutoff(like, name, model0=None, model1=None, flux_units='erg'):
             # if fit is worse than PowerLaw fit, then
             # restart fit with parameters almost
             # equal to best fit powerlaw
-            cutoff_plaw=PLSuperExpCutoff(b=1, set_default_limits=True)
+            cutoff_plaw=PLSuperExpCutoff(b=1)
             cutoff_plaw.set_free('b', False)
             cutoff_plaw.setp_gtlike('norm', d['model_0']['Prefactor'])
             cutoff_plaw.setp_gtlike('index', d['model_0']['Index'])
             cutoff_plaw.setp_gtlike('e0', d['model_0']['Scale'])
             cutoff_plaw.setp_gtlike('cutoff', 1e6)
+            model.set_default_limits(oomp_limits=True)
 
             temp=build_gtlike_model(cutoff_plaw)
             like.setSpectrum(name,temp)
@@ -214,7 +215,6 @@ def gtlike_test_cutoff(like, name, model0=None, model1=None, flux_units='erg'):
             print summary(like)
 
             paranoid_gtlike_fit(like)
-
 
         print 'Done fitting spectrum1'
         print summary(like)
