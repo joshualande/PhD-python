@@ -9,7 +9,8 @@ from uw.pulsar.phase_range import PhaseRange
 
 from lande.utilities.tools import OrderedDefaultDict
 
-from lande.fermi.pipeline.pwncat2.table.helper import TableWriter, PWNFormatter
+from . writer import TableWriter
+from . format import PWNFormatter
 from lande.fermi.pipeline.pwncat2.interp.classify import BestHypothesis
 from lande.fermi.pipeline.pwncat2.interp.loader import ResultsLoader
 

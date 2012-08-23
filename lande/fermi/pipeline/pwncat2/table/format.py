@@ -1,6 +1,5 @@
 from lande.utilities.table import TableFormatter
 
-
 class PWNFormatter(TableFormatter):
     def pwn(self, pwn):
         pwn = pwn.replace('PSR','')
