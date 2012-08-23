@@ -16,12 +16,11 @@ from . save import savedict, loaddict
 class JobBuilder(object):
     """ Example usage:
 
-            # version 27 - more options
             params=dict(edisp=[True,False], simbg=[True,False], emin=[1e2,1e3], emax=1e5, flux=1e-5,
                         index=[2,2.66], cuts=[True,False], zenithcut=[100,180], savedata=True)
             params['time','phibins']=[['2fgl',0], ['my2fgl',0], ['my2fgl',9], ['2years',0], ['2years',9]]
             b = JobBuilder(
-                savedir='$w44simdata/v27',
+                savedir='$w44simdata/v2',
                 code='$w44simcode/simspec.py',
                 num=1,
                 params=params,
@@ -116,7 +115,6 @@ class JobBuilder(object):
                     if not exists(jobdir): makedirs(jobdir)
 
                     run = join(jobdir,'run.sh')
-
                     open(run,'w').write("%s %s %g %s %s" % (program, self.code, i, args, self.extra))
 
         submit_all = join(self.savedir,'submit_all.sh')

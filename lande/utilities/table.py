@@ -25,12 +25,11 @@ def fixed_width_table(table_dict, table_kwargs=dict(bookend=False, delimiter=Non
     t=t.split('\n')
     return '\n'.join(['%s%s' % (indent,i) for i in t])
 
-def get_confluence():
+def get_table_type():
     parser = ArgumentParser()
-    parser.add_argument("--confluence", action="store_true", default=False)
+    parser.add_argument("--confluence", default='latex', action="store_const", const='confluence')
     args=parse_strip_known_args(parser)
     return args.confluence
-
 
 def confluence_table(table_dict, units=None, **kwargs):
     """ Format a dictionary into a confluence table. 
@@ -107,7 +106,7 @@ def latex_table(table_dict, units=None, latexdict=None, **kwargs):
     return t.strip()
 
 class TableFormatter(object):
-    def __init__(self, confluence=False, precision=2):
+    def __init__(self, table_type, precision=2):
         """ Default is to format numbers for latex tables.
             confluence=True will format numbers of confluence tables. 
             
@@ -131,7 +130,9 @@ class TableFormatter(object):
                 >>> print latex_format.ul(-1, precision=1)
                 $<-1.0$
         """
-        self.confluence = confluence
+        assert table_type in ['confluence', 'latex']
+
+        self.table_type = table_type
         self.precision = precision
     @staticmethod
     def fix_negative(a):
@@ -140,29 +141,33 @@ class TableFormatter(object):
         if a is None: return "None"
         if precision is None: precision=self.precision
         ret = '%.*f' % (precision,a)
-        if self.confluence:
+        if self.table_type == 'confluence':
             ret = TableFormatter.fix_negative(ret)
-        return ret
+        elif self.table_type == 'latex':
+            return ret
     def error(self,a,b,precision=None):
         if precision is None: precision=self.precision
-        if self.confluence:
+        if self.table_type == 'confluence':
             f1=TableFormatter.fix_negative('%.*f' % (precision,a))
             f2=TableFormatter.fix_negative('%.*f' % (precision,b))
             return '%s +/- %s' % (f1,f2)
-        else:
+        elif self.table_type == 'latex':
             return '$%.*f \pm %.*f$' % (precision,a,precision,b)
     def ul(self,ul,precision=None):
         if precision is None: precision=self.precision
         ret=r'<%.*f' % (precision,ul)
-        if not self.confluence:
+        if self.table_type == 'latex':
             ret = '$%s$' % ret
-        if self.confluence:
+        elif self.table_type == 'confluence':
             ret=TableFormatter.fix_negative(ret)
         return ret
 
     @property
     def nodata(self):
-        return '' if self.confluence else r'\nodata'
+        if self.table_type == 'confluence':
+            return ''
+        elif self.table_type == 'latex':
+            return ''
     
 if __name__ == "__main__":
     import doctest
