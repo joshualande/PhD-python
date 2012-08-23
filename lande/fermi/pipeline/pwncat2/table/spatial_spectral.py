@@ -12,7 +12,7 @@ from lande.utilities.tools import OrderedDefaultDict
 from . writer import TableWriter
 from . format import PWNFormatter
 from lande.fermi.pipeline.pwncat2.interp.classify import BestHypothesis
-from lande.fermi.pipeline.pwncat2.interp.loader import ResultsLoader
+from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
 def spatial_spectral_table(pwndata, fitdir, savedir, filebase, table_type):
@@ -20,7 +20,7 @@ def spatial_spectral_table(pwndata, fitdir, savedir, filebase, table_type):
 
     format=PWNFormatter(table_type=table_type, precision=2)
 
-    resloader = ResultsLoader(
+    resloader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir)
 

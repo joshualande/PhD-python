@@ -1,10 +1,12 @@
 import yaml
 from os.path import expandvars, join, exists
 
-class ResultsLoader(object):
+from lande.utilities.tools import merge_dict
+
+class PWNResultsLoader(object):
     """ Class to load in results from analysis. """
 
-    def __init__(self, pwndata,fitdir):
+    def __init__(self, pwndata, fitdir):
         self.pwndata = expandvars(pwndata)
         self.fitdir = expandvars(fitdir)
 
@@ -22,7 +24,7 @@ class ResultsLoader(object):
             if not exists(i):
                 print '%s does not exist' % i
                 return None
-        g = [yaml.load(open(i)) for i in f]
+        g = [yaml.load(open(i)) for i in all_results]
         return merge_dict(*g)
 
     def get_sed(self,pwn,binning,hypothesis):
