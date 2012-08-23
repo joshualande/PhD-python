@@ -1,4 +1,5 @@
 from os.path import expandvars
+import os
 from textwrap import dedent
 import shutil
 from lande.utilities.table import latex_table,confluence_table
