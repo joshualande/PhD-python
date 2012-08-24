@@ -31,22 +31,60 @@ def get_table_type():
     args=parse_strip_known_args(parser)
     return args.confluence
 
+def t2t_table(table_dict, units=None, **kwargs):
+    """ Create a t2t format table. 
+
+        this is required by t2t for tables
+        see for example: http://txt2tags.org/markup.html
+
+        Example:
+            >>> d=OrderedDict()
+            >>> d['name']=['bright','dim']
+            >>> d['flux']=['large','small']
+            >>> print t2t_table(d)
+            ||  name |  flux |
+            | bright | large |
+            |    dim | small |
+
+            >>> print t2t_table(d, units=dict(flux='[ergs]'))
+            ||  name | flux [ergs] |
+            | bright |       large |
+            |    dim |       small |
+     """
+    if units is not None:
+        for k,v in units.items():
+            table_dict[k + ' %s' % v] = table_dict.pop(k)
+
+    outtable=StringIO()
+
+    asciitable.write(table_dict, outtable,
+                     Writer=asciitable.FixedWidth,
+                     names=table_dict.keys(),
+                     **kwargs
+                    )
+    t=outtable.getvalue()
+
+    t='||' + t[2:]
+    return t.strip()
+
+
 def confluence_table(table_dict, units=None, **kwargs):
     """ Format a dictionary into a confluence table. 
         Use the DefaultDict if you care about the order of the table.
     
-        >>> d=OrderedDict()
-        >>> d['name']=['bright','dim']
-        >>> d['flux']=['large','small']
-        >>> print confluence_table(d)
-        ||   name ||  flux ||
-        || bright  | large  |
-        ||    dim  | small  |
+        Example:
+            >>> d=OrderedDict()
+            >>> d['name']=['bright','dim']
+            >>> d['flux']=['large','small']
+            >>> print confluence_table(d)
+            ||   name ||  flux ||
+            || bright  | large  |
+            ||    dim  | small  |
 
-        >>> print confluence_table(d, units=dict(flux='[ergs]'))
-        ||   name || flux [ergs] ||
-        || bright  |       large  |
-        ||    dim  |       small  |
+            >>> print confluence_table(d, units=dict(flux='[ergs]'))
+            ||   name || flux [ergs] ||
+            || bright  |       large  |
+            ||    dim  |       small  |
 
 
     """
@@ -112,8 +150,8 @@ class TableFormatter(object):
             
             A few examples:
 
-                >>> conf_format=TableFormatter(confluence=True)
-                >>> latex_format=TableFormatter(confluence=False)
+                >>> conf_format=TableFormatter(table_type='confluence')
+                >>> latex_format=TableFormatter(table_type='latex')
 
                 >>> print conf_format.value(-1, precision=2)
                 \-1.00
@@ -142,7 +180,7 @@ class TableFormatter(object):
         if precision is None: precision=self.precision
         ret = '%.*f' % (precision,a)
         if self.table_type == 'confluence':
-            ret = TableFormatter.fix_negative(ret)
+            return TableFormatter.fix_negative(ret)
         elif self.table_type == 'latex':
             return ret
     def error(self,a,b,precision=None):

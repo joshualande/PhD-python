@@ -36,7 +36,7 @@ def loaddict(filename):
         raise Exception("Unrecognized extension %s" % extension)
 
 
-def savedict(filename, results):
+def savedict(filename, results, yaml_kwargs=dict()):
     """ Save a dictionary to a file. Choose file format based
         upon extension to filename. """
     is_results = lambda x: isinstance(x,dict) or isinstance(x,list)
@@ -53,7 +53,7 @@ def savedict(filename, results):
     extension = os.path.splitext(filename)[-1]
 
     if extension == '.yaml':
-        open(filename, 'w').write(yaml.dump(tolist(results)))
+        open(filename, 'w').write(yaml.dump(tolist(results), **yaml_kwargs))
     elif extension == '.hdf5':
         if not isinstance(results, dict): raise Exception("Can only save dicts to hdf5 format.")
         import h5py
