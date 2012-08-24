@@ -82,20 +82,25 @@ class SED(object):
         if 'Lower' in edict and 'Upper' in edict:
             self.lower_energy = e(edict['Lower'])
             self.upper_energy = e(edict['Upper'])
-            self.has_assymetric_errors = True
+            self.has_energy_errors = True
         else:
-            self.has_assymetric_errors = False
+            self.has_energy_errors = False
 
         self.dnde = dnde(fdict['Value'])
-        self.dnde_err = dnde(fdict['Average_Error'])
 
         if 'Lower_Error' in fdict and 'Upper_Error' in fdict:
             # assymetric errors
             self.dnde_lower_err = dnde(fdict['Lower_Error'])
             self.dnde_upper_err = dnde(fdict['Upper_Error'])
-            self.has_energy_errors = True
+            self.has_assymetric_errors = True
+
+            if 'Average_Error' in fdict:
+                self.dnde_err = dnde(fdict['Average_Error'])
+            else:
+                self.dnde_err = (self.dnde_lower_err + self.dnde_upper_err)/2
         else:
-            self.has_energy_errors = False
+            self.has_assymetric_errors = False
+            self.dnde_err = dnde(fdict['Average_Error'])
 
         # get limits, otherwise assume all significant
         if 'Upper_Limit' in fdict and 'Significant' in results:
@@ -162,7 +167,7 @@ class SED(object):
             fig = P.figure(fignum,figsize)
             axes = fig.add_axes((0.22,0.15,0.75,0.8))
             
-            if self.has_assymetric_errors:
+            if self.has_energy_errors:
                 lower = float(self.lower_energy[0]/self.energy_units)
                 upper = float(self.upper_energy[-1]/self.energy_units)
                 axes.set_xlim(lower,upper)
