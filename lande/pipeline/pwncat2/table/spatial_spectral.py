@@ -11,18 +11,20 @@ from lande.utilities.tools import OrderedDefaultDict
 
 from . writer import TableWriter
 from . format import PWNFormatter
-from lande.fermi.pipeline.pwncat2.interp.classify import BestHypothesis
-from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
+from lande.pipeline.pwncat2.interp.classify import PWNClassifier
+from lande.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
-def spatial_spectral_table(pwndata, fitdir, savedir, filebase, table_type):
+def spatial_spectral_table(pwndata, fitdir, savedir, pwn_classification, filebase, table_type):
     assert table_type in ['latex', 'confluence']
 
     format=PWNFormatter(table_type=table_type, precision=2)
 
-    resloader = PWNResultsLoader(
+    results_loader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir)
+
+    classifier = PWNClassifier(results_loader, pwn_classification)
 
     table = OrderedDefaultDict(list)
 
@@ -45,19 +47,17 @@ def spatial_spectral_table(pwndata, fitdir, savedir, filebase, table_type):
 
     data = yaml.load(open(expandvars('$pwncode/data/pwncat2_phase_lande.yaml')))
 
-    pwnlist = resloader.get_pwnlist()
+    pwnlist = results_loader.get_pwnlist()
 
     for pwn in pwnlist:
         print pwn
 
         phase=PhaseRange(data[pwn]['phase'])
 
+        r = classifier.get_results(pwn)
 
-        results = resloader.get_results(pwn)
-
-        if results is None:
+        if r is None:
             print 'Skipping %s' % pwn
-            # job crashed/not finished
             table[psr_name].append(format.pwn(pwn))
             table[phase_name].append(phase.pretty_format())
             table[ts_point_name].append('None')
@@ -67,25 +67,7 @@ def spatial_spectral_table(pwndata, fitdir, savedir, filebase, table_type):
             table[index_name].append('None')
             table[cutoff_name].append('None')
         else:
-
-            point_gtlike = results['point']['gtlike']
-            point_pointlike = results['point']['pointlike']
-
-            extended_pointlike = results['extended']['pointlike']
-            extended_gtlike = results['extended']['gtlike']
-            
-
-            b = BestHypothesis(results)
-            gtlike = b.gtlike
-            pointlike = b.pointlike
-            type = b.type
-            cutoff = b.cutoff
-
-            ts_point = b.ts_point
-            ts_ext = b.ts_ext
-            ts_cutoff = b.ts_cutoff
-
-            if type == 'upper_limit': 
+            if r['source_class'] == 'upper_limit': 
                 continue
 
             phase=PhaseRange(data[pwn]['phase'])
@@ -93,27 +75,20 @@ def spatial_spectral_table(pwndata, fitdir, savedir, filebase, table_type):
             table[psr_name].append(format.pwn(pwn))
             table[phase_name].append(phase.pretty_format())
 
-            table[ts_point_name].append(format.value(ts_point,precision=1))
-            table[ts_ext_name].append(format.value(ts_ext,precision=1))
-            table[ts_cutoff_name].append(format.value(ts_cutoff,precision=1))
+            table[ts_point_name].append(format.value(r['ts_point'],precision=1))
+            table[ts_ext_name].append(format.value(r['ts_ext'],precision=1))
+            table[ts_cutoff_name].append(format.value(r['ts_cutoff'],precision=1))
 
-            if pwn == 'PSRJ0534+2200':
-                table[flux_name].append(format.error(gtlike['flux']['flux']/1e-9,gtlike['flux']['flux_err']/1e-9))
+            table[flux_name].append(format.error(r['flux']/1e-9,r['flux_err']/1e-9))
+            if r['spectral_model'] in ['PowerLaw','PLSuperExpCutoff']:
+                table[index_name].append(format.error(r['index'],r['index_err']))
+            else:
                 table[index_name].append(format.nodata)
-                table[cutoff_name].append(format.nodata)
-            elif type == 'cutoff':
-                table[flux_name].append(format.error(cutoff['flux_1']['flux']/1e-9,cutoff['flux_1']['flux_err']/1e-9))
-                table[index_name].append(format.error(cutoff['model_1']['Index1'],cutoff['model_1']['Index1_err']))
-                table[cutoff_name].append(format.error(cutoff['model_1']['Cutoff'],cutoff['model_1']['Cutoff_err']))
-            elif type in ['extended','point']:
-                table[flux_name].append(format.error(gtlike['flux']['flux']/1e-9,gtlike['flux']['flux_err']/1e-9))
-                table[index_name].append(format.error(-1*gtlike['model']['Index'],-1*gtlike['model']['Index_err']))
-                table[cutoff_name].append(format.nodata)
-            elif type == 'confused':
-                table[flux_name].append('???')
-                table[index_name].append('???')
-                table[cutoff_name].append('???')
 
+            if r['spectral_model'] == 'PLSuperExpCutoff':
+                table[cutoff_name].append(format.error(r['cutoff'],r['cutoff_err']))
+            else:
+                table[cutoff_name].append(format.nodata)
 
                 
     writer=TableWriter(table, savedir, filebase)

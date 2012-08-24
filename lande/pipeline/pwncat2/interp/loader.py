@@ -17,7 +17,8 @@ class PWNResultsLoader(object):
         all_results = ['results_%s_pointlike.yaml' % pwn, 
                        'results_%s_gtlike_at_pulsar.yaml' % pwn,
                        'results_%s_gtlike_point.yaml' % pwn,
-                       'results_%s_gtlike_extended.yaml' % pwn]
+                       'results_%s_gtlike_extended.yaml' % pwn,
+                       'results_%s_variability_point.yaml' % pwn]
         all_results = [join(self.fitdir,pwn,i) for i in all_results]
 
         if not exists(all_results[0]):

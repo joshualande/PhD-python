@@ -11,7 +11,7 @@ import asciitable
 
 from lande.utilities.website import t2t
 
-from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
+from lande.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
 
