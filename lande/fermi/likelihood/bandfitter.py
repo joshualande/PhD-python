@@ -113,10 +113,11 @@ class BandFitter(object):
             self.eflux_err[i] = fd['eflux_err']
 
             print 'Calculating upper limit from %.0dMeV to %.0dMeV' % (lower,upper)
-            ul_dict = powerlaw_upper_limit(like,name,powerlaw_index=2,
-                                                  cl=self.ul_confidence,
-                                                  emin=lower,emax=upper,
-                                                  flux_units=self.flux_units)
+            ul_dict = powerlaw_upper_limit(like, name, 
+                                           powerlaw_index=2,
+                                           cl=self.ul_confidence,
+                                           emin=lower,emax=upper,
+                                           flux_units=self.flux_units)
             if ul_dict != None:
                 self.flux_ul[i] = ul_dict['flux']
                 self.eflux_ul[i] = ul_dict['eflux']
