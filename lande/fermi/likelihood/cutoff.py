@@ -206,7 +206,7 @@ def gtlike_test_cutoff(like, name, model1=None, flux_units='erg'):
             cutoff_plaw.setp_gtlike('index', d['model_0']['Index'])
             cutoff_plaw.setp_gtlike('e0', d['model_0']['Scale'])
             cutoff_plaw.setp_gtlike('cutoff', 1e6)
-            model.set_default_limits(oomp_limits=True)
+            cutoff_plaw.set_default_limits(oomp_limits=True)
 
             temp=build_gtlike_model(cutoff_plaw)
             like.setSpectrum(name,temp)
