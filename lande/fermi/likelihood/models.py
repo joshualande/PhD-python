@@ -68,7 +68,6 @@ def build_gtlike_model(model):
 
     gtlike_model = _funcFactory.create(gtlike_name)
 
-
     for p,g in zip(model.param_names,model.gtlike['param_names']):
         param=gtlike_model.getParam(g)
 
