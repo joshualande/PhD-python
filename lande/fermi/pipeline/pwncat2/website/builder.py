@@ -1,18 +1,14 @@
-import sys
 from skymaps import SkyDir
+
 import numpy as np
-from glob import glob
 import yaml
 from StringIO import StringIO
-import re
 import os
 from os.path import join,exists,expandvars
-from collections import defaultdict, OrderedDict
-from itertools import product
+from collections import OrderedDict
 
 import asciitable
 
-from lande.utilities.tools import merge_dict
 from lande.utilities.website import t2t
 
 from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
@@ -22,7 +18,10 @@ from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 class TableFormatter(object):
 
-    def __init__(self, pwnlist):
+    def __init__(self, loader):
+        self.loader = loader
+
+    def format(self, pwnlist):
 
         flux_name=r'F(0.1-100)'
         gamma_name=r'Gamma'
@@ -36,11 +35,9 @@ class TableFormatter(object):
 
         for i,pwn in enumerate(pwnlist):
 
-            print pwn
-
             table['PSR'][i]='[%s %s.html]' % (pwn,pwn)
 
-            results = self.loader.get_results(pwn)
+            results = self.loader.get_results(pwn, require_all_exists=False)
             if results is None: continue
 
             pt_at_pulsar=results['at_pulsar']['pointlike']
@@ -115,10 +112,7 @@ class TableFormatter(object):
             except:
                 pass
 
-        self.table = table
-
-    def __str__(self):
-        return self.get_t2t_table(self.table)
+        return self.get_t2t_table(table)
 
     @staticmethod
     def get_t2t_table(table, **kwargs):
@@ -133,7 +127,7 @@ class TableFormatter(object):
         t=outtable.getvalue()
 
         # this is required by t2t for tables
-        # see for exmaple: http://txt2tags.org/markup.html
+        # see for example: http://txt2tags.org/markup.html
         t='||' + t[2:]
         return t
 
@@ -143,17 +137,20 @@ class WebsiteBuilder(object):
     def __init__(self,
                  pwndata,
                  fitdir,
-                 website_unix,
-                 analysis_website):
-        fitdir=fitdir
-        website_unix=website_unix
-        analysis_website=analysis_website
+                 webdir):
 
-        if not os.path.exists(website_unix): os.makedirs(website_unix)
+        self.fitdir=expandvars(fitdir)
+        self.webdir=expandvars(webdir)
 
-        self.loader = PWNResultsLoader(pwndata, fitdir):
+        self.relpath=os.path.relpath(self.fitdir, self.webdir)
+
+        if not os.path.exists(self.webdir): os.makedirs(self.webdir)
+
+        self.loader = PWNResultsLoader(pwndata, self.fitdir)
 
         self.pwnlist=self.loader.get_pwnlist()
+
+        self.formatter = TableFormatter(self.loader)
 
     def build(self):
         self.build_main_website()
@@ -163,28 +160,28 @@ class WebsiteBuilder(object):
         for pwn in self.pwnlist: 
             self.build_each_page(pwn)
 
-    def build_main_website():
+    def build_main_website(self):
 
         index_t2t = []
         index_t2t.append('PWNCatalog+\n\n')
-        t=TableFormatter(pwnlist)
+        t=self.formatter.format(self.pwnlist)
         index_t2t.append(str(t))
-        t2t(index_t2t, join(website_unix,'index.t2t'))
+        t2t(index_t2t, join(self.webdir,'index.t2t'))
 
-    def build_each_page(pwn):
+    def build_each_page(self,pwn):
         index_t2t = []
         index_t2t.append(pwn+'\n\n')
         index_t2t.append('([back index.html])')
-        t=TableFormatter([pwn])
+        t=self.formatter.format([pwn])
         index_t2t.append(str(t))
         index_t2t.append('')
-        index_t2t.append('[Analysis Folder %s/%s]\n' % (analysis_website,pwn))
-        index_t2t.append('[log (pointlike) %s/%s/log_run_%s.txt]\n' % (analysis_website,pwn,pwn))
+        index_t2t.append('[Analysis Folder %s/%s]\n' % (self.relpath,pwn))
+        index_t2t.append('[log (pointlike) %s/%s/log_run_%s.txt]\n' % (self.relpath,pwn,pwn))
 
-        index_t2t.append('[results (pointlike) %s/%s/results_%s_pointlike.yaml]\n' % (analysis_website,pwn,pwn))
+        index_t2t.append('[results (pointlike) %s/%s/results_%s_pointlike.yaml]\n' % (self.relpath,pwn,pwn))
 
-        get_img_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/%s]' % (analysis_website,pwn,i) for i in args]) + ' |\n\n')
-        get_sed_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/%s]' % (analysis_website,pwn,i) for i in args]) + ' |\n\n')
+        get_img_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
+        get_sed_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
 
         title = lambda i: index_t2t.append('\n\n== %s ==' % i)
 
@@ -196,7 +193,7 @@ class WebsiteBuilder(object):
         title('Big Residual TS map')
         get_img_table(*['plots/tsmap_residual_%s_%s_10deg.png' % (i,pwn) for i in all])
 
-        index_t2t.append('[tsmap_residual_%s_%s_10deg.fits %s/%s/data/tsmap_residual_%s_%s_10deg.fits]' % (pwn,'at_pulsar',analysis_website,pwn,'at_pulsar',pwn))
+        index_t2t.append('[tsmap_residual_%s_%s_10deg.fits %s/%s/data/tsmap_residual_%s_%s_10deg.fits]' % (pwn,'at_pulsar',self.relpath,pwn,'at_pulsar',pwn))
 
         title('SED')
         get_sed_table(*['seds/sed_gtlike_4bpd_%s_%s.png' % (i,pwn) for i in all])
@@ -273,4 +270,4 @@ class WebsiteBuilder(object):
         get_img_table(*['plots/counts_residual_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
 
 
-        t2t(index_t2t, join(website_unix,'%s.t2t' % pwn))
+        t2t(index_t2t, join(self.webdir,'%s.t2t' % pwn))
