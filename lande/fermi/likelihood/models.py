@@ -19,46 +19,70 @@ def build_gtlike_spectrum(model):
             >>> from uw.like.Models import PowerLaw
             >>> pointlike_model = PowerLaw()
 
-        Add in some weird stuff to the model
-
-            >>> pointlike_model.set_limits('index', -2, 3)
-            >>> pointlike_model.set_free('Norm', False)
-        
         You cannot convert models unless they have limits on all parameters:
 
             >>> spectrum = build_gtlike_spectrum(pointlike_model)
             Traceback (most recent call last):
                 ...
-            Exception: Unable to build gtlike model. Parameter Norm must have limits.
+            Exception: Unable to build gtlike model. Parameter Norm must have limits (mapper=<class 'uw.utilities.parmap.LogMapper'>).
+
+        Set Norm params:
+
+            >>> pointlike_model.setp('Norm', 1e-8)
+            >>> pointlike_model.set_limits('Norm', 1e-10, 1e-6, scale=1e-9)
+            >>> pointlike_model.set_free('Norm', False)
+            >>> pointlike_model.set_error('Norm', 2e-9)
+
+        Set index params:
+
+            >>> pointlike_model.setp('index', 1.1)
+            >>> pointlike_model.set_limits('index', -2, 3)
+            >>> pointlike_model.set_error('index',0.25)
 
         After setting limits, it should work
 
-            >>> pointlike_model.set_default_limits()
             >>> spectrum = build_gtlike_spectrum(pointlike_model)
 
-        Check to see if values & limits in model are correct:
+
+        check prefactor:
+
+            >>> param = spectrum.getParam('Prefactor')
+            >>> param.isFree()
+            False
+            >>> np.allclose(param.getTrueValue(),1e-8)
+            True
+            >>> param.getScale()
+            1e-09
+            >>> param.getBounds()[0]*param.getScale()
+            1e-10
+            >>> param.getBounds()[1]*param.getScale()
+            1e-06
+            >>> np.allclose(param.error()*param.getScale(),2e-9)
+            True
+
+        Check index:
+
             >>> param=spectrum.getParam('Index')
             >>> gvalue=param.getTrueValue()
-            >>> pvalue=pointlike_model.gtlike['togtlike'][pointlike_model.name_mapper('Index')](pointlike_model['Index'])
-            >>> np.allclose(gvalue,pvalue)
+            >>> np.allclose(gvalue,-1.1)
             True
 
             >>> lower,upper=param.getBounds()
             >>> lower,upper=sorted([lower*param.getScale(),upper*param.getScale()])
-            >>> np.allclose([lower,upper], pointlike_model.get_limits('Index'))
+            >>> np.allclose([lower,upper], [-3, 2])
             True
 
-        Test free:
-            >>> spectrum.getParam('Prefactor').isFree() == pointlike_model.get_free('Norm')
-            True
             >>> spectrum.getParam('Index').isFree() == pointlike_model.get_free('Index')
             True
-
+            >>> np.allclose(spectrum.getParam('Index').error(), 0.25)
+            True
+        
+        Test spectral values:
 
             >>> energies = np.logspace(1, 6, 10000)
             >>> from uw.darkmatter.spectral import DMFitFunction
             >>> np.allclose(DMFitFunction.call_pylike_spectrum(spectrum, energies),
-            ...     pointlike_model(energies), rtol=1e-20, atol=1e-20) 
+            ...     pointlike_model(energies), rtol=1e-20) 
             True
 
         FileFunction was previously buggy, but now works:
@@ -71,12 +95,12 @@ def build_gtlike_spectrum(model):
             >>> ff_pointlike = FileFunction(normalization=9.5,file=filename, set_default_oomp_limits=True)
             >>> ff_gtlike = build_gtlike_spectrum(ff_pointlike)
             >>> np.allclose(DMFitFunction.call_pylike_spectrum(ff_gtlike, energies),
-            ...     ff_pointlike(energies), rtol=1e-20, atol=1e-20) 
+            ...     ff_pointlike(energies), rtol=1e-20) 
             True
     """
     for p in model.param_names:
         if not isinstance(model.get_mapper(p),LimitMapper):
-            raise Exception("Unable to build gtlike model. Parameter %s must have limits." % p)
+            raise Exception("Unable to build gtlike model. Parameter %s must have limits (mapper=%s)." % (p,model.get_mapper(p)))
 
 
     gtlike_name = model.gtlike['name']
@@ -101,9 +125,13 @@ def build_gtlike_spectrum(model):
         param.setBounds(lower,upper)
 
         param.setFree(model.get_free(p))
+        param.setError(abs(model.error(p)/scale))
 
     for p,g in model.gtlike['extra_param_names'].items():
-        spectrum.setParam(g,model[p])
+        param=spectrum.getParam(g)
+        param.setScale(1)
+        param.setTrueValue(model[p])
+        param.setBounds(model[p],model[p])
 
     return spectrum
 
@@ -115,14 +143,18 @@ def build_pointlike_model(spectrum):
             >>> spectrum = _funcFactory.create('PowerLaw')
 
             >>> param=spectrum.getParam('Prefactor')
-            >>> param.setScale(1)
+            >>> param.setScale(10)
             >>> param.setTrueValue(1e-9)
-            >>> param.setBounds(1e-10,1e-8)
+            >>> param.setBounds(1e-11,1e-9)
+            >>> param.setError(3e-11)
+            >>> param.setFree(True)
 
             >>> param=spectrum.getParam('Index')
             >>> param.setScale(2)
             >>> param.setBounds(-10,5)
             >>> param.setTrueValue(-3)
+            >>> param.setError(0.125)
+            >>> param.setFree(False)
 
         Check spectral values:
 
@@ -133,6 +165,19 @@ def build_pointlike_model(spectrum):
             ...     model(energies), rtol=1e-20, atol=1e-20) 
             True
 
+        Check prefactor:
+
+            >>> model.get_scale('norm')
+            10.0
+            >>> np.allclose(model.get_limits('norm'),[1e-10, 1e-08])
+            True
+            >>> np.allclose(model.getp('norm'),1e-9)
+            True
+            >>> np.allclose(model.error('norm'),1e-10)
+            True
+            >>> model.get_free('norm')
+            True
+
         Check index params:
 
             >>> model.get_scale('index')
@@ -141,15 +186,10 @@ def build_pointlike_model(spectrum):
             [-10.0, 20.0]
             >>> model.getp('index')
             3.0
-
-        Check prefactor:
-
-            >>> model.get_scale('norm')
-            1.0
-            >>> model.get_limits('norm')
-            [1e-10, 1e-08]
-            >>> np.allclose(model.getp('norm'),1e-9)
-            True
+            >>> model.error('index')
+            0.25
+            >>> model.get_free('index')
+            False
 
         Example creating a FileFunction object:
         
@@ -220,6 +260,10 @@ def build_pointlike_model(spectrum):
                     lower=param.getBounds()[0]*param.getScale(),
                     upper=param.getBounds()[1]*param.getScale(),
                     scale=param.getScale())
+                model.set_error(
+                    pointlike_name,
+                    abs(param.error()*param.getScale()))
+                model.set_free(pointlike_name, param.isFree())
     return model
 
 
