@@ -40,7 +40,7 @@ def build_gtlike_model(model):
             True
 
             >>> lower,upper=param.getBounds()
-            >>> lower,upper=lower*param.getScale(),upper*param.getScale()
+            >>> lower,upper=sorted([lower*param.getScale(),upper*param.getScale()])
             >>> np.allclose([lower,upper], pointlike_model.get_limits('Index'))
             True
 
@@ -48,6 +48,7 @@ def build_gtlike_model(model):
             >>> gtlike_model.getParam('Prefactor').isFree() == pointlike_model.get_free('Norm')
             True
             >>> gtlike_model.getParam('Index').isFree() == pointlike_model.get_free('Index')
+            True
 
 
             >>> energies = np.logspace(1, 6, 10000)
@@ -56,6 +57,19 @@ def build_gtlike_model(model):
             ...     pointlike_model(energies), rtol=1e-20, atol=1e-20) 
             True
 
+        FileFunction was previously buggy, but now works:
+
+            >>> from tempfile import NamedTemporaryFile
+            >>> temp = NamedTemporaryFile()
+            >>> filename = temp.name
+            >>> pointlike_model.save_profile(filename, emin=1, emax=1e6)
+
+            >>> from uw.like.Models import FileFunction
+            >>> ff_pointlike = FileFunction(normalization=9.5,file=filename, set_default_oomp_limits=True)
+            >>> ff_gtlike = build_gtlike_model(ff_pointlike)
+            >>> np.allclose(DMFitFunction.call_pylike_spectrum(ff_gtlike, energies),
+            ...     ff_pointlike(energies), rtol=1e-20, atol=1e-20) 
+            True
     """
     for p in model.param_names:
         if not isinstance(model.get_mapper(p),LimitMapper):
@@ -64,9 +78,11 @@ def build_gtlike_model(model):
 
     gtlike_name = model.gtlike['name']
 
-    assert gtlike_name != 'FileFunction'
-
-    gtlike_model = _funcFactory.create(gtlike_name)
+    if gtlike_name != 'FileFunction':
+        gtlike_model = _funcFactory.create(gtlike_name)
+    else:
+        gtlike_model = pyLikelihood.FileFunction()
+        gtlike_model.readFunction(model.file)
 
     for p,g in zip(model.param_names,model.gtlike['param_names']):
         param=gtlike_model.getParam(g)
