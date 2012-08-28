@@ -109,6 +109,8 @@ class BandFitter(object):
 
             self.ts[i]=like.Ts(name,reoptimize=False, verbosity=4)
 
+            source=like.logLike.getSource(name)
+            spectrum=source.spectrum()
             index=spectrum.getParam('Index')
             self.index[i] = index.getTrueValue()
             self.index_err[i] = index.error()*index.getScale()
