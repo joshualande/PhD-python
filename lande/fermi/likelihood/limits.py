@@ -14,7 +14,7 @@ from . superstate import SuperState
 from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range
 from . fit import gtlike_allow_fit_only_prefactor, paranoid_gtlike_fit
-from . models import build_gtlike_model
+from . models import build_gtlike_spectrum
 
 def gtlike_upper_limit(like, name, cl=.95, emin=None, emax=None, 
                        flux_units='erg', **kwargs):
@@ -145,7 +145,7 @@ def gtlike_cutoff_upper_limit(like, name, Index1, Cutoff, Index2 , emin=None, em
     e = np.sqrt(emin*emax)
 
     cutoff_model = PLSuperExpCutoff.from_gtlike(Index1=Index1,Cutoff=Cutoff,Index2=Index2,set_default_limits=True)
-    cutoff_spectrum = build_gtlike_model(cutoff_model)
+    cutoff_spectrum = build_gtlike_spectrum(cutoff_model)
 
     like.setSpectrum(name,cutoff_spectrum)
     like.syncSrcParams(name)

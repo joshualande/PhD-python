@@ -1,4 +1,8 @@
-from uw.utilities.parmap import LimitMapper
+""" Module to convert from gtlike to pointlike spectral models (and vice-verca).
+"""
+from uw.like.Models import FileFunction
+from uw.utilities.parmap import LimitMapper,LinearMapper
+from uw.utilities.xml_parsers import XML_to_Model
 
 import numpy as np
 
@@ -6,7 +10,7 @@ import pyLikelihood
 
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 
-def build_gtlike_model(model):
+def build_gtlike_spectrum(model):
     """ Convert a pointlike uw.like.Models.Model to a pyLikelihood spectral model object. 
 
         Convert a pointlike model to a gtlike model:
@@ -22,7 +26,7 @@ def build_gtlike_model(model):
         
         You cannot convert models unless they have limits on all parameters:
 
-            >>> gtlike_model = build_gtlike_model(pointlike_model)
+            >>> spectrum = build_gtlike_spectrum(pointlike_model)
             Traceback (most recent call last):
                 ...
             Exception: Unable to build gtlike model. Parameter Norm must have limits.
@@ -30,10 +34,10 @@ def build_gtlike_model(model):
         After setting limits, it should work
 
             >>> pointlike_model.set_default_limits()
-            >>> gtlike_model = build_gtlike_model(pointlike_model)
+            >>> spectrum = build_gtlike_spectrum(pointlike_model)
 
         Check to see if values & limits in model are correct:
-            >>> param=gtlike_model.getParam('Index')
+            >>> param=spectrum.getParam('Index')
             >>> gvalue=param.getTrueValue()
             >>> pvalue=pointlike_model.gtlike['togtlike'][pointlike_model.name_mapper('Index')](pointlike_model['Index'])
             >>> np.allclose(gvalue,pvalue)
@@ -45,15 +49,15 @@ def build_gtlike_model(model):
             True
 
         Test free:
-            >>> gtlike_model.getParam('Prefactor').isFree() == pointlike_model.get_free('Norm')
+            >>> spectrum.getParam('Prefactor').isFree() == pointlike_model.get_free('Norm')
             True
-            >>> gtlike_model.getParam('Index').isFree() == pointlike_model.get_free('Index')
+            >>> spectrum.getParam('Index').isFree() == pointlike_model.get_free('Index')
             True
 
 
             >>> energies = np.logspace(1, 6, 10000)
             >>> from uw.darkmatter.spectral import DMFitFunction
-            >>> np.allclose(DMFitFunction.call_pylike_spectrum(gtlike_model, energies),
+            >>> np.allclose(DMFitFunction.call_pylike_spectrum(spectrum, energies),
             ...     pointlike_model(energies), rtol=1e-20, atol=1e-20) 
             True
 
@@ -64,9 +68,8 @@ def build_gtlike_model(model):
             >>> filename = temp.name
             >>> pointlike_model.save_profile(filename, emin=1, emax=1e6)
 
-            >>> from uw.like.Models import FileFunction
             >>> ff_pointlike = FileFunction(normalization=9.5,file=filename, set_default_oomp_limits=True)
-            >>> ff_gtlike = build_gtlike_model(ff_pointlike)
+            >>> ff_gtlike = build_gtlike_spectrum(ff_pointlike)
             >>> np.allclose(DMFitFunction.call_pylike_spectrum(ff_gtlike, energies),
             ...     ff_pointlike(energies), rtol=1e-20, atol=1e-20) 
             True
@@ -79,21 +82,19 @@ def build_gtlike_model(model):
     gtlike_name = model.gtlike['name']
 
     if gtlike_name != 'FileFunction':
-        gtlike_model = _funcFactory.create(gtlike_name)
+        spectrum = _funcFactory.create(gtlike_name)
     else:
-        gtlike_model = pyLikelihood.FileFunction()
-        gtlike_model.readFunction(model.file)
+        spectrum = pyLikelihood.FileFunction()
+        spectrum.readFunction(model.file)
 
     for p,g in zip(model.param_names,model.gtlike['param_names']):
-        param=gtlike_model.getParam(g)
+        param=spectrum.getParam(g)
 
         scale=model.get_scale_gtlike(p)
         param.setScale(scale)
 
         lower,upper=model.get_limits_gtlike(p)
-        lower,upper=lower/scale,upper/scale
-        if upper < lower: 
-            lower, upper = upper, lower
+        lower,upper=sorted([lower/scale,upper/scale])
 
         # NB, most robust to set scale, then value, then bounds
         param.setTrueValue(model.getp_gtlike(p))
@@ -102,9 +103,125 @@ def build_gtlike_model(model):
         param.setFree(model.get_free(p))
 
     for p,g in model.gtlike['extra_param_names'].items():
-        gtlike_model.setParam(g,model[p])
+        spectrum.setParam(g,model[p])
 
-    return gtlike_model
+    return spectrum
+
+
+def build_pointlike_model(spectrum):
+    """ Convert a gtlike model object to a pointlike
+        model object.
+        
+            >>> spectrum = _funcFactory.create('PowerLaw')
+
+            >>> param=spectrum.getParam('Prefactor')
+            >>> param.setScale(1)
+            >>> param.setTrueValue(1e-9)
+            >>> param.setBounds(1e-10,1e-8)
+
+            >>> param=spectrum.getParam('Index')
+            >>> param.setScale(2)
+            >>> param.setBounds(-10,5)
+            >>> param.setTrueValue(-3)
+
+        Check spectral values:
+
+            >>> model = build_pointlike_model(spectrum)
+            >>> energies = np.logspace(1, 6, 10000)
+            >>> from uw.darkmatter.spectral import DMFitFunction
+            >>> np.allclose(DMFitFunction.call_pylike_spectrum(spectrum, energies),
+            ...     model(energies), rtol=1e-20, atol=1e-20) 
+            True
+
+        Check index params:
+
+            >>> model.get_scale('index')
+            -2.0
+            >>> model.get_limits('index')
+            [-10.0, 20.0]
+            >>> model.getp('index')
+            3.0
+
+        Check prefactor:
+
+            >>> model.get_scale('norm')
+            1.0
+            >>> model.get_limits('norm')
+            [1e-10, 1e-08]
+            >>> np.allclose(model.getp('norm'),1e-9)
+            True
+
+        Example creating a FileFunction object:
+        
+        First, create file out of old model:
+
+            >>> from tempfile import NamedTemporaryFile
+            >>> temp = NamedTemporaryFile()
+            >>> filename = temp.name
+            >>> model.save_profile(filename, emin=1, emax=1e6)
+        
+        Now, make FileFunction:
+
+            >>> spectrum = pyLikelihood.FileFunction()
+            >>> spectrum.readFunction(filename)
+
+        Set param values:
+
+            >>> param=spectrum.getParam('Normalization')
+            >>> param.setScale(2)
+            >>> param.setTrueValue(4)
+            >>> param.setBounds(.1,10)
+
+            >>> model = build_pointlike_model(spectrum)
+
+        Test spectral points:
+
+            >>> np.allclose(DMFitFunction.call_pylike_spectrum(spectrum, energies),
+            ...     model(energies), rtol=1e-20, atol=1e-20) 
+            True
+
+        Test param values:
+
+            >>> model.get_scale('Normalization')
+            2.0
+            >>> model.getp('Normalization')
+            4.0
+            >>> model.get_limits('Normalization')
+            [0.2, 20.0]
+
+
+    """
+    gtlike_name = spectrum.genericName()
+
+    if gtlike_name == 'FileFunction':
+        ff=pyLikelihood.FileFunction_cast(spectrum)
+        filename=ff.filename()
+        model = FileFunction(file=filename)
+    else:
+        model = XML_to_Model.modict[gtlike_name]()
+    
+    param_names = pyLikelihood.StringVector()
+    spectrum.getParamNames(param_names)
+    for gtlike_name in param_names:
+        pointlike_name = model.get_pointlike_name(gtlike_name)
+        
+        param=spectrum.getParam(gtlike_name)
+
+        if pointlike_name in model.default_extra_params.keys():
+            # no mapping for extra params
+            model.setp(pointlike_name,param.getTrueValue())
+        else:
+            model.setp_gtlike(pointlike_name,param.getTrueValue())
+
+            if pointlike_name in model.param_names:
+                model.set_mapper(pointlike_name, LinearMapper)
+                model.set_limits_gtlike(
+                    pointlike_name,
+                    lower=param.getBounds()[0]*param.getScale(),
+                    upper=param.getBounds()[1]*param.getScale(),
+                    scale=param.getScale())
+    return model
+
 
 if __name__ == "__main__":
     import doctest

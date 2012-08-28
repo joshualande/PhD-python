@@ -18,6 +18,7 @@ class BandFitter(object):
     def __init__(self, like, name, bin_edges,
                  ul_algorithm='bayesian',
                  ul_confidence=.95,
+                 powerlaw_index=2,
                  flux_units='erg'):
         """ Parameters:
             * like - pyLikelihood object
@@ -114,7 +115,7 @@ class BandFitter(object):
 
             print 'Calculating upper limit from %.0dMeV to %.0dMeV' % (lower,upper)
             ul_dict = powerlaw_upper_limit(like, name, 
-                                           powerlaw_index=2,
+                                           powerlaw_index=powerlaw_index,
                                            cl=self.ul_confidence,
                                            emin=lower,emax=upper,
                                            flux_units=self.flux_units)
@@ -154,5 +155,7 @@ class BandFitter(object):
                     value=self.index,
                     error=self.index_err),
                 TS=self.ts,
+                powerlaw_index=self.powerlaw_index,
+                ul_confidence=self.ul_confidence,
                 )
             )

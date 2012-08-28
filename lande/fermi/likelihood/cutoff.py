@@ -18,7 +18,7 @@ from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range, spectrum_to_dict, fluxdict
 from . fit import paranoid_gtlike_fit
 from . printing import summary
-from . models import build_gtlike_model
+from . models import build_gtlike_spectrum
 
 
 def plot_gtlike_cutoff_test(cutoff_results, sed_results, filename=None, title=None, 
@@ -165,7 +165,7 @@ def gtlike_test_cutoff(like, name, model1=None, flux_units='erg'):
 
             print 'model0 is',model0
 
-            spectrum0=build_gtlike_model(model0)
+            spectrum0=build_gtlike_spectrum(model0)
             like.setSpectrum(name,spectrum0)
 
         print 'About to fit spectrum0'
@@ -188,7 +188,7 @@ def gtlike_test_cutoff(like, name, model1=None, flux_units='erg'):
 
         print 'model1 is',model1
 
-        spectrum1=build_gtlike_model(model1)
+        spectrum1=build_gtlike_spectrum(model1)
         like.setSpectrum(name,spectrum1)
 
         print 'About to fit model1'
@@ -208,7 +208,7 @@ def gtlike_test_cutoff(like, name, model1=None, flux_units='erg'):
             cutoff_plaw.setp_gtlike('cutoff', 1e6)
             cutoff_plaw.set_default_limits(oomp_limits=True)
 
-            temp=build_gtlike_model(cutoff_plaw)
+            temp=build_gtlike_spectrum(cutoff_plaw)
             like.setSpectrum(name,temp)
 
             print 'Redoing fit with cutoff same as plaw'
