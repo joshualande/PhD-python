@@ -184,6 +184,9 @@ class TableFormatter(object):
         elif self.table_type == 'latex':
             return ret
     def error(self,a,b,precision=None):
+        if a is None or b is None:
+            return "None"
+
         if precision is None: precision=self.precision
         if self.table_type == 'confluence':
             f1=TableFormatter.fix_negative('%.*f' % (precision,a))
