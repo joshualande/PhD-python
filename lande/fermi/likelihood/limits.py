@@ -107,6 +107,7 @@ def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=Non
     dnde = PowerLaw(norm=1e-11, index=2,e0=1e3)
 
     like.setSpectrum(name,'PowerLaw')
+    like.syncSrcParams(name)
 
     # fix index to 0
     index=like[like.par_index(name, 'Index')]
