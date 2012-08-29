@@ -135,8 +135,8 @@ def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=Non
 
     return tolist(results)
 
-def gtlike_cutoff_upper_limit(like, name, Index1, Cutoff, Index2 , emin=None, emax=None, **kwargs):
-    print 'Calculating gtlike cutoff  upper limit'
+def gtlike_cutoff_upper_limit(like, name, Index, Cutoff, b, emin=None, emax=None, **kwargs):
+    print 'Calculating gtlike cutoff upper limit'
 
     saved_state = SuperState(like)
 
@@ -145,7 +145,7 @@ def gtlike_cutoff_upper_limit(like, name, Index1, Cutoff, Index2 , emin=None, em
 
     e = np.sqrt(emin*emax)
 
-    cutoff_model = PLSuperExpCutoff.from_gtlike(Index1=Index1,Cutoff=Cutoff,Index2=Index2,set_default_limits=True)
+    cutoff_model = PLSuperExpCutoff(Index=Index, Cutoff=Cutoff, b=b, set_default_limits=True)
     cutoff_spectrum = build_gtlike_spectrum(cutoff_model)
 
     like.setSpectrum(name,cutoff_spectrum)
@@ -153,9 +153,9 @@ def gtlike_cutoff_upper_limit(like, name, Index1, Cutoff, Index2 , emin=None, em
 
     results = gtlike_upper_limit(like, name, emin=emin, emax=emax, **kwargs)
     if results is not None:
-        results['Index1']=Index1
+        results['Index']=Index
         results['Cutoff']=Cutoff
-        results['Index2']=Index2
+        results['b']=b
 
     saved_state.restore()
 
@@ -220,8 +220,8 @@ def pointlike_cutoff_upper_limit(roi, name, Index, Cutoff, b, emin=None, emax=No
 
     saved_state = PointlikeState(roi)
 
-    model = PLSuperExpCutoff(Index=Index, Cutoff=Cutoff, b=b)
-    roi.modify(which=name, model=model, keep_old_flux=True)
+    cutoff_model = PLSuperExpCutoff(Index=Index, Cutoff=Cutoff, b=b)
+    roi.modify(which=name, model=cutoff_model, keep_old_flux=True)
 
     ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
 
