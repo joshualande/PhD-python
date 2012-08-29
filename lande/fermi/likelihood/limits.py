@@ -5,6 +5,7 @@ import numpy as np
 
 from uw.like.Models import PowerLaw, PLSuperExpCutoff
 from uw.like.roi_state import PointlikeState
+from uw.like.roi_upper_limits import FluxUpperLimit
 
 from lande.utilities.tools import tolist
 
@@ -12,7 +13,7 @@ from lande.pysed import units
 
 from . superstate import SuperState
 from . tools import gtlike_or_pointlike
-from . save import get_full_energy_range
+from . save import get_full_energy_range, spectrum_to_dict, pointlike_model_to_flux, gtlike_fluxdict
 from . fit import gtlike_allow_fit_only_prefactor, paranoid_gtlike_fit
 from . models import build_gtlike_spectrum
 
@@ -57,20 +58,15 @@ def gtlike_upper_limit(like, name, cl=.95, emin=None, emax=None,
                                                        emax=emax, 
                                                        **kwargs)
 
-        prefactor=like.normPar(name)
+        source=like.logLike.getSource(name)
+        spectrum=source.spectrum()
+        prefactor=spectrum.normPar()
         pref_ul = results['ul_value']*prefactor.getScale()
         prefactor.setTrueValue(pref_ul)
 
-        flux_ul = like.flux(name,emin,emax)
-        flux_units_string = 'ph/cm^2/s'
+        ul = gtlike_fluxdict(like, name, emin=emin,emax=emax,flux_units=flux_units, error=False)
 
-        eflux_ul = units.convert(like.energyFlux(name,emin,emax), 'MeV', flux_units)
-        eflux_units_string = '%s/cm^2/s' % flux_units
-
-        ul = dict(
-            emin=emin, emax=emax,
-            flux_units=flux_units_string, flux=flux_ul, 
-            eflux_units=eflux_units_string, eflux=eflux_ul)
+        ul['spectrum'] = spectrum_to_dict(spectrum)
 
     except Exception, ex:
         print 'ERROR gtlike upper limit: ', ex
@@ -128,8 +124,6 @@ def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=Non
     like.syncSrcParams(name)
 
     results = gtlike_upper_limit(like, name, emin=emin, emax=emax, **kwargs)
-    if results is not None:
-        results['powerlaw_index']=powerlaw_index
 
     saved_state.restore()
 
@@ -152,10 +146,6 @@ def gtlike_cutoff_upper_limit(like, name, Index, Cutoff, b, emin=None, emax=None
     like.syncSrcParams(name)
 
     results = gtlike_upper_limit(like, name, emin=emin, emax=emax, **kwargs)
-    if results is not None:
-        results['Index']=Index
-        results['Cutoff']=Cutoff
-        results['b']=b
 
     saved_state.restore()
 
@@ -174,14 +164,12 @@ def pointlike_upper_limit(roi, name, cl=.95, emin=None, emax=None, flux_units='e
     saved_state = PointlikeState(roi)
 
     try:
-        flux_ul = roi.upper_limit(which=name, confidence=cl, emin=emin, emax=emax, **kwargs)
+        ful = FluxUpperLimit(roi=roi, which=name, confidence=cl, **kwargs)
+        model = ful.upper_limit_model
 
-        flux_units_string = 'ph/cm^2/s'
+        ul = pointlike_model_to_flux(model, emin=emin, emax=emax, flux_units=flux_units, error=False)
 
-        ul = dict(
-            emin=emin, emax=emax,
-            flux_units=flux_units_string, 
-            flux=flux_ul)
+        ul['model'] = spectrum_to_dict(model)
 
     except Exception, ex:
         print 'ERROR pointlike upper limit: ', ex
@@ -208,9 +196,6 @@ def pointlike_powerlaw_upper_limit(roi, name, powerlaw_index=2, emin=None, emax=
 
     ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
 
-    if ul is not None:
-        ul['powerlaw_index']=powerlaw_index
-
     saved_state.restore(just_spectra=True)
 
     return tolist(ul)
@@ -224,11 +209,6 @@ def pointlike_cutoff_upper_limit(roi, name, Index, Cutoff, b, emin=None, emax=No
     roi.modify(which=name, model=cutoff_model, keep_old_flux=True)
 
     ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
-
-    if ul is not None:
-        ul['Index']=Index
-        ul['Cutoff']=Cutoff
-        ul['b']=b
 
     saved_state.restore(just_spectra=True)
 
