@@ -37,11 +37,140 @@ from . save import fluxdict, diffusedict, get_background, get_sources, sourcedic
 from . limits import gtlike_upper_limit, pointlike_upper_limit
 from . fit import allow_fit_only_prefactor
 from . superstate import SuperState
+from . base import BaseFitter
 
 from lande.fermi.data.livetime import pointlike_ltcube
 
 
-class VariabilityTester(object):
+class VariabilityTester(BaseFitter):
+
+    @staticmethod
+    def _plot_points(axes, x, xerr, y, yerr, yup, significant, 
+                     ul_fraction=0.4, label=None, **kwargs):
+
+        plot_kwargs = dict(linestyle='none')
+        plot_kwargs.update(kwargs)
+
+        s = significant
+        if sum(s) > 0:
+            axes.errorbar(x[s],y[s],
+                          xerr=xerr[s], yerr=yerr[s], 
+                          capsize=0,
+                          label=label,
+                          **plot_kwargs)
+
+        ns = not_significant = ~s & ~np.isnan(yup) # possibly, some UL failed
+
+        if sum(ns) > 0:
+            axes.errorbar(x[ns], yup[ns], 
+                          yerr=[ul_fraction*yup[ns], np.zeros(sum(ns))],
+                          lolims=True,
+                          **plot_kwargs)
+
+            if sum(s) == 0: 
+                plot_kwargs['label'] = label
+
+            axes.errorbar(x[ns], yup[ns], 
+                          xerr=xerr[ns],
+                          capsize=0,
+                          **plot_kwargs)
+
+    def plot(self, 
+              filename=None, 
+              figsize=(7,4), 
+              gtlike_color='black',
+              pointlike_color='red',
+              time_scale = None,
+              flux_scale = None,
+              **kwargs):
+        """ Create a plot from a dictionary. """
+
+
+        time  = d['time']
+        bands = d['bands']
+        all_time = d['all_time']
+        min_ts = d['min_ts']
+
+
+        fig = P.figure(None,figsize)
+        axes = fig.add_subplot(111)
+
+        # astype(float) converts None to nan
+        a=lambda x: np.asarray(x).astype(float)
+
+        starts=a(time['starts'])
+        stops=a(time['stops'])
+        time=(starts+stops)/2
+        time_err=(stops-starts)/2
+
+        if time_scale is None:
+            time_scale = 1e8
+        if flux_scale is None:
+            fg=np.mean(a([b['gtlike']['flux']['flux'] for b in bands]))
+            #flux_scale = 10**np.floor(np.log10(fg))
+            flux_scale = 1e-8
+
+        for t,color in [
+            ['gtlike',gtlike_color],
+            ['pointlike',pointlike_color]
+        ]:
+
+            f0 = all_time[t]['flux']['flux']
+
+
+            ts = a([b[t]['TS'] for b in bands])
+
+            significant = (ts >= min_ts)
+
+            f = a([b[t]['flux']['flux'] for b in bands])
+            ferr=a([b[t]['flux']['flux_err'] for b in bands])
+            ferr=a([b[t]['flux']['flux_err'] for b in bands])
+
+            fup=a([b[t]['upper_limit']['flux'] if b[t]['upper_limit'] is not None else None for b in bands])
+
+            #from matplotlib.ticker import ScalarFormatter
+            #formatter = ScalarFormatter(useMathText=True, useOffset=False)
+            #formatter.set_scientific(True)
+            #formatter.set_powerlimits((-1,1))
+            #axes.xaxis.set_major_formatter(formatter)
+            #axes.yaxis.set_major_formatter(formatter)
+
+            VariabilityTester._plot_points(
+                axes,
+                x=time/time_scale,
+                xerr=time_err/time_scale,
+                y=f/flux_scale,
+                yerr=ferr/flux_scale,
+                yup=fup/flux_scale, 
+                significant=significant,
+                color=color,
+                label=t,
+                **kwargs)
+            
+            axes.axhline(f0/flux_scale, color=color, dashes=[5,2])
+
+        t = np.log10(time_scale)
+        assert t == int(t)
+
+        f = np.log10(flux_scale)
+        assert f == int(f)
+
+        axes.set_xlabel('MET (10$^{%d}$ s)' % t)
+        axes.set_ylabel('Flux (10$^{%d}$ ph$\,$cm$^{-2}$s$^{-1}$)' % f)
+
+        # Kluge legend due to buggy legend impolementaiton
+        # for errorbar in matplotlib
+        from matplotlib.lines import Line2D
+        l=lambda c:Line2D([0],[0],linestyle='-', color=c)
+        axes.legend(
+            (l(gtlike_color), l(pointlike_color)),
+            ('gtlike','pointlike')
+            )
+
+        if filename is not None: P.savefig(filename)
+        return axes
+
+class GtlikeVariabilityTester(VariabilityTester):
     """ Code to compute varability for for a pointlike ROI
     using the method described in 2FGL:
 
@@ -54,7 +183,7 @@ class VariabilityTester(object):
 
     f = 0.02
 
-    defaults = (
+    defaults = BaseFitter + (
         ("savedir",               None, """ Directory to put output files into. 
                                             Default is to use a temporary file and 
                                             delete it when done."""),
@@ -70,21 +199,7 @@ class VariabilityTester(object):
     )
 
     @keyword_options.decorate(defaults)
-    def __init__(self, roi_or_dict, *args, **kwargs):
-
-        if isinstance(roi_or_dict,dict):
-            self.fromdict(roi_or_dict)
-        elif isinstance(roi_or_dict, str):
-            self._setup_from_dict(roi_or_dict, *args, **kwargs)
-        else:
-            self._setup(roi_or_dict, *args, **kwargs)
-
-    def _setup_from_dict(self, dict):
-            self.save_data = True # Nothing to delete
-            self.fromdict(yaml.load(open(expandvars(dict))))
-
-    def _setup(self, roi, which, **kwargs):
-
+    def __init__(self, roi, *args, **kwargs):
         self.roi = roi
         keyword_options.process(self, kwargs)
 
@@ -323,6 +438,14 @@ class VariabilityTester(object):
         if self.do_gtlike:
             self.TS_var['gtlike'] = self.compute_TS_var('gtlike')
 
+        self.results = dict(
+            which = self.which,
+            min_ts = self.min_ts,
+            time = self.time,
+            bands = self.bands,
+            all_time = self.all_time,
+            TS_var = self.TS_var)
+
     def compute_TS_var(self,type):
         a=np.asarray
         ll1 = a([b[type]['ll_1'] for b in self.bands])
@@ -458,60 +581,7 @@ class VariabilityTester(object):
             diffuse_sources = diffuse_sources,
             **roi_kwargs)
 
-    def fromdict(self, d):
-        self.time  = d['time']
-        self.bands = d['bands']
-        self.all_time = d['all_time']
-        self.TS_var = d['TS_var']
-        self.min_ts = d['min_ts']
 
-    def todict(self):
-        d = dict(
-            min_ts = self.min_ts,
-            time = self.time,
-            bands=self.bands,
-            all_time=self.all_time,
-            TS_var = self.TS_var)
-
-        return tolist(d)
-
-    def save(self, filename):
-        f=open(filename,'w')
-        f.write(
-            yaml.dump(self.todict())
-        )
-        f.close()
-
-    @staticmethod
-    def _plot_points(axes, x, xerr, y, yerr, yup, significant, 
-                     ul_fraction=0.4, label=None, **kwargs):
-
-        plot_kwargs = dict(linestyle='none')
-        plot_kwargs.update(kwargs)
-
-        s = significant
-        if sum(s) > 0:
-            axes.errorbar(x[s],y[s],
-                          xerr=xerr[s], yerr=yerr[s], 
-                          capsize=0,
-                          label=label,
-                          **plot_kwargs)
-
-        ns = not_significant = ~s & ~np.isnan(yup) # possibly, some UL failed
-
-        if sum(ns) > 0:
-            axes.errorbar(x[ns], yup[ns], 
-                          yerr=[ul_fraction*yup[ns], np.zeros(sum(ns))],
-                          lolims=True,
-                          **plot_kwargs)
-
-            if sum(s) == 0: 
-                plot_kwargs['label'] = label
-
-            axes.errorbar(x[ns], yup[ns], 
-                          xerr=xerr[ns],
-                          capsize=0,
-                          **plot_kwargs)
 
     @staticmethod
     def _TS_to_sigma(ts, nbins):
@@ -591,96 +661,6 @@ class VariabilityTester(object):
         sigma = fmin(f,[1], xtol=1e-10000, ftol=1e-10000, 
                      full_output=False, disp=False)[0]
         return sigma
-
-    def plot(self, 
-              filename=None, 
-              figsize=(7,4), 
-              gtlike_color='black',
-              pointlike_color='red',
-              time_scale = None,
-              flux_scale = None,
-              **kwargs):
-        """ Create a plot from a dictionary. """
-
-
-        fig = P.figure(None,figsize)
-        axes = fig.add_subplot(111)
-
-        # astype(float) converts None to nan
-        a=lambda x: np.asarray(x).astype(float)
-
-        starts=a(self.time['starts'])
-        stops=a(self.time['stops'])
-        time=(starts+stops)/2
-        time_err=(stops-starts)/2
-
-        if time_scale is None:
-            #time_scale = 10**np.floor(np.log10(np.average(time)))
-            time_scale = 1e8
-        if flux_scale is None:
-            fg=np.mean(a([b['gtlike']['flux']['flux'] for b in self.bands]))
-            #flux_scale = 10**np.floor(np.log10(fg))
-            flux_scale = 1e-8
-
-        for t,color in [
-            ['gtlike',gtlike_color],
-            ['pointlike',pointlike_color]
-        ]:
-
-            f0 = self.all_time[t]['flux']['flux']
-
-
-            ts = a([b[t]['TS'] for b in self.bands])
-
-            significant = (ts >= self.min_ts)
-
-            f = a([b[t]['flux']['flux'] for b in self.bands])
-            ferr=a([b[t]['flux']['flux_err'] for b in self.bands])
-            ferr=a([b[t]['flux']['flux_err'] for b in self.bands])
-
-            fup=a([b[t]['upper_limit']['flux'] if b[t]['upper_limit'] is not None else None for b in self.bands])
-
-            #from matplotlib.ticker import ScalarFormatter
-            #formatter = ScalarFormatter(useMathText=True, useOffset=False)
-            #formatter.set_scientific(True)
-            #formatter.set_powerlimits((-1,1))
-            #axes.xaxis.set_major_formatter(formatter)
-            #axes.yaxis.set_major_formatter(formatter)
-
-            VariabilityTester._plot_points(
-                axes,
-                x=time/time_scale,
-                xerr=time_err/time_scale,
-                y=f/flux_scale,
-                yerr=ferr/flux_scale,
-                yup=fup/flux_scale, 
-                significant=significant,
-                color=color,
-                label=t,
-                **kwargs)
-            
-            axes.axhline(f0/flux_scale, color=color, dashes=[5,2])
-
-        t = np.log10(time_scale)
-        assert t == int(t)
-
-        f = np.log10(flux_scale)
-        assert f == int(f)
-
-        axes.set_xlabel('MET (10$^{%d}$ s)' % t)
-        axes.set_ylabel('Flux (10$^{%d}$ ph$\,$cm$^{-2}$s$^{-1}$)' % f)
-
-        # Kluge legend due to buggy legend impolementaiton
-        # for errorbar in matplotlib
-        from matplotlib.lines import Line2D
-        l=lambda c:Line2D([0],[0],linestyle='-', color=c)
-        axes.legend(
-            (l(gtlike_color), l(pointlike_color)),
-            ('gtlike','pointlike')
-            )
-
-        if filename is not None: P.savefig(filename)
-        return axes
 
 
     def __del__(self):

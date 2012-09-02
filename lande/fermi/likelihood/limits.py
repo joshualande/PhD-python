@@ -6,6 +6,7 @@ import numpy as np
 from uw.like.Models import PowerLaw, PLSuperExpCutoff
 from uw.like.roi_state import PointlikeState
 from uw.like.roi_upper_limits import FluxUpperLimit
+from uw.utilities import keyword_options
 
 from lande.utilities.tools import tolist
 
@@ -13,213 +14,299 @@ from lande.pysed import units
 
 from . superstate import SuperState
 from . tools import gtlike_or_pointlike
-from . save import get_full_energy_range, spectrum_to_dict, pointlike_model_to_flux, gtlike_fluxdict
+from . save import get_full_energy_range, spectrum_to_dict, pointlike_model_to_flux, fluxdict
 from . fit import gtlike_allow_fit_only_prefactor, paranoid_gtlike_fit
 from . models import build_gtlike_spectrum
+from . base import BaseFitter
 
-def gtlike_upper_limit(like, name, cl=.95, emin=None, emax=None, 
-                       flux_units='erg', **kwargs):
-    """
-        N.B. spectral fit in this function instead
-        of in upper limits code since my
-        paranoid_gtlike_fit function is more robust. """
+class UpperLimit(BaseFitter):
 
-    print 'Calculating gtlike upper limit'
+    defaults = BaseFitter.defaults
 
-    saved_state = SuperState(like)
-    source = like.logLike.getSource(name)
+    @keyword_options.decorate(defaults)
+    def __init__(self, results, **kwargs):
+        keyword_options.process(self, kwargs)
+        self.results = results
+        pass
 
-    try:
-        import IntegralUpperLimit
+    def plot(self, filename, axes=None):
+        # make a plot of results
+        pass
 
-        if emin is None and emax is None: 
-            emin, emax = get_full_energy_range(like)
+class GtlikeUpperLimit(UpperLimit):
+    """ Compute gtlike upper limit for whatever spectral model is
+        currently in like object. """
 
-        # First, freeze spectrum (except for normalization)
-        # of our soruce
-        gtlike_allow_fit_only_prefactor(like, name)
+    defaults = UpperLimit.defaults + (
+        ('cl', 0.95, 'confidence level'),
+        ('emin', None, 'minimum energy (for quoted flux). Default is full energy range'),
+        ('emax', None, 'maximum energy (for quoted flux). Default is full energy range'),
+        ('flux_units', 'erg', 'Units to quote flux in'),
+        ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
+        ('include_prefactor', False, 'Compute prefactor upper limit'),
+        ('prefactor_energy', None, 'Energy to compute prefactor energy at'),
+    )
 
-        # Spectral fit whole ROI
+    @keyword_options.decorate(defaults)
+    def __init__(self, like, name, **kwargs):
+        keyword_options.process(self, kwargs)
 
-        paranoid_gtlike_fit(like)
+        self.like = like
+        self.name = name
 
-        # Freeze everything but our source of interest
-        for i in range(len(like.model.params)):
-            like.model[i].setFree(False)
-            like.syncSrcParams(like[i].srcName)
+        if self.emin is None and self.emax is None: 
+            self.emin, self.emax = get_full_energy_range(like)
+            self.e = np.sqrt(self.emin*self.emax)
 
-        # Note, I think freeze_all is redundant, but flag it just 
-        # to be paranoid
-        flux_ul, results = IntegralUpperLimit.calc_int(like, name, 
-                                                       freeze_all=True,
-                                                       skip_global_opt=True,
-                                                       cl=cl,
-                                                       emin=emin, 
-                                                       emax=emax, 
-                                                       **kwargs)
+        self._compute()
 
-        source=like.logLike.getSource(name)
-        spectrum=source.spectrum()
-        prefactor=spectrum.normPar()
-        pref_ul = results['ul_value']*prefactor.getScale()
-        prefactor.setTrueValue(pref_ul)
+    def _compute(self):
+        if self.verbosity: print 'Calculating gtlike upper limit'
 
-        ul = gtlike_fluxdict(like, name, emin=emin,emax=emax,flux_units=flux_units, error=False)
+        like = self.like
+        name = self.name
 
-        ul['spectrum'] = spectrum_to_dict(spectrum)
+        saved_state = SuperState(like)
+        source = like.logLike.getSource(name)
 
-    except Exception, ex:
-        print 'ERROR gtlike upper limit: ', ex
-        traceback.print_exc(file=sys.stdout)
-        ul = None
-    finally:
+        try:
+            import IntegralUpperLimit
+
+            # First, freeze spectrum (except for normalization)
+            # of our soruce
+            gtlike_allow_fit_only_prefactor(like, name)
+
+            # Spectral fit whole ROI
+
+            """ N.B. spectral fit in this function instead
+                of in upper limits code since my
+                paranoid_gtlike_fit function is more robust. """
+            paranoid_gtlike_fit(like)
+
+            # Freeze everything but our source of interest
+            for i in range(len(like.model.params)):
+                like.model[i].setFree(False)
+                like.syncSrcParams(like[i].srcName)
+
+            # Note, I think freeze_all is redundant, but flag it just 
+            # to be paranoid
+            flux_ul, results = IntegralUpperLimit.calc_int(like, name, 
+                                                           freeze_all=True,
+                                                           skip_global_opt=True,
+                                                           cl=self.cl,
+                                                           emin=self.emin, 
+                                                           emax=self.emax, 
+                                                           **self.upper_limit_kwargs)
+
+            source=like.logLike.getSource(name)
+            spectrum=source.spectrum()
+            prefactor=spectrum.normPar()
+            pref_ul = results['ul_value']*prefactor.getScale()
+            prefactor.setTrueValue(pref_ul)
+
+            self.results = fluxdict(like, name, 
+                                    emin=self.emin,emax=self.emax,
+                                    flux_units=self.flux_units, 
+                                    errors=False,
+                                    include_prefactor=self.include_prefactor,
+                                    prefactor_energy=self.prefactor_energy)
+
+            self.results['spectrum'] = spectrum_to_dict(spectrum)
+
+        except Exception, ex:
+            print 'ERROR gtlike upper limit: ', ex
+            traceback.print_exc(file=sys.stdout)
+            self.results = None
+        finally:
+            saved_state.restore()
+
+
+
+class GtlikePowerLawUpperLimit(GtlikeUpperLimit):
+
+    defaults = GtlikeUpperLimit.defaults + (
+        ('powerlaw_index', 2, 'PowerLaw index for assuemd powerlaw'),
+    )
+
+    @keyword_options.decorate(defaults)
+    def __init__(self, *args, **kwargs):
+        super(GtlikePowerLawUpperLimit,self).__init__(*args, **kwargs)
+
+    def _compute(self):
+        """ Wrap up calculating the flux upper limit for a powerlaw
+            source.  This function employes the pyLikelihood function
+            IntegralUpperLimit to calculate a Bayesian upper limit.
+
+            The primary benefit of this function is that it replaces the
+            spectral model automatically with a PowerLaw spectral model
+            and fixes the index to -2. It then picks a better scale for the
+            powerlaw and gives the upper limit calculation a more reasonable
+            starting value, which helps the convergence.
+        """
+        if self.verbosity: print 'Calculating gtlike power-law upper limit'
+        like = self.like
+        name = self.name
+
+        saved_state = SuperState(like)
+
+        e = np.sqrt(self.emin*self.emax)
+
+        # assume a canonical dnde=1e-11 at 1GeV index 2 starting value
+        model = PowerLaw(index=self.powerlaw_index, e0=e, set_default_limits=True)
+        model.set_limits('norm', model.getp('norm')*1e-10, model.getp('norm')*1e10)
+        spectrum = build_gtlike_spectrum(model)
+
+        like.setSpectrum(name,spectrum)
+        like.syncSrcParams(name)
+
+        results = super(GtlikePowerLawUpperLimit,self)._compute()
+
         saved_state.restore()
 
-    return tolist(ul)
+
+class GtlikeCutoffUpperLimit(GtlikeUpperLimit):
+
+    defaults = GtlikeUpperLimit.defaults + (
+        ('Index', 1.7, "'Index' parameter of PLSuperExpCutoff"),
+        ('Cutoff', 3e3, "'Cutoff' parameter of PLSuperExpCutoff"),
+        ('b', 1, "'b'parameter of PLSuperExpCutoff"),
+    )
+
+    @keyword_options.decorate(defaults)
+    def __init__(self, *args, **kwargs):
+        super(GtlikeCutoffUpperLimit,self).__init__(*args, **kwargs)
+
+    def _compute(self):
+        if self.verbosity: print 'calculating gtlike cutoff upper limit'
+        like = self.like
+        name = self.name
+
+        saved_state = SuperState(like)
+
+        cutoff_model = PLSuperExpCutoff(Index=self.Index, Cutoff=self.Cutoff, b=self.b, set_default_limits=True)
+        cutoff_model.set_limits('norm', cutoff_model.getp('norm')*1e-10, cutoff_model.getp('norm')*1e10)
+        cutoff_spectrum = build_gtlike_spectrum(cutoff_model)
+
+        like.setSpectrum(name,cutoff_spectrum)
+        like.syncSrcParams(name)
+
+        super(GtlikeCutoffUpperLimit,self)._compute()
+
+        saved_state.restore()
+
+class PointlikeUpperLimit(UpperLimit):
+    defaults = UpperLimit.defaults + (
+        ('cl', 0.95, 'confidence level'),
+        ('emin', None, 'minimum energy (for quoted flux). Default is full energy range'),
+        ('emax', None, 'maximum energy (for quoted flux). Default is full energy range'),
+        ('flux_units', 'erg', 'Units to quote flux in'),
+        ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
+        ('include_prefactor', False, 'Compute prefactor upper limit'),
+        ('prefactor_energy', None, 'Energy to compute prefactor energy at'),
+    )
+
+    @keyword_options.decorate(defaults)
+    def __init__(self, roi, which, **kwargs):
+        keyword_options.process(self, kwargs)
+
+        self.roi = roi 
+        self.which = which
+
+        if self.emin is None and self.emax is None: 
+            self.emin, self.emax = get_full_energy_range(roi)
+
+        # Just to be safe, make sure integral is over VERY large range
+        if 'integral_min' not in self.upper_limit_kwargs: self.upper_limit_kwargs['integral_min']=-20
+        if 'integral_max' not in self.upper_limit_kwargs: self.upper_limit_kwargs['integral_max']=-5
 
 
-def gtlike_powerlaw_upper_limit(like, name, powerlaw_index=2 , cl=0.95, emin=None, emax=None, 
-                                **kwargs):
-    """ Wrap up calculating the flux upper limit for a powerlaw
-        source.  This function employes the pyLikelihood function
-        IntegralUpperLimit to calculate a Bayesian upper limit.
+        self._compute()
 
-        The primary benefit of this function is that it replaces the
-        spectral model automatically with a PowerLaw spectral model
-        and fixes the index to -2. It then picks a better scale for the
-        powerlaw and gives the upper limit calculation a more reasonable
-        starting value, which helps the convergence.
-    """
-    print 'Calculating gtlike power-law upper limit'
+    def _compute(self):
 
-    saved_state = SuperState(like)
+        roi = self.roi
+        which = self.which
 
-    if emin is None and emax is None: 
-        emin, emax = get_full_energy_range(like)
+        saved_state = PointlikeState(roi)
 
-    e = np.sqrt(emin*emax)
+        try:
+            ful = FluxUpperLimit(roi=roi, which=which, confidence=self.cl, **self.upper_limit_kwargs)
+            model = ful.upper_limit_model
 
-    # assume a canonical dnde=1e-11 at 1GeV index 2 starting value
-    dnde = PowerLaw(norm=1e-11, index=2,e0=1e3)
+            self.results  = pointlike_model_to_flux(model, emin=self.emin, emax=self.emax, 
+                                                    flux_units=self.flux_units, error=False,
+                                                    include_prefactor=self.include_prefactor,
+                                                    prefactor_energy=self.prefactor_energy,
+                                                   )
 
-    like.setSpectrum(name,'PowerLaw')
-    like.syncSrcParams(name)
+            self.results['spectrum'] = spectrum_to_dict(model)
 
-    # fix index to 0
-    index=like[like.par_index(name, 'Index')]
-    index.setTrueValue(-1*powerlaw_index)
-
-    # good starting guess for source
-    prefactor=like[like.par_index(name, 'Prefactor')]
-    prefactor.setScale(dnde(e))
-    prefactor.setValue(1)
-    # unbound the prefactor since the default range 1e-2 to 1e2 may not be big enough
-    # in small phase ranges.
-    prefactor.setBounds(1e-10,1e10)
-
-    scale=like[like.par_index(name, 'Scale')]
-    scale.setScale(1)
-    scale.setValue(e)
-
-    like.syncSrcParams(name)
-
-    results = gtlike_upper_limit(like, name, emin=emin, emax=emax, **kwargs)
-
-    saved_state.restore()
-
-    return tolist(results)
-
-def gtlike_cutoff_upper_limit(like, name, Index, Cutoff, b, emin=None, emax=None, **kwargs):
-    print 'Calculating gtlike cutoff upper limit'
-
-    saved_state = SuperState(like)
-
-    if emin is None and emax is None: 
-        emin, emax = get_full_energy_range(like)
-
-    e = np.sqrt(emin*emax)
-
-    cutoff_model = PLSuperExpCutoff(Index=Index, Cutoff=Cutoff, b=b, set_default_limits=True)
-    cutoff_spectrum = build_gtlike_spectrum(cutoff_model)
-
-    like.setSpectrum(name,cutoff_spectrum)
-    like.syncSrcParams(name)
-
-    results = gtlike_upper_limit(like, name, emin=emin, emax=emax, **kwargs)
-
-    saved_state.restore()
-
-    return tolist(results)
+        except Exception, ex:
+            print 'ERROR pointlike upper limit: ', ex
+            traceback.print_exc(file=sys.stdout)
+            self.results = None
+        finally:
+            saved_state.restore(just_spectra=True)
 
 
-def pointlike_upper_limit(roi, name, cl=.95, emin=None, emax=None, flux_units='erg', **kwargs):
 
-    # Just to be safe, make sure integral is over VERY large range
-    if 'integral_min' not in kwargs: kwargs['integral_min']=-20
-    if 'integral_max' not in kwargs: kwargs['integral_max']=-5
+class PointlikePowerLawUpperLimit(PointlikeUpperLimit):
 
-    if emin is None and emax is None:
-        emin, emax = get_full_energy_range(roi)
+    defaults = PointlikeUpperLimit.defaults + (
+        ('powerlaw_index', 2, 'PowerLaw index for assuemd powerlaw'),
+    )
 
-    saved_state = PointlikeState(roi)
+    @keyword_options.decorate(defaults)
+    def __init__(self, *args, **kwargs):
+        super(PointlikePowerLawUpperLimit,self).__init__(*args, **kwargs)
 
-    try:
-        ful = FluxUpperLimit(roi=roi, which=name, confidence=cl, **kwargs)
-        model = ful.upper_limit_model
+    def _compute(self):
+        if self.verbosity: 
+            print 'Calculating pointlike upper limit'
 
-        ul = pointlike_model_to_flux(model, emin=emin, emax=emax, flux_units=flux_units, error=False)
+        roi = self.roi
+        which = self.which
 
-        ul['model'] = spectrum_to_dict(model)
+        saved_state = PointlikeState(roi)
 
-    except Exception, ex:
-        print 'ERROR pointlike upper limit: ', ex
-        traceback.print_exc(file=sys.stdout)
-        ul = None
-    finally:
+        """ Note keep old flux, because it is important to have
+            the spectral model pushed into the upper_limit
+            code reasonably close to the best fit flux. This
+            is because initial likelihood (ll_0) is used to scale
+            the likelihood so it has to be reasonably close to 
+            the best value. """
+        model = PowerLaw(index=self.powerlaw_index)
+        roi.modify(which=which, model=model, keep_old_flux=True)
+
+        super(PointlikePowerLawUpperLimit,self)._compute()
+
         saved_state.restore(just_spectra=True)
 
-    return tolist(ul)
 
+class PointlikeCutoffUpperLimit(PointlikeUpperLimit):
 
-def pointlike_powerlaw_upper_limit(roi, name, powerlaw_index=2, emin=None, emax=None, **kwargs):
-    print 'Calculating pointlike upper limit'
+    defaults = PointlikeUpperLimit.defaults + (
+        ('Index', 1.7, "'Index' parameter of PLSuperExpCutoff"),
+        ('Cutoff', 3e3, "'Cutoff' parameter of PLSuperExpCutoff"),
+        ('b', 1, "'b'parameter of PLSuperExpCutoff"),
+    )
 
-    saved_state = PointlikeState(roi)
+    @keyword_options.decorate(defaults)
+    def __init__(self, *args, **kwargs):
+        super(PointlikeCutoffUpperLimit,self).__init__(*args, **kwargs)
 
-    """ Note keep old flux, because it is important to have
-        the spectral model pushed into the upper_limit
-        code reasonably close to the best fit flux. This
-        is because initial likelihood (ll_0) is used to scale
-        the likelihood so it has to be reasonably close to 
-        the best value. """
-    roi.modify(which=name, model=PowerLaw(index=powerlaw_index), keep_old_flux=True)
+    def _compute(self):
+        if self.verbosity: print 'calculating pointlike cutoff upper limit'
 
-    ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
+        roi = self.roi
+        which = self.which
 
-    saved_state.restore(just_spectra=True)
+        saved_state = PointlikeState(roi)
 
-    return tolist(ul)
+        cutoff_model = PLSuperExpCutoff(Index=self.Index, Cutoff=self.Cutoff, b=self.b)
+        roi.modify(which=which, model=cutoff_model, keep_old_flux=True)
 
-def pointlike_cutoff_upper_limit(roi, name, Index, Cutoff, b, emin=None, emax=None, **kwargs):
-    print 'Calculating pointlike upper limit'
+        super(PointlikeCutoffUpperLimit,self)._compute()
 
-    saved_state = PointlikeState(roi)
+        saved_state.restore(just_spectra=True)
 
-    cutoff_model = PLSuperExpCutoff(Index=Index, Cutoff=Cutoff, b=b)
-    roi.modify(which=name, model=cutoff_model, keep_old_flux=True)
-
-    ul = pointlike_upper_limit(roi, name, emin=emin, emax=emax, **kwargs)
-
-    saved_state.restore(just_spectra=True)
-
-    return tolist(ul)
-
-
-def powerlaw_upper_limit(*args, **kwargs):
-    return gtlike_or_pointlike(gtlike_powerlaw_upper_limit, pointlike_powerlaw_upper_limit, *args, **kwargs)
-
-def cutoff_upper_limit(*args, **kwargs):
-    return gtlike_or_pointlike(gtlike_cutoff_upper_limit, pointlike_cutoff_upper_limit, *args, **kwargs)
-
-def upper_limit(*args, **kwargs):
-    return gtlike_or_pointlike(gtlike_upper_limit, pointlike_upper_limit, *args, **kwargs)
