@@ -20,7 +20,9 @@ from lande.utilities.tools import tolist
 from lande.fermi.spectra.plotting import plot_all_seds
 from lande.fermi.likelihood.fit import paranoid_gtlike_fit, fit_prefactor, fit_only_source, freeze_insignificant_to_catalog, freeze_bad_index_to_catalog
 from lande.fermi.likelihood.save import sourcedict, get_full_energy_range
-from lande.fermi.likelihood.limits import powerlaw_upper_limit, cutoff_upper_limit
+from lande.fermi.likelihood.limits import GtlikePowerLawUpperLimit, GtlikeCutoffUpperLimit, PointlikePowerLawUpperLimit, PointlikeCutoffUpperLimit
+
+
 from lande.fermi.likelihood.localize import GridLocalize, paranoid_localize
 from lande.fermi.likelihood.cutoff import plot_gtlike_cutoff_test, test_cutoff, fix_bad_cutoffs
 from lande.fermi.likelihood.bandfitter import GtlikeBandFitter
@@ -281,8 +283,10 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
 
     p = sourcedict(roi, name)
 
-    p['powerlaw_upper_limit']=powerlaw_upper_limit(roi, name, emin=emin, emax=emax, cl=.95)
-    p['cutoff_upper_limit']=cutoff_upper_limit(roi, name, Index=1.7, Cutoff=3e3, b=1, cl=.95)
+    pul = PointlikePowerLawUpperLimit(roi, name, emin=emin, emax=emax, cl=.95)
+    p['powerlaw_upper_limit']=pul.todict()
+    cul = PointlikeCutoffUpperLimit(roi, name, Index=1.7, Cutoff=3e3, b=1, cl=.95)
+    p['cutoff_upper_limit']=cul.todict()
 
 
     if cutoff:
@@ -336,8 +340,10 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
     r=sourcedict(like, name)
 
     if upper_limit:
-        r['powerlaw_upper_limit'] = powerlaw_upper_limit(like, name, emin=emin, emax=emax, cl=.95, delta_log_like_limits=10)
-        r['cutoff_upper_limit'] = cutoff_upper_limit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95)
+        pul = GtlikePowerlawUpperLimit(like, name, emin=emin, emax=emax, cl=.95, delta_log_like_limits=10)
+        r['powerlaw_upper_limit'] = pul.todict()
+        cul = GtlikeCutoffUpperLimit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95)
+        r['cutoff_upper_limit'] = cul.todict()
 
     if all_energy(emin,emax):
         bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax))
