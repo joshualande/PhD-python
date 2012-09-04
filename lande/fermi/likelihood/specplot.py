@@ -1,20 +1,30 @@
-# overload SED namespace for our base object
-from uw.utilities import keyword_options
-
 import numpy as np
+from matplotlib.axes import Axes
 
 import pyLikelihood
 from SED import SED as BaseGtlikeSED
 
+# overload SED namespace for our base object
+from uw.utilities import keyword_options
+from uw.like.Models import Model
+
 from lande.pysed import units
 
+from . save import dict_to_spectrum
 
-"""
-class SEDAxes(object):
-    def __init__(energy_units, flux_units):
+
+class SpectralAxes(Axes):
+    def __init__(self, energy_units, flux_units, *args, **kwargs):
         self.energy_units = energy_units
         self.flux_units = flux_units
-"""
+
+        super(SpectralAxes,self).__init__(*args, **kwargs)
+        
+        self.set_xscale('log')
+        self.set_yscale('log')
+
+        self.set_xlabel('Energy (%s)' % self.energy_units)
+        self.set_ylabel('E$^2$ dN/dE (%s cm$^{-2}$ s$^{-1}$)' % self.flux_units)
 
 class SpectrumPlotter(object):
     """ Plot spectra. """
@@ -36,6 +46,8 @@ class SpectrumPlotter(object):
             return BaseGtlikeSED.get_dnde(spectrum,energies)
         elif isinstance(spectrum,Model):
             return spectrum(energies)
+        elif isinstance(spectrum,dict):
+            return SpectrumPlotter.get_dnde(dict_to_spectrum(spectrum),energies)
         else:
             raise SEDException("Unrecognized type %s for spectrum." % type(spectrum))
 
@@ -56,7 +68,7 @@ class SpectrumPlotter(object):
         """
 
         if emin is None and emax is None:
-            emin, emax= axes.get_xlim()
+            emin,emax= axes.get_xlim()
         energies = np.logspace(np.log10(emin), np.log10(emax), npts)
 
         e_units = units.tosympy(energies,energy_units_obj)

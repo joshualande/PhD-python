@@ -13,7 +13,7 @@ from . superstate import SuperState
 
 from . tools import gtlike_or_pointlike
 
-def paranoid_gtlike_fit(like, covar=True, niter=1):
+def paranoid_gtlike_fit(like, covar=True, niter=1, verbosity=False):
     """ Perform a sepctral fit in gtlike in
         a paranoid manner. 
         
@@ -21,35 +21,37 @@ def paranoid_gtlike_fit(like, covar=True, niter=1):
             http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Likelihood/Fitting_Models.html
     """
     if niter > 1:
-        print 'Fitting %s times' % niter
+        if verbosity: print 'Fitting %s times' % niter
         for i in range(niter):
-            print "Fitting iteration %s" % i
-            paranoid_gtlike_fit(like, covar, niter=1)
+            if verbosity: print "Fitting iteration %s" % i
+            paranoid_gtlike_fit(like, covar, niter=1, verbosity=verbosity)
         return
+
+    optverbosity = max(verbosity-1, 0) # see IntegralUpperLimit.py
 
     saved_state = SuperState(like)
     try:
-        print 'First, fitting with minuit'
-        like.fit(optimizer="MINUIT",covar=covar)
+        if verbosity: print 'First, fitting with minuit'
+        like.fit(optverbosity, optimizer="MINUIT",covar=covar)
     except Exception, ex:
-        print 'Minuit fit failed with optimizer=MINUIT, Try again with DRMNFB + NEWMINUIT!', ex
+        if verbosity: print 'Minuit fit failed with optimizer=MINUIT, Try again with DRMNFB + NEWMINUIT!', ex
         traceback.print_exc(file=sys.stdout)
         saved_state.restore()
 
         try:
             saved_state = SuperState(like)
-            print 'Refitting, first with DRMNFB'
-            like.fit(optimizer='DRMNFB', covar=False)
-            print 'Refitting, second with NEWMINUIT'
-            like.fit(optimizer='NEWMINUIT', covar=covar)
+            if verbosity: print 'Refitting, first with DRMNFB'
+            like.fit(optverbosity, optimizer='DRMNFB', covar=False)
+            if verbosity: print 'Refitting, second with NEWMINUIT'
+            like.fit(optverbosity, optimizer='NEWMINUIT', covar=covar)
         except Exception, ex:
-            print 'ERROR spectral fitting with DRMNFB + NEWMINUIT: ', ex
+            if verbosity: print 'ERROR spectral fitting with DRMNFB + NEWMINUIT: ', ex
             traceback.print_exc(file=sys.stdout)
             saved_state.restore()
             try:
                 saved_state = SuperState(like)
-                print 'Refitting with LBFGS'
-                like.fit(optimizer='LBFGS', covar=False)
+                if verbosity: print 'Refitting with LBFGS'
+                like.fit(optverbosity, optimizer='LBFGS', covar=False)
             except Exception, ex:
                 print 'ERROR spectral fitting with LBFGS', ex
                 traceback.print_exc(file=sys.stdout)

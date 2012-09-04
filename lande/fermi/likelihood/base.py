@@ -3,7 +3,19 @@ from lande.utilities.tools import tolist
 from lande.utilities.save import loaddict
 
 class BaseFitter(object):
-    """ Base object for gtlike/pointlike fitter objects.
+    """ BaseFitter is a base class for all of my
+        gtlike/pointlike fitter objects.
+
+        The intention of this code is to provide a uniform 
+        interface to performing a given analysis with gtlike/pointlike:
+
+            analysis = AnalysisObject(like, name, verbosity=True, other_params)
+
+            # create a dictionary of the results
+            d = analysis.todict()
+
+            # save results to a YAML file
+            analysis.save('results.yaml')
         
         Object must create a self.results dictionary.
     """

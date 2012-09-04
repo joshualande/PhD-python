@@ -17,22 +17,20 @@ from uw.like.SpatialModels import Gaussian
 
 from lande.utilities.tools import tolist
 
-from lande.fermi.spectra.plotting import plot_all_seds
 from lande.fermi.likelihood.fit import paranoid_gtlike_fit, fit_prefactor, fit_only_source, freeze_insignificant_to_catalog, freeze_bad_index_to_catalog
-from lande.fermi.likelihood.save import sourcedict, get_full_energy_range
+from lande.fermi.likelihood.save import source_dict, get_full_energy_range
 from lande.fermi.likelihood.limits import GtlikePowerLawUpperLimit, GtlikeCutoffUpperLimit, PointlikePowerLawUpperLimit, PointlikeCutoffUpperLimit
 
 
 from lande.fermi.likelihood.localize import GridLocalize, paranoid_localize
-from lande.fermi.likelihood.cutoff import plot_gtlike_cutoff_test, test_cutoff, fix_bad_cutoffs
+from lande.fermi.likelihood.cutoff import PointlikeCutoffTester, GtlikeCutoffTester
 from lande.fermi.likelihood.bandfitter import GtlikeBandFitter
 from lande.fermi.likelihood.printing import summary
-from lande.fermi.pulsar.plotting import plot_phaseogram,plot_phase_vs_time
-from lande.fermi.spectra.sed import GtlikeSED
+from lande.fermi.pulsar.plotting import plot_phaseogram, plot_phase_vs_time
+from lande.fermi.spectra.gtlike import GtlikeSED
+from lande.fermi.spectra.pointlike import PointlikeSED
 from lande.fermi.data.plotting import ROITSMapBandPlotter, ROISourceBandPlotter, ROISourcesBandPlotter
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
-
-from setup_pwn import PWNRegion
 
 close=lambda x,y: np.allclose(x,y, rtol=0, atol=1)
 all_energy=lambda emin,emax: close([emin,emax],[1e2,10**5.5]) or close([emin,emax],[1e2,1e5])
@@ -281,20 +279,30 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
 
     fit()
 
-    p = sourcedict(roi, name)
+    print 'Making pointlike SED'
+    sed = PointlikeSED(roi, name, verbosity=True)
+    sed.plot('%s/sed_pointlike_%s_%s.png' % (seddir,hypothesis,name)) 
+    sed.save('%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name))
+
+    print_summary()
+
+    p = source_dict(roi, name)
 
     pul = PointlikePowerLawUpperLimit(roi, name, emin=emin, emax=emax, cl=.95)
     p['powerlaw_upper_limit']=pul.todict()
     cul = PointlikeCutoffUpperLimit(roi, name, Index=1.7, Cutoff=3e3, b=1, cl=.95)
     p['cutoff_upper_limit']=cul.todict()
 
-
     if cutoff:
-        p['test_cutoff']=test_cutoff(roi,name, model1=model1)
-    print_summary()
+        try:
+            tc = PointlikeCutoffTester(roi,name, model1=model1, verbosity=True)
+            p['test_cutoff']=tc.todict()
+            tc.plot(sed_results='%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name),
+                    filename='%s/test_cutoff_pointlike_%s_%s.png' % (plotdir,hypothesis,name))
+        except Exception, ex:
+            print 'ERROR plotting cutoff test:', ex
+            traceback.print_exc(file=sys.stdout)
 
-    roi.plot_sed(which=name,filename='%s/sed_pointlike_%s_%s.png' % (seddir,hypothesis,name), use_ergs=True)
-    plot_all_seds(roi, filename='%s/all_seds_pointlike_%s_%s.png' % (seddir,hypothesis,name), use_ergs=True)
 
     roi.toXML(filename="%s/srcmodel_pointlike_%s_%s.xml"%(datadir, hypothesis, name))
  
@@ -337,7 +345,7 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
 
     like.writeXml("%s/srcmodel_gtlike_%s_%s.xml"%(datadir, hypothesis, name))
 
-    r=sourcedict(like, name)
+    r=source_dict(like, name)
 
     if upper_limit:
         pul = GtlikePowerlawUpperLimit(like, name, emin=emin, emax=emax, cl=.95, delta_log_like_limits=10)
@@ -346,14 +354,14 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
         r['cutoff_upper_limit'] = cul.todict()
 
     if all_energy(emin,emax):
-        bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax))
+        bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), verbosity=True)
         bf.plot('%s/bandfit_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
         bf.save('%s/bandfit_gtlike_%s_%s.yaml' % (datadir,hypothesis,name))
 
     def sed(kind,**kwargs):
         try:
             print 'Making %s SED' % kind
-            sed = GtlikeSED(like, name, always_upper_limit=True, **kwargs)
+            sed = GtlikeSED(like, name, always_upper_limit=True, verbosity=True, **kwargs)
             sed.plot('%s/sed_gtlike_%s_%s.png' % (seddir,kind,name)) 
             sed.save('%s/sed_gtlike_%s_%s.yaml' % (seddir,kind,name))
         except Exception, ex:
@@ -374,11 +382,11 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
         sed(hypothesis)
 
     if cutoff:
-        r['test_cutoff']=test_cutoff(like,name, model1=model1)
         try:
-            plot_gtlike_cutoff_test(cutoff_results=r['test_cutoff'],
-                                    sed_results='%s/sed_gtlike_2bpd_%s_%s.yaml' % (seddir,hypothesis,name),
-                                    filename='%s/test_cutoff_%s_%s.png' % (plotdir,hypothesis,name))
+            tc = GtlikeCutoffTester(like,name, model1=model1, verbosity=True)
+            r['test_cutoff']=todict()
+            tc.plot(sed_results='%s/sed_gtlike_2bpd_%s_%s.yaml' % (seddir,hypothesis,name),
+                    filename='%s/test_cutoff_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
         except Exception, ex:
             print 'ERROR plotting cutoff test:', ex
             traceback.print_exc(file=sys.stdout)

@@ -2,7 +2,7 @@ import numpy as np
 import pylab as P
 import yaml
 
-from SED import SED
+from SED import SED as BaseGtlikeSED
 
 from uw.utilities import keyword_options
 from uw.like.Models import PowerLaw
@@ -11,11 +11,11 @@ from lande.pysed import units
 from lande.utilities.tools import tolist
 
 from . models import build_gtlike_spectrum, build_pointlike_model
-from . save import fluxdict, name_to_spectral_dict, dict_to_spectrum
+from . save import flux_dict, name_to_spectral_dict, dict_to_spectrum
 from . limits import GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState
-from . specplot import SpectrumPlotter
+from . specplot import SpectrumPlotter,SpectralAxes
 from . base import BaseFitter
 
 class BandFitter(BaseFitter):
@@ -31,27 +31,30 @@ class BandFitter(BaseFitter):
 
         self.results = results
 
-    def plot(self, filename, axes=None, fignum=None, figsize=(4,4), **kwargs):
+    def plot(self, filename, axes=None, title=None, 
+             fignum=None, figsize=(4,4), 
+             spectral_kwargs=dict(color='red',zorder=1.9),
+             ):
 
         if axes is None:
             fig = P.figure(fignum,figsize)
-            axes = fig.add_axes((0.22,0.15,0.75,0.8))
 
-            axes.set_xscale('log')
-            axes.set_yscale('log')
-
-            axes.set_xlabel('Energy (%s)' % self.energy_units)
-            axes.set_ylabel('E$^2$ dN/dE (%s cm$^{-2}$ s$^{-1}$)' % self.flux_units)
+            axes = SpectralAxes(fig=fig, rect=(0.22,0.15,0.75,0.8),
+                         flux_units=self.flux_units,
+                         energy_units=self.energy_units)
+            fig.add_axes(axes)
+            BaseGtlikeSED.set_xlim(axes, self.results['energy']['lower_energy'][0],self.results['energy']['upper_energy'][-1])
             
         sp = SpectrumPlotter(energy_units=self.energy_units, flux_units=self.flux_units)
 
-        for r in self.results:
+        for r in self.results['bands']:
             emin=r['emin']
             emax=r['emax']
             spectrum = dict_to_spectrum(r['spectrum'])
 
-            sp.plot(spectrum, axes, emin=emin, emax=emax, **kwargs)
+            sp.plot(spectrum, axes, emin=emin, emax=emax, **spectral_kwargs)
 
+        if title is not None: axes.set_title(title)
         if filename is not None: P.savefig(filename)
         return axes
 
@@ -67,7 +70,7 @@ class GtlikeBandFitter(BandFitter):
         uses that spectra as a starting value for the fit (but
         allows the fit to vary by a factor of 10^4 in either direciton).
         """
-    ul_choices = SED.ul_choices
+    ul_choices = BaseGtlikeSED.ul_choices
 
     defaults = BandFitter.defaults + (
         ('ul_algorithm','bayesian',"choices = 'frequentist', 'bayesian' "),
@@ -86,7 +89,7 @@ class GtlikeBandFitter(BandFitter):
         self.like               = like
         self.name               = name
 
-        if not SED.good_binning(self.like, bin_edges):
+        if not BaseGtlikeSED.good_binning(self.like, bin_edges):
             raise Exception("bin_edges is not commensurate with the underlying energy binning of pyLikelihood.")
 
         source=self.like.logLike.getSource(name) 
@@ -99,6 +102,7 @@ class GtlikeBandFitter(BandFitter):
 
         self.lower_energy=bin_edges[:-1]
         self.upper_energy=bin_edges[1:]
+        self.emiddle=np.sqrt(self.lower_energy,self.upper_energy)
 
         if self.ul_algorithm not in self.ul_choices:
             raise Exception("Upper Limit Algorithm %s not in %s" % (self.ul_algorithm,str(self.ul_choices)))
@@ -123,16 +127,19 @@ class GtlikeBandFitter(BandFitter):
 
         self.results = dict(
             name=name,
-            bands=[]
+            bands=[],
+            energy=dict(
+                lower_energy=self.lower_energy,
+                upper_energy=self.upper_energy,
+                middle_energy=self.upper_energy,
+            )
         )
 
-        for i,(lower,upper) in enumerate(zip(self.lower_energy,self.upper_energy)):
+        for i,(lower,upper,e) in enumerate(zip(self.lower_energy,self.upper_energy,self.emiddle)):
             if self.verbosity: print 'Calculating spectrum from %.0dMeV to %.0dMeV' % (lower,upper)
 
             r = dict(emin=lower, emax=upper)
             self.results['bands'].append(r)
-
-            e = np.sqrt(lower*upper)
 
             like.setEnergyRange(float(lower)+1, float(upper)-1)
 
@@ -146,11 +153,11 @@ class GtlikeBandFitter(BandFitter):
             like.setSpectrum(name,spectrum)
             like.syncSrcParams(name)
 
-            paranoid_gtlike_fit(like)
+            paranoid_gtlike_fit(like, verbosity=self.verbosity)
 
             r['TS'] = like.Ts(name,reoptimize=False, verbosity=4)
 
-            fd = fluxdict(like,name,
+            fd = flux_dict(like,name,
                           emin=lower,emax=upper,
                           flux_units=self.flux_units)
 

@@ -33,8 +33,8 @@ from roi_gtlike import Gtlike
 from lande.utilities.tools import tolist
 
 from . fit import paranoid_gtlike_fit, gtlike_modify
-from . save import fluxdict, diffusedict, get_background, get_sources, sourcedict
-from . limits import gtlike_upper_limit, pointlike_upper_limit
+from . save import flux_dict, diffuse_dict, get_background, get_sources, source_dict
+from . limits import GtlikeUpperLimit, PointlikeUpperLimit
 from . fit import allow_fit_only_prefactor
 from . superstate import SuperState
 from . base import BaseFitter
@@ -183,7 +183,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
     f = 0.02
 
-    defaults = BaseFitter + (
+    defaults = BaseFitter.defaults + (
         ("savedir",               None, """ Directory to put output files into. 
                                             Default is to use a temporary file and 
                                             delete it when done."""),
@@ -195,7 +195,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         ("do_gtlike",             True, """ Run gtlike varaibility test. """),
         ("refit_background",      True, """ Fit the background sources in each energy bin."""),
         ("refit_other_sources",   True, """ Fit other sources in each energy bin. """),
-        ("use_pointlike_ltcube", False, """ Make the ltcubes with pointlike. """)
+        ("use_pointlike_ltcube", False, """ Make the ltcubes with pointlike. """),
     )
 
     @keyword_options.decorate(defaults)
@@ -243,19 +243,19 @@ class GtlikeVariabilityTester(VariabilityTester):
 
 
     def all_time_fit(self):
-        print 'First, computing best all-time parameters'
+        if self.verbosity: print 'First, computing best all-time parameters'
 
         roi = self.roi
         which = self.which
 
         # first, spectral fit in gtlike
 
-        print 'Performing pointlike spectral analyis over all energy'
-        print '... Before'; roi.print_summary()
+        if self.verbosity: print 'Performing pointlike spectral analyis over all energy'
+        if self.verbosity: print '... Before'; roi.print_summary()
         roi.fit(**self.pointlike_fit_kwargs)
-        print '... After'; roi.print_summary()
+        if self.verbosity: print '... After'; roi.print_summary()
 
-        all_time = dict(pointlike = sourcedict(roi, which))
+        all_time = dict(pointlike = source_dict(roi, which))
 
         all_time['pointlike']['TS'] = roi.TS(which,quick=False)
 
@@ -268,14 +268,14 @@ class GtlikeVariabilityTester(VariabilityTester):
                           **self.gtlike_kwargs)
             like=gtlike.like
 
-            print 'Performing gtlike spectral analyis over all energy'
-            print '... Before'; print like.model
-            paranoid_gtlike_fit(like)
-            print '... After'; print like.model
+            if self.verbosity: print 'Performing gtlike spectral analyis over all energy'
+            if self.verbosity: print '... Before'; print like.model
+            paranoid_gtlike_fit(like, verbosity=verbosity)
+            if self.verbosity: print '... After'; print like.model
 
             self.best_gtlike_state = SuperState(like)
 
-            all_time['gtlike'] = sourcedict(like, which)
+            all_time['gtlike'] = source_dict(like, which)
 
         return all_time
 
@@ -284,7 +284,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
         results = dict()
 
-        print 'Performing Pointlike analysis from %s to %s' % (tstart, tstop)
+        if self.verbosity: print 'Performing Pointlike analysis from %s to %s' % (tstart, tstop)
         which=self.which
 
         ll = lambda: -smaller_roi.logLikelihood(smaller_roi.parameters())
@@ -302,33 +302,34 @@ class GtlikeVariabilityTester(VariabilityTester):
         smaller_roi.modify(which=which, free=False)
 
         
-        print 'Performing pointlike spectral analyis with source of interest frozen'
+        if self.verbosity: print 'Performing pointlike spectral analyis with source of interest frozen'
 
-        print '... Before'; smaller_roi.print_summary()
+        if self.verbosity: print '... Before'; smaller_roi.print_summary()
         smaller_roi.fit(**self.pointlike_fit_kwargs)
-        print '... After'; smaller_roi.print_summary()
+        if self.verbosity: print '... After'; smaller_roi.print_summary()
 
         results['ll_0'] = ll()
 
         # Fit prefactor of source of interest
         allow_fit_only_prefactor(smaller_roi, which)
 
-        print "Performing pointlike spectral analyis with source of interest's prefactor free"
+        if self.verbosity: print "Performing pointlike spectral analyis with source of interest's prefactor free"
 
         # * fit prefactor of source
-        print '... Before'; smaller_roi.print_summary()
+        if self.verbosity: print '... Before'; smaller_roi.print_summary()
         smaller_roi.fit(**self.pointlike_fit_kwargs)
-        print '... After'; smaller_roi.print_summary()
+        if self.verbosity: print '... After'; smaller_roi.print_summary()
 
         # * calcualte likelihood for the fit flux
         results['ll_1'] = ll()
-        results['flux'] = fluxdict(smaller_roi,which)
+        results['flux'] = flux_dict(smaller_roi,which)
         results['TS'] = TS = smaller_roi.TS(which,quick=False)
-        results['diffuse'] = diffusedict(smaller_roi)
+        results['diffuse'] = diffuse_dict(smaller_roi)
 
 
         if TS < self.min_ts or self.always_upper_limit:
-            results['upper_limit'] = pointlike_upper_limit(smaller_roi, which, cl=0.95)
+            pul=PointlikeUpperLimit(smaller_roi, which, cl=0.95)
+            results['upper_limit'] = pul.todict()
         else:
             results['upper_limit'] = None
 
@@ -336,7 +337,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
     def each_time_fit_gtlike(self, smaller_roi, tstart, tstop, subdir):
 
-        print 'Performing gtlike analysis from %s to %s' % (tstart, tstop)
+        if self.verbosity: print 'Performing gtlike analysis from %s to %s' % (tstart, tstop)
 
         name=self.which
 
@@ -360,17 +361,17 @@ class GtlikeVariabilityTester(VariabilityTester):
             for source in get_sources(like):
                 gtlike_modify(like,source, free=False)
 
-        print 'Performing gtlike spectral analyis with source of interest frozen'
+        if self.verbosity: print 'Performing gtlike spectral analyis with source of interest frozen'
 
         def p(x):
-            print '... %s' % x; 
-            print like.model
+            if self.verbosity: print '... %s' % x; 
+            if self.verbosity: print like.model
 
         # Freeze source of interest
         gtlike_modify(like, name, free=False)
 
         p('Before')
-        paranoid_gtlike_fit(like)
+        paranoid_gtlike_fit(like, verbosity=self.verbosity)
         p('After')
 
         results['ll_0'] = ll()
@@ -378,20 +379,21 @@ class GtlikeVariabilityTester(VariabilityTester):
         # Fit prefactor of source of interest
         allow_fit_only_prefactor(like, name)
 
-        print "Performing gtlike spectral analyis with source of interest's prefactor free"
+        if self.verbosity: print "Performing gtlike spectral analyis with source of interest's prefactor free"
 
         p('Before')
-        paranoid_gtlike_fit(like)
+        paranoid_gtlike_fit(like=self.verbosity)
         p('After')
 
         results['ll_1'] = ll()
-        results['flux'] = fluxdict(like,name)
+        results['flux'] = flux_dict(like,name)
 
         results['TS'] = TS = like.Ts(name,reoptimize=True,verbosity=4)
-        results['diffuse'] = diffusedict(like)
+        results['diffuse'] = diffuse_dict(like)
 
         if TS < self.min_ts or self.always_upper_limit:
-            results['upper_limit'] = gtlike_upper_limit(like, name, cl=0.95)
+            gul = GtlikeUpperLimit(like, name, cl=0.95)
+            results['upper_limit'] = gul.todict()
         else:
             results['upper_limit'] = None
 
@@ -408,12 +410,12 @@ class GtlikeVariabilityTester(VariabilityTester):
         for i,(tstart,tstop) in enumerate(zip(self.time['starts'], self.time['stops'])):
 
             subdir = join(self.savedir,'time_%s_%s' % (tstart, tstop))
-            print 'Subdir = ',subdir
+            if self.verbosity: print 'Subdir = ',subdir
             if not exists(subdir):
                 os.makedirs(subdir)
 
             days = (tstop-tstart)/(60*60*24)
-            print  '%s/%s Looping from time %s to %s (%.1f days)' % (i+1, self.nbins, tstart, tstop, days)
+            if self.verbosity: print  '%s/%s Looping from time %s to %s (%.1f days)' % (i+1, self.nbins, tstart, tstop, days)
 
             band = dict(
                 tstart = tstart, 
@@ -429,7 +431,7 @@ class GtlikeVariabilityTester(VariabilityTester):
                 band['gtlike'] = self.each_time_fit_gtlike(smaller_roi, tstart, tstop, subdir)
 
             if not self.save_data:
-                print 'Removing subdir',subdir
+                if self.verbosity: print 'Removing subdir',subdir
                 shutil.rmtree(subdir)
 
         self.TS_var = dict(
@@ -511,7 +513,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         cut_evfile=join(subdir,"cut_ft1_%s_%s.fits" % (tstart, tstop))
 
         if not exists(cut_evfile):
-            if not roi.quiet: print 'Running gtselect'
+            if self.verbosity: print 'Running gtselect'
             gtselect=GtApp('gtselect', 'dataSubselector')
             gtselect.run(infile=evfile,
                          outfile=cut_evfile,
@@ -521,7 +523,7 @@ class GtlikeVariabilityTester(VariabilityTester):
                          zmax=180)
 
         else:
-            print '... Skiping gtselect for %s to %s' % (tstart,tstop)
+            if self.verbosity: print '... Skiping gtselect for %s to %s' % (tstart,tstop)
 
         ds_kwargs['ft1files'] = cut_evfile
 
@@ -535,7 +537,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         new_ltcube = join(subdir,'ltcube_%s_%s.fits' % (tstart, tstop))
 
         if not exists(new_ltcube):
-            if not roi.quiet: print 'Running gtltcube for %s to %s' % (tstart,tstop)
+            if self.verbosity: print 'Running gtltcube for %s to %s' % (tstart,tstop)
 
             if use_pointlike_ltcube:
                 pointlike_ltcube(evfile=cut_evfile,
@@ -554,7 +556,7 @@ class GtlikeVariabilityTester(VariabilityTester):
                              dcostheta=0.025, 
                              binsz=1)
         else:
-            print '... Skiping gtltcube for %s to %s' % (tstart,tstop)
+            if self.verbosity: print '... Skiping gtltcube for %s to %s' % (tstart,tstop)
 
         # next, check if ltcube is phased, kind of a kluge
         f = pyfits.open(all_time_ltcube)
@@ -567,7 +569,7 @@ class GtlikeVariabilityTester(VariabilityTester):
             if not exists(phased_ltcube):
                 phase_ltcube(new_ltcube, phased_ltcube, phase)
             else:
-                print '... Skiping gtltcube phasing for %s to %s' % (tstart,tstop)
+                if self.verbosity: print '... Skiping gtltcube phasing for %s to %s' % (tstart,tstop)
 
             ds_kwargs['ltcube'] = phased_ltcube
         else:
@@ -665,7 +667,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
     def __del__(self):
         if not self.save_data:
-            if not self.roi.quiet: print 'Removing savedir',self.savedir
+            if not self.verbosity: print 'Removing savedir',self.savedir
             shutil.rmtree(self.savedir)
 
 

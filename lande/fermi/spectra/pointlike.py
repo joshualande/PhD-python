@@ -3,47 +3,82 @@ from collections import defaultdict
 import yaml
 import numpy as np
 
+from uw.utilities import keyword_options
+from uw.like.sed_plotter import BandFlux
+
+from lande.pysed import units
 from lande.utilities.tools import tolist
 
+from lande.fermi.likelihood.save import spectrum_to_dict
 
-def pointlike_sed_to_dict(bandflux):
-    results = defaultdict(lambda:defaultdict(list))
+from . sed import SED
 
-    results['Energy']['Units'] = 'MeV'
-    results['dNdE']['Units'] = 'ph/cm^2/s/MeV'
+class PointlikeSED(SED):
 
-    results['Significant'] = []
-    for r in bandflux.rec:
+    defaults = SED.defaults + (
+        ('merge', True, 'merge edge bins'),
+    )
+
+    @keyword_options.decorate(defaults)
+    def __init__(self, roi, name, **kwargs):
+        keyword_options.process(self, kwargs)
+        self.roi = roi
+        self.name = name
         
-        results['Energy']['Lower'].append(r.elow)
-        results['Energy']['Upper'].append(r.ehigh)
-        results['Energy']['Value'].append(np.sqrt(r.elow*r.ehigh))
+        bf = BandFlux(self.roi, which=self.name, merge=self.merge, scale_factor=1)
+        results = PointlikeSED.pointlike_sed_to_dict(bf)
 
-        # Undo scaling in the bandflux recarray
-        fac = r.elow*r.ehigh*bandflux.scale_factor
+        model = roi.get_model(name)
+        results['spectrum'] = spectrum_to_dict(model)
 
-        if r.flux > 0:
-            results['Significant'].append(True)
-            results['dNdE']['Value'].append(r.flux/fac)
-            results['dNdE']['Average_Error'].append((r.uflux/fac - r.lflux/fac)/2)
-            results['dNdE']['Lower_Error'].append((r.flux-r.lflux)/fac)
-            results['dNdE']['Upper_Error'].append((r.uflux-r.flux)/fac)
-            results['dNdE']['Upper_Limit'].append(np.nan)
-        else:
-            results['Significant'].append(False)
-            results['dNdE']['Value'].append(np.nan)
-            results['dNdE']['Error'].append(np.nan)
-            results['dNdE']['Upper_Limit'].append(r.uflux/fac)
+        super(PointlikeSED,self).__init__(results, **keyword_options.defaults_to_kwargs(self, SED))
+        
 
-    return tolist(results)
+    @staticmethod
+    def pointlike_sed_to_dict(bandflux, flux_units='erg', energy_units='MeV'):
+        results = defaultdict(lambda:defaultdict(list))
+        
+        ce=lambda e: units.convert(e,'MeV',energy_units)
+        cp = lambda e: units.convert(e,'1/MeV','1/%s' % flux_units)
+
+        results['Energy']['Units'] = energy_units
+        results['dNdE']['Units'] = 'ph/cm^2/s/%s' % flux_units
+
+        results['Significant'] = []
+        for r in bandflux.rec:
+            
+            results['Energy']['Lower'].append(ce(r.elow))
+            results['Energy']['Upper'].append(ce(r.ehigh))
+            results['Energy']['Value'].append(ce(np.sqrt(r.elow*r.ehigh)))
+
+            # Undo scaling in the bandflux recarray
+            fac = r.elow*r.ehigh*bandflux.scale_factor
+
+            if r.flux > 0:
+                results['Significant'].append(True)
+                results['dNdE']['Value'].append(cp(r.flux/fac))
+                results['dNdE']['Average_Error'].append(cp((r.uflux/fac - r.lflux/fac)/2))
+                results['dNdE']['Lower_Error'].append(cp((r.flux-r.lflux)/fac))
+                results['dNdE']['Upper_Error'].append(cp((r.uflux-r.flux)/fac))
+                results['dNdE']['Upper_Limit'].append(np.nan)
+            else:
+                results['Significant'].append(False)
+                results['dNdE']['Value'].append(np.nan)
+                results['dNdE']['Average_Error'].append(np.nan)
+                results['dNdE']['Upper_Limit'].append(cp(r.uflux/fac))
+
+        return tolist(results)
+
 
 def pointlike_sed_to_yaml(bandflux, filename):
-    """ Save a pointlike SED to a yaml file.
+    """ helper function to save a pointlike SED (generated using the roi.plot_sed function)
+        to a yaml file. Generally, it is perferable to use PointlikeSED
+        to generate SEDs.
 
         Usage: 
             
             bf = roi.plot_sed(which=which, filename='plot.png')
             pointlike_sed_to_yaml(bf, filename='data.yaml')
     """
-    d=pointlike_sed_to_dict(bandflux)
+    d=PointlikeSED.pointlike_sed_to_dict(bandflux)
     open(filename,'w').write(yaml.dump(d))

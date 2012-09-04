@@ -1,41 +1,37 @@
 #!/usr/bin/env python
 # This import has to come first
 from . helper import pointlike_analysis,save_results,import_module, gtlike_analysis,plots,save_results,plot_phaseogram,plot_phase_vs_time
-from lande.fermi.likelihood.tools import force_gradient
 
 from uw.like.SpatialModels import Gaussian
 
 import os
 from os.path import join
-
-from lande.fermi.likelihood.parlimits import all_params_limited
-
-from setup_pwn import PWNRegion
-import yaml
-
 from collections import defaultdict
+
+import yaml
 
 
 from uw.like.SpatialModels import Gaussian
 
-from lande.fermi.likelihood.variability import VariabilityTester
-from lande.fermi.likelihood.save import pointlike_dict_to_spectrum
 from lande.utilities.save import loaddict
+
+from lande.fermi.likelihood.tools import force_gradient
+from lande.fermi.likelihood.parlimits import all_params_limited
+from lande.fermi.likelihood.variability import GtlikeVariabilityTester
+from lande.fermi.likelihood.save import pointlike_dict_to_spectrum
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
-from setup_pwn import load_pwn
+from . setup import PWNRegion, load_pwn
 
-
-
-
-class Pipeline(args):
+class Pipeline(object):
     def __init__(self, **kwargs):
         self.__dict__.update(**kwargs)
 
-    def main():
+    def main(self):
         do_at_pulsar = not self.no_at_pulsar
         do_point = not self.no_point
         do_extended = not self.no_extended 
+        do_cutoff = not self.no_cutoff
 
         force_gradient(use_gradient=self.use_gradient)
 
@@ -160,7 +156,7 @@ class Pipeline(args):
             roi.print_summary()
 
             frozen  = freeze_far_away(roi, roi.get_source(name).skydir, self.max_free)
-            v = VariabilityTester(roi,name, nbins=36, 
+            v = GtlikeVariabilityTester(roi,name, nbins=36, 
                                   use_pointlike_ltcube=True, refit_background=True, refit_other_sources=True)
             v.plot(filename='plots/variability_%s_hypothesis_%s.pdf' % (name,hypothesis))
             unfreeze_far_away(roi, frozen)
