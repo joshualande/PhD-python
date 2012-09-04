@@ -26,6 +26,19 @@ class SpectralAxes(Axes):
         self.set_xlabel('Energy (%s)' % self.energy_units)
         self.set_ylabel('E$^2$ dN/dE (%s cm$^{-2}$ s$^{-1}$)' % self.flux_units)
 
+
+def set_xlim_mev(axes, emin, emax, energy_units, extra=0.1):
+    """ Assume emin & emax in MeV. Set xlim. """
+    emin = units.convert(emin,'MeV',energy_units)
+    emax = units.convert(emax,'MeV',energy_units)
+    l=np.log10(emin)
+    h=np.log10(emax)
+
+    low_lim=10**(l - extra*(h-l))
+    hi_lim =10**(h + extra*(h-l))
+    axes.set_xlim(low_lim,hi_lim)
+
+
 class SpectrumPlotter(object):
     """ Plot spectra. """
     defaults= (

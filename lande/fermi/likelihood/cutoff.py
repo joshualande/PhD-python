@@ -21,7 +21,7 @@ from . fit import paranoid_gtlike_fit
 from . printing import summary
 from . models import build_gtlike_spectrum
 from . base import BaseFitter
-from . specplot import SpectrumPlotter,SpectralAxes
+from . specplot import SpectrumPlotter,SpectralAxes,set_xlim_mev
 
 class CutoffTester(BaseFitter):
 
@@ -55,6 +55,7 @@ class CutoffTester(BaseFitter):
                          flux_units=self.flux_units,
                          energy_units=self.energy_units)
             fig.add_axes(axes)
+            set_xlim_mev(axes, self.results['emin'], self.results['emax'], self.energy_units)
 
         sp = SpectrumPlotter(flux_units=self.flux_units, energy_units=self.energy_units)
         sp.plot(self.results['model_0'], axes=axes, **model_0_kwargs)
@@ -84,7 +85,7 @@ class PointlikeCutoffTester(CutoffTester):
         
         if self.verbosity: print 'Testing cutoff in pointlike'
         emin,emax=get_full_energy_range(roi)
-        self.results = d = dict()
+        self.results = d = dict(emin=emin, emax=emax)
 
         saved_state = PointlikeState(roi)
 
@@ -180,10 +181,11 @@ class GtlikeCutoffTester(CutoffTester):
 
         saved_state = SuperState(like)
 
-        self.results = d = {}
+        emin, emax = get_full_energy_range(like)
+
+        self.results = d = dict(emin=emin, emax=emax)
 
         try:
-            emin, emax = get_full_energy_range(like)
 
             def get_flux():
                 return like.flux(name, emin, emax)

@@ -19,7 +19,7 @@ from . save import get_full_energy_range, spectrum_to_dict, pointlike_model_to_f
 from . fit import gtlike_allow_fit_only_prefactor, paranoid_gtlike_fit
 from . models import build_gtlike_spectrum
 from . base import BaseFitter
-from . specplot import SpectralAxes, SpectrumPlotter
+from . specplot import SpectralAxes, SpectrumPlotter, set_xlim_mev
 
 class UpperLimit(BaseFitter):
 
@@ -28,13 +28,7 @@ class UpperLimit(BaseFitter):
         ('flux_units',  'erg', 'default units to plot energy (x axis) in'),
     )
 
-    @keyword_options.decorate(defaults)
-    def __init__(self, results, **kwargs):
-        keyword_options.process(self, kwargs)
-        self.results = results
-        pass
-
-    def plot(self, filename, axes=None, title=None,
+    def plot(self, filename=None, axes=None, title=None,
              fignum=None, figsize=(4,4),
              spectral_kwargs=dict(color='red',zorder=1.9),
             ):
@@ -46,7 +40,7 @@ class UpperLimit(BaseFitter):
                                 flux_units=self.flux_units,
                                 energy_units=self.energy_units)
             fig.add_axes(axes)
-            axes.set_xlim(self.results['emin'], self.results['emax'])
+            set_xlim_mev(axes, self.results['emin'], self.results['emax'], self.energy_units)
 
         sp=SpectrumPlotter(energy_units=self.energy_units, flux_units=self.flux_units)
         sp.plot(self.results['spectrum'], axes=axes, **spectral_kwargs)

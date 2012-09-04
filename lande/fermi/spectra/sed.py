@@ -12,9 +12,8 @@ from lande.pysed import units
 
 from uw.utilities import keyword_options
 
-from lande.fermi.likelihood.specplot import SpectrumPlotter
 from lande.fermi.likelihood.base import BaseFitter
-from lande.fermi.likelihood.specplot import SpectralAxes
+from lande.fermi.likelihood.specplot import SpectralAxes, SpectrumPlotter, set_xlim_mev
 
 class SEDException(Exception): 
     pass
@@ -101,9 +100,9 @@ class SED(BaseFitter):
 
             if has_energy_errors:
                 # use BaseGtlikeSED.set_xlim to add 10% on either side.
-                BaseGtlikeSED.set_xlim(axes,lower_energy[0],upper_energy[-1])
+                set_xlim_mev(axes, lower_energy[0], upper_energy[-1], self.energy_units)
             else:
-                BaseGtlikeSED.set_xlim(energy[0], energy[-1])
+                set_xlim_mev(axes, energy[0], energy[-1], self.energy_units)
 
         self.axes = axes
 

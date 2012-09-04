@@ -15,7 +15,7 @@ from . save import flux_dict, name_to_spectral_dict, dict_to_spectrum
 from . limits import GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState
-from . specplot import SpectrumPlotter,SpectralAxes
+from . specplot import SpectrumPlotter,SpectralAxes,set_xlim_mev
 from . base import BaseFitter
 
 class BandFitter(BaseFitter):
@@ -25,13 +25,7 @@ class BandFitter(BaseFitter):
         ('flux_units',  'erg', 'default units to plot energy (x axis) in'),
     )
 
-    @keyword_options.decorate(defaults)
-    def __init__(self, results, **kwargs):
-        keyword_options.process(self, kwargs)
-
-        self.results = results
-
-    def plot(self, filename, axes=None, title=None, 
+    def plot(self, filename=None, axes=None, title=None, 
              fignum=None, figsize=(4,4), 
              spectral_kwargs=dict(color='red',zorder=1.9),
              ):
@@ -43,7 +37,7 @@ class BandFitter(BaseFitter):
                          flux_units=self.flux_units,
                          energy_units=self.energy_units)
             fig.add_axes(axes)
-            BaseGtlikeSED.set_xlim(axes, self.results['energy']['lower_energy'][0],self.results['energy']['upper_energy'][-1])
+            set_xlim_mev(axes, self.results['energy']['lower'][0],self.results['energy']['upper'][-1], self.energy_units)
             
         sp = SpectrumPlotter(energy_units=self.energy_units, flux_units=self.flux_units)
 
@@ -98,16 +92,15 @@ class GtlikeBandFitter(BandFitter):
         self.init_energes = self.like.energies[[0,-1]]
             
         bin_edges = np.asarray(bin_edges)
-        self.energy = np.sqrt(bin_edges[1:]*bin_edges[:-1])
 
         self.lower_energy=bin_edges[:-1]
         self.upper_energy=bin_edges[1:]
-        self.emiddle=np.sqrt(self.lower_energy,self.upper_energy)
+        self.middle_energy=np.sqrt(self.lower_energy*self.upper_energy)
 
         if self.ul_algorithm not in self.ul_choices:
             raise Exception("Upper Limit Algorithm %s not in %s" % (self.ul_algorithm,str(self.ul_choices)))
 
-        empty = lambda: np.empty_like(self.energy)
+        empty = lambda: np.empty_like(self.middle_energy)
 
         self._calculate()
 
@@ -129,13 +122,13 @@ class GtlikeBandFitter(BandFitter):
             name=name,
             bands=[],
             energy=dict(
-                lower_energy=self.lower_energy,
-                upper_energy=self.upper_energy,
-                middle_energy=self.upper_energy,
-            )
+                lower=self.lower_energy,
+                upper=self.upper_energy,
+                middle=self.middle_energy,
+            ),
         )
 
-        for i,(lower,upper,e) in enumerate(zip(self.lower_energy,self.upper_energy,self.emiddle)):
+        for i,(lower,upper,middle) in enumerate(zip(self.lower_energy,self.upper_energy,self.middle_energy)):
             if self.verbosity: print 'Calculating spectrum from %.0dMeV to %.0dMeV' % (lower,upper)
 
             r = dict(emin=lower, emax=upper)
@@ -144,8 +137,8 @@ class GtlikeBandFitter(BandFitter):
             like.setEnergyRange(float(lower)+1, float(upper)-1)
 
             # build new powerlaw, assuming initial model has a reasonable spectrum
-            init_dnde = self.init_model(e)
-            model = PowerLaw(norm=init_dnde, index=2, e0=e)
+            init_dnde = self.init_model(middle)
+            model = PowerLaw(norm=init_dnde, index=2, e0=middle)
             model.set_limits('norm',1e-4*init_dnde,1e4*init_dnde, scale=init_dnde)
             model.set_limits('index',-5,5)
             spectrum = build_gtlike_spectrum(model)
