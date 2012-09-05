@@ -165,7 +165,7 @@ class Pipeline(object):
 
         savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
 
-    def get_overlay_kwargs(self):
+    def get_overlay_kwargs(self, roi):
         name = self.name
         pwndata=yaml.load(open(self.pwndata))[name]
         pulsar_position = SkyDir(*pwndata['cel'])
@@ -181,7 +181,7 @@ class Pipeline(object):
 
         if not os.path.exists('plots'): os.makedirs('plots')
 
-        overlay_kwargs = self.get_overlay_kwargs()
+        overlay_kwargs = self.get_overlay_kwargs(roi)
         
         tsmaps(roi, name, hypothesis, **overlay_kwargs)
 
@@ -204,7 +204,7 @@ class Pipeline(object):
         plot_phaseogram(title='Phaseogram for %s' % name, filename='plots/phaseogram_%s.png' % name, **plot_kwargs)
         plot_phase_vs_time(title='Phase vs Time for %s' % name, filename='plots/phase_vs_time_%s.png' % name, **plot_kwargs)
 
-        overlay_kwargs = self.get_overlay_kwargs()
+        overlay_kwargs = self.get_overlay_kwargs(roi)
         
         plots(roi, name, hypothesis, **overlay_kwargs)
 
