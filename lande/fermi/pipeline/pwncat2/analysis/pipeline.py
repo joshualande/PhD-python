@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # This import has to come first
-from . helper import pointlike_analysis,save_results,import_module, gtlike_analysis,plots,save_results,plot_phaseogram,plot_phase_vs_time
+from . helper import pointlike_analysis, gtlike_analysis,plots,plot_phaseogram,plot_phase_vs_time
 
 from uw.like.SpatialModels import Gaussian
 
@@ -9,11 +9,12 @@ from os.path import join
 from collections import defaultdict
 
 import yaml
-
+import numpy as np
 
 from uw.like.SpatialModels import Gaussian
 
-from lande.utilities.save import loaddict
+from lande.utilities.save import loaddict,savedict
+from lande.utilities.load import import_module
 
 from lande.fermi.likelihood.tools import force_gradient
 from lande.fermi.likelihood.parlimits import all_params_limited
@@ -27,13 +28,15 @@ class Pipeline(object):
     def __init__(self, **kwargs):
         self.__dict__.update(**kwargs)
 
+        force_gradient(use_gradient=self.use_gradient)
+        np.seterr(all='ignore')
+
     def main(self):
         do_at_pulsar = not self.no_at_pulsar
         do_point = not self.no_point
         do_extended = not self.no_extended 
         do_cutoff = not self.no_cutoff
 
-        force_gradient(use_gradient=self.use_gradient)
 
         name=self.name
         emin=self.emin
@@ -86,87 +89,104 @@ class Pipeline(object):
                                                           fit_extension=True, 
                                                           **pointlike_kwargs)
 
-        save_results(results,'results_%s_pointlike.yaml' % name)
+        savedict(results,'results_%s_pointlike.yaml' % name)
 
-    def followup(self, hypothesis, followup):
+    def reload_roi(hypothesis):
+        name = self.name
+        roi = load_pwn('roi_%s_%s.dat' % (hypothesis,name))
+        return roi
 
-        do_cutoff = not self.no_cutoff
-
-        force_gradient(use_gradient=self.use_gradient)
+    def gtlike_followup(self, hypothesis, followup):
 
         name = self.name
+        roi = self.reload_roi(hypothesis)
 
-        roi = load_pwn('roi_%s_%s.dat' % (hypothesis,name))
+        cutoff = (not self.no_cutoff) and hypothesis in ['at_pulsar', 'point']
+        upper_limit = hypothesis=='at_pulsar'
+        if cutoff:
+            pointlike_results = loaddict('results_%s_pointlike.yaml' % name)
+            model1=pointlike_results[hypothesis]['pointlike']['test_cutoff']['model_1']
+            model1=pointlike_dict_to_spectrum(model1)
+            model1.set_default_limits(oomp_limits=True)
+        else:
+            model1=None
 
+        results = {hypothesis:{}}
+        results[hypothesis]['gtlike']=gtlike_analysis(roi, name=name,
+                                                      max_free = self.max_free,
+                                                      hypothesis=hypothesis, 
+                                                      upper_limit=upper_limit,
+                                                      cutoff=cutoff,
+                                                      model1=model1,
+                                                     )
 
-        if followup == 'gtlike':
+        savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
 
-            cutoff = do_cutoff and hypothesis in ['at_pulsar', 'point']
-            upper_limit = hypothesis=='at_pulsar'
-            if cutoff:
-                pointlike_results = loaddict('results_%s_pointlike.yaml' % name)
-                model1=pointlike_results[hypothesis]['pointlike']['test_cutoff']['model_1']
-                model1=pointlike_dict_to_spectrum(model1)
-                model1.set_default_limits(oomp_limits=True)
-            else:
-                model1=None
+    def get_overlay_kwargs(self):
+        pwndata=yaml.load(open(self.pwndata))[name]
+        pulsar_position = SkyDir(*pwndata['cel'])
 
-            results = {hypothesis:{}}
-            results[hypothesis]['gtlike']=gtlike_analysis(roi, name=name,
-                                                          max_free = self.max_free,
-                                                          hypothesis=hypothesis, 
-                                                          upper_limit=upper_limit,
-                                                          cutoff=cutoff,
-                                                          model1=model1,
-                                                         )
+        new_sources = roi.extra['new_sources']
+        overlay_kwargs = dict(pulsar_position=pulsar_position, new_sources=new_sources)
 
-            save_results(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
+        return overlay_kwargs
 
-        if followup in ['plots','tsmaps']:
+    def tsmaps_followup(self, hypothesis):
+        name = self.name
+        roi = self.reload_roi(hypothesis)
 
-            if not os.path.exists('plots'): 
-                os.makedirs('plots')
+        if not os.path.exists('plots'): os.makedirs('plots')
 
-            pwndata=yaml.load(open(self.pwndata))[name]
-            ft1 = pwndata['ft1']
-            pulsar_position = SkyDir(*pwndata['cel'])
-            phase = roi.extra['phase']
-            pwnphase=roi.extra['pwnphase']
+        overlay_kwargs = self.get_overlay_kwargs()
+        
+        plots(roi, name, hypothesis, do_plots=False, do_tsmap=True, **overlay_kwargs)
 
-            print 'Making phaseogram'
+    def plots_followup(self, hypothesis):
+        name = self.name
+        roi = self.reload_roi(hypothesis)
 
-            plot_kwargs = dict(ft1=ft1, skydir=pulsar_position, phase_range=phase, 
-                               emin=pwnphase['optimal_emin'], emax=pwnphase['emax'], radius=pwnphase['optimal_radius'])
-            plot_phaseogram(title='Phaseogram for %s' % name, filename='plots/phaseogram_%s.png' % name, **plot_kwargs)
-            plot_phase_vs_time(title='Phase vs Time for %s' % name, filename='plots/phase_vs_time_%s.png' % name, **plot_kwargs)
+        if not os.path.exists('plots'): os.makedirs('plots')
 
-            new_sources = roi.extra['new_sources']
-            overlay_kwargs = dict(pulsar_position=pulsar_position, new_sources=new_sources)
-            
-            if followup == 'plots':
-                plots(roi, name, hypothesis, do_plots=True, do_tsmap=False, **overlay_kwargs)
-            elif followup == 'tsmaps':
-                plots(roi, name, hypothesis, do_plots=False, do_tsmap=True, **overlay_kwargs)
+        pwndata=yaml.load(open(self.pwndata))[name]
+        ft1 = pwndata['ft1']
+        pulsar_position = SkyDir(*pwndata['cel'])
+        phase = roi.extra['phase']
+        pwnphase=roi.extra['pwnphase']
 
+        print 'Making phaseogram'
 
-        elif followup == 'variability':
+        plot_kwargs = dict(ft1=ft1, skydir=pulsar_position, phase_range=phase, 
+                           emin=pwnphase['optimal_emin'], emax=pwnphase['emax'], radius=pwnphase['optimal_radius'])
+        plot_phaseogram(title='Phaseogram for %s' % name, filename='plots/phaseogram_%s.png' % name, **plot_kwargs)
+        plot_phase_vs_time(title='Phase vs Time for %s' % name, filename='plots/phase_vs_time_%s.png' % name, **plot_kwargs)
 
-            roi.print_summary()
-            roi.fit(use_gradient=False)
-            roi.print_summary()
+        overlay_kwargs = self.get_overlay_kwargs()
+        
+        plots(roi, name, hypothesis, do_plots=True, do_tsmap=False, **overlay_kwargs)
 
-            frozen  = freeze_far_away(roi, roi.get_source(name).skydir, self.max_free)
-            v = GtlikeVariabilityTester(roi,name, nbins=36, 
-                                  use_pointlike_ltcube=True, refit_background=True, refit_other_sources=True)
-            v.plot(filename='plots/variability_%s_hypothesis_%s.pdf' % (name,hypothesis))
-            unfreeze_far_away(roi, frozen)
+    def variability_followup(self, hypothesis):
+        name = self.name
+        roi = self.reload_roi(hypothesis)
 
-            results = {hypothesis:{'variability':v.todict()}}
-            save_results(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
+        roi.print_summary()
+        roi.fit(use_gradient=False)
+        roi.print_summary()
 
-        elif followup == 'extul':
-            print 'Calculating extension upper limit'
+        frozen  = freeze_far_away(roi, roi.get_source(name).skydir, self.max_free)
+        v = GtlikeVariabilityTester(roi,name, nbins=36, 
+                              use_pointlike_ltcube=True, refit_background=True, refit_other_sources=True)
+        v.plot(filename='plots/variability_%s_hypothesis_%s.pdf' % (name,hypothesis))
+        unfreeze_far_away(roi, frozen)
 
-            r=roi.extension_upper_limit(which=name, confidence=0.95, spatial_model=Gaussian)
-            results = {hypothesis:{'pointlike':{'extension_upper_limit':r}}}
-            save_results(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
+        results = {hypothesis:{'variability':v.todict()}}
+        savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
+
+    def extul_followup(self, hypothesis):
+        print 'Calculating extension upper limit'
+
+        name = self.name
+        roi = self.reload_roi(hypothesis)
+
+        r=roi.extension_upper_limit(which=name, confidence=0.95, spatial_model=Gaussian)
+        results = {hypothesis:{'pointlike':{'extension_upper_limit':r}}}
+        savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
