@@ -6,7 +6,7 @@ from collections import OrderedDict
 from StringIO import StringIO
 import asciitable
 
-from . tools import parse_strip_known_args
+from . argumentparsing import parse_strip_known_args
 
 def fixed_width_table(table_dict, table_kwargs=dict(bookend=False, delimiter=None), indent=None):
     outtable=StringIO()
