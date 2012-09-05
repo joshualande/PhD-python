@@ -9,7 +9,7 @@ from skymaps import DiffuseFunction,IsotropicSpectrum,IsotropicPowerLaw,Isotropi
 from pyLikelihood import ParameterVector, SpatialMap_cast, PointSource_cast
 import pyLikelihood
 
-from uw.like.Models import PowerLaw
+from uw.like.Models import PowerLaw, FileFunction
 from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
@@ -26,9 +26,12 @@ from . models import build_pointlike_model
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 
 def pointlike_dict_to_spectrum(d):
-    model = uw.like.Models.__dict__[d['name']]()
+    if d['name'] == 'FileFunction':
+        model = FileFunction(file=d['file'])
+    else:
+        model = uw.like.Models.__dict__[d['name']]()
     for k,v in d.items(): 
-        if k not in ['name','method']:
+        if k not in ['name','method','file']:
             if k[-4:] == '_err': 
                 model.set_error(k[:-4],v)
             else:
@@ -39,9 +42,13 @@ def gtlike_dict_to_spectrum(d):
     """ Load back as a pyLikelihood spectrum object
         a spectrum that has been saved by the spectrum_to_string
         object. This undoes the conversion of spectrum_to_dict """
-    spectrum=_funcFactory.create(d['name'])
+    if d['name'] == 'FileFunction':
+        spectrum = pyLikelihood.FileFunction()
+        spectrum.readFunction(d['file'])
+    else:
+        spectrum=_funcFactory.create(d['name'])
     for k,v in d.items(): 
-        if k not in ['name','method']:
+        if k not in ['name','method','file']:
             if k[-4:] == '_err': 
                 param =  spectrum.getParam(k[:-4])
                 param.setError(v/param.getScale())
@@ -50,6 +57,32 @@ def gtlike_dict_to_spectrum(d):
     return spectrum
 
 def dict_to_spectrum(d):
+    """ Test out FileFunction:
+
+            >>> pl= PowerLaw()
+            >>> from tempfile import NamedTemporaryFile
+            >>> tempfile = NamedTemporaryFile()
+            >>> filename = tempfile.name
+            >>> pl.save_profile(filename, 1, 100)
+
+            >>> d = dict(file=filename, method='pointlike', Normalization=3, name='FileFunction')
+            >>> model = dict_to_spectrum(d)
+            >>> isinstance(model,FileFunction)
+            True
+            >>> model.file == filename
+            True
+            >>> np.allclose(model['Normalization'],3)
+            True
+
+            >>> d = dict(file=filename, method='gtlike', Normalization=3, name='FileFunction')
+            >>> spectrum = dict_to_spectrum(d)
+            >>> isinstance(spectrum,pyLikelihood.FileFunction)
+            True
+            >>> spectrum.filename() == filename
+            True
+            >>> np.allclose(spectrum.getParam('Normalization').getTrueValue(),3)
+            True
+    """
     assert d['method'] in ['gtlike','pointlike']
     if d['method'] == 'gtlike':
         return gtlike_dict_to_spectrum(d)
@@ -85,7 +118,9 @@ def pointlike_spectrum_to_dict(model, errors=False):
             >>> c = SumModel(pl,lp)
             >>> s=spectrum_to_dict(c)
             >>> s.keys()
-            ['models', 'name']
+            ['models', 'method', 'name']
+            >>> print s['method']
+            pointlike
             >>> len(s['models'])
             2
             >>> s['models'][0] == spectrum_to_dict(pl)
@@ -104,6 +139,7 @@ def pointlike_spectrum_to_dict(model, errors=False):
                 d['%s_err' % p] = model.error(p)
         for p in model.default_extra_params.keys():
             d[p] = getattr(model,p)
+        if d['name'] == 'FileFunction': d['file'] = model.file
 
         return tolist(d)
 
@@ -117,6 +153,9 @@ def gtlike_spectrum_to_dict(spectrum, errors=False):
         d[p.getName()]= p.getTrueValue()
         if errors: 
             d['%s_err' % p.getName()]= p.error()*p.getScale() if p.isFree() else np.nan
+        if d['name'] == 'FileFunction': 
+            ff=pyLikelihood.FileFunction_cast(spectrum)
+            d['file']=ff.filename()
     return d
 
 
@@ -143,24 +182,28 @@ def pointlike_name_to_spectral_dict(roi, name, *args, **kwargs):
     return pointlike_spectrum_to_dict(model, *args, **kwargs)
 
 
-def gtlike_flux_dict(like,name, emin=None,emax=None,flux_units='erg', errors=True, include_prefactor=False, prefactor_energy=None):
+def gtlike_flux_dict(like,name, emin=None,emax=None,flux_units='erg', energy_units='MeV',
+                     errors=True, include_prefactor=False, prefactor_energy=None):
+    """ Note, emin, emax, and prefactor_energy must be in MeV """
 
     if emin is None and emax is None: 
         emin, emax = get_full_energy_range(like)
 
-    ce=lambda e: units.convert(e,'MeV',flux_units)
+    cef=lambda e: units.convert(e,'MeV',flux_units)
+    ce=lambda e: units.convert(e,'MeV',energy_units)
     f=dict(flux=like.flux(name,emin=emin,emax=emax),
            flux_units='ph/cm^2/s',
-           eflux=ce(like.energyFlux(name,emin=emin,emax=emax)),
+           eflux=cef(like.energyFlux(name,emin=emin,emax=emax)),
            eflux_units='%s/cm^2/s' % flux_units,
-           emin=emin,
-           emax=emax)
+           emin=ce(emin),
+           emax=ce(emax),
+           energy_units=energy_units)
 
     if errors:
         try:
             # incase the errors were not calculated
             f['flux_err']=like.fluxError(name,emin=emin,emax=emax)
-            f['eflux_err']=ce(like.energyFluxError(name,emin=emin,emax=emax))
+            f['eflux_err']=cef(like.energyFluxError(name,emin=emin,emax=emax))
         except Exception, ex:
             print 'ERROR calculating flux error: ', ex
             traceback.print_exc(file=sys.stdout)
@@ -174,8 +217,7 @@ def gtlike_flux_dict(like,name, emin=None,emax=None,flux_units='erg', errors=Tru
         cp = lambda e: units.convert(e,'1/MeV','1/%s' % flux_units)
         f['prefactor'] = cp(BaseGtlikeSED.get_dnde(spectrum,prefactor_energy))
         f['prefactor_units'] = 'ph/cm^2/s/%s' % flux_units
-        f['prefactor_energy'] = prefactor_energy
-        f['prefactor_energy_units'] = 'MeV'
+        f['prefactor_energy'] = ce(prefactor_energy)
     return tolist(f)
 
 def gtlike_powerlaw_prefactor_dict(like, name, flux_units='erg', errors=True, minos_errors=False):
@@ -315,30 +357,32 @@ def gtlike_source_dict(like, name, emin=None, emax=None,
 def source_dict(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_source_dict, pointlike_source_dict, *args, **kwargs)
 
-def pointlike_model_to_flux(model, emin, emax, flux_units='erg', errors=True, include_prefactor=False, prefactor_energy=None):
+def pointlike_model_to_flux(model, emin, emax, flux_units='erg', energy_units='MeV', 
+                            errors=True, include_prefactor=False, prefactor_energy=None):
 
-    ce=lambda e: units.convert(e,'MeV',flux_units)
+    cef=lambda e: units.convert(e,'MeV',flux_units)
+    ce=lambda e: units.convert(e,'MeV',energy_units)
     f=dict()
     if errors:
         f['flux'],f['flux_err']=model.i_flux(emin=emin,emax=emax,error=True)
         ef,ef_err=model.i_flux(emin=emin,emax=emax,e_weight=1,error=True)
-        f['eflux'],f['eflux_err']=ce(ef),ce(ef_err)
+        f['eflux'],f['eflux_err']=cef(ef),cef(ef_err)
     else:
         f['flux']=model.i_flux(emin=emin,emax=emax,error=False)
         ef=model.i_flux(emin=emin,emax=emax,e_weight=1,error=False)
-        f['eflux']=ce(ef)
+        f['eflux']=cef(ef)
 
     f['flux_units']='ph/cm^2/s'
     f['eflux_units']='%s/cm^2/s' % flux_units
-    f['emin'],f['emax']=emin,emax
+    f['energy_units']=energy_units
+    f['emin'],f['emax']=ce(emin),ce(emax)
 
     if include_prefactor:
         assert prefactor_energy is not None
         cp = lambda e: units.convert(e,'1/MeV','1/%s' % flux_units)
         f['prefactor'] = cp(model(prefactor_energy))
         f['prefactor_units'] = 'ph/cm^2/s/%s' % flux_units
-        f['prefactor_energy'] = prefactor_energy
-        f['prefactor_energy_units'] = 'MeV'
+        f['prefactor_energy'] = ce(prefactor_energy)
 
     return tolist(f)
 
@@ -434,6 +478,31 @@ def ts_dict(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_ts_dict, pointlike_ts_dict, *args, **kwargs)
 
 def spectrum_to_dict(*args, **kwargs):
+    """ Test out FileFunction
+
+            >>> pl= PowerLaw()
+            >>> from tempfile import NamedTemporaryFile
+            >>> tempfile = NamedTemporaryFile()
+            >>> filename = tempfile.name
+            >>> pl.save_profile(filename, 1, 100)
+            >>> model = FileFunction(file=filename, set_default_limits=True)
+            >>> d = spectrum_to_dict(model)
+            >>> d.pop('file') == filename
+            True
+            >>> np.allclose(d.pop('Normalization'),1)
+            True
+            >>> print d
+            {'name': 'FileFunction', 'method': 'pointlike'}
+            >>> from . models import build_gtlike_spectrum
+            >>> spectrum = build_gtlike_spectrum(model)
+            >>> d = spectrum_to_dict(spectrum)
+            >>> d.pop('file') == filename
+            True
+            >>> np.allclose(d.pop('Normalization'),1)
+            True
+            >>> print d
+            {'method': 'gtlike', 'name': 'FileFunction'}
+    """
     return gtlike_or_pointlike(gtlike_spectrum_to_dict, pointlike_spectrum_to_dict, *args, **kwargs)
 
 def name_to_spectral_dict(*args, **kwargs):
