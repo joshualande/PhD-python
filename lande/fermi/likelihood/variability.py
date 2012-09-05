@@ -199,13 +199,13 @@ class GtlikeVariabilityTester(VariabilityTester):
     )
 
     @keyword_options.decorate(defaults)
-    def __init__(self, roi, *args, **kwargs):
+    def __init__(self, roi, name, *args, **kwargs):
         self.roi = roi
         keyword_options.process(self, kwargs)
 
         self.pointlike_fit_kwargs = dict(use_gradient=False)
 
-        self.which = roi.get_source(which).name
+        self.name = roi.get_source(name)
 
         self._setup_savedir()
 
@@ -233,7 +233,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
         # Divide into several time bins
         ft1files=roi.sa.pixeldata.ft1files
-        self.earliest_time, self.latest_time = VariabilityTester.get_time_range(ft1files)
+        self.earliest_time, self.latest_time = GtlikeVariabilityTester.get_time_range(ft1files)
 
         # round to nearest second, for simplicity
         self.time = dict()
@@ -246,7 +246,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         if self.verbosity: print 'First, computing best all-time parameters'
 
         roi = self.roi
-        which = self.which
+        name = self.name
 
         # first, spectral fit in gtlike
 
@@ -255,9 +255,9 @@ class GtlikeVariabilityTester(VariabilityTester):
         roi.fit(**self.pointlike_fit_kwargs)
         if self.verbosity: print '... After'; roi.print_summary()
 
-        all_time = dict(pointlike = source_dict(roi, which))
+        all_time = dict(pointlike = source_dict(roi, name))
 
-        all_time['pointlike']['TS'] = roi.TS(which,quick=False)
+        all_time['pointlike']['TS'] = roi.TS(name,quick=False)
 
         if self.do_gtlike:
 
@@ -275,7 +275,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
             self.best_gtlike_state = SuperState(like)
 
-            all_time['gtlike'] = source_dict(like, which)
+            all_time['gtlike'] = source_dict(like, name)
 
         return all_time
 
@@ -285,7 +285,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         results = dict()
 
         if self.verbosity: print 'Performing Pointlike analysis from %s to %s' % (tstart, tstop)
-        which=self.which
+        name=self.name
 
         ll = lambda: -smaller_roi.logLikelihood(smaller_roi.parameters())
 
@@ -299,7 +299,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
 
         # Freeze source of interest
-        smaller_roi.modify(which=which, free=False)
+        smaller_roi.modify(which=name, free=False)
 
         
         if self.verbosity: print 'Performing pointlike spectral analyis with source of interest frozen'
@@ -311,7 +311,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         results['ll_0'] = ll()
 
         # Fit prefactor of source of interest
-        allow_fit_only_prefactor(smaller_roi, which)
+        allow_fit_only_prefactor(smaller_roi, name)
 
         if self.verbosity: print "Performing pointlike spectral analyis with source of interest's prefactor free"
 
@@ -322,13 +322,13 @@ class GtlikeVariabilityTester(VariabilityTester):
 
         # * calcualte likelihood for the fit flux
         results['ll_1'] = ll()
-        results['flux'] = flux_dict(smaller_roi,which)
-        results['TS'] = TS = smaller_roi.TS(which,quick=False)
+        results['flux'] = flux_dict(smaller_roi,name)
+        results['TS'] = TS = smaller_roi.TS(name,quick=False)
         results['diffuse'] = diffuse_dict(smaller_roi)
 
 
         if TS < self.min_ts or self.always_upper_limit:
-            pul=PointlikeUpperLimit(smaller_roi, which, cl=0.95)
+            pul=PointlikeUpperLimit(smaller_roi, name, cl=0.95)
             results['upper_limit'] = pul.todict()
         else:
             results['upper_limit'] = None
@@ -339,7 +339,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
         if self.verbosity: print 'Performing gtlike analysis from %s to %s' % (tstart, tstop)
 
-        name=self.which
+        name=self.name
 
         results = dict()
 
@@ -424,7 +424,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
             self.bands.append(band)
 
-            smaller_roi = VariabilityTester.time_cut(roi, tstart, tstop, subdir, self.use_pointlike_ltcube)
+            smaller_roi = GtlikeVariabilityTester.time_cut(roi, tstart, tstop, subdir, self.use_pointlike_ltcube)
 
             band['pointlike'] = self.each_time_fit_pointlike(smaller_roi, tstart, tstop)
             if self.do_gtlike:
@@ -441,7 +441,7 @@ class GtlikeVariabilityTester(VariabilityTester):
             self.TS_var['gtlike'] = self.compute_TS_var('gtlike')
 
         self.results = dict(
-            which = self.which,
+            name = self.name,
             min_ts = self.min_ts,
             time = self.time,
             bands = self.bands,
@@ -476,7 +476,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         """ Get the largest time range (in MET) from an ft1 file
             or a list of ft1 files. """
         if isinstance(ft1files,list):
-            tmins,tmaxs = zip(*[VariabilityTester.get_time_range(i) for i in ft1files])
+            tmins,tmaxs = zip(*[GtlikeVariabilityTester.get_time_range(i) for i in ft1files])
             return min(tmins),max(tmaxs)
 
         f=pyfits.open(ft1files)
@@ -616,7 +616,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
             Assuming 36 time bins, I precomputed with mathematica that
 
-                >>> sigma = VariabilityTester._TS_to_sigma
+                >>> sigma = GtlikeVariabilityTester._TS_to_sigma
                 >>> print '%.1f' % sigma(50, 36)
                 2.0
                 >>> print '%.1f' % sigma(30, 24)
