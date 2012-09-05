@@ -4,7 +4,7 @@ import os
 
 from uw.like.roi_state import PointlikeState
 
-from lande.fermi.likelihood.fit import fit_prefactor, fit_only_source, 
+from lande.fermi.likelihood.fit import fit_prefactor, fit_only_source
 from lande.fermi.likelihood.save import source_dict, get_full_energy_range
 from lande.fermi.likelihood.limits import PointlikePowerLawUpperLimit, PointlikeCutoffUpperLimit
 
@@ -16,7 +16,7 @@ from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
 
 def pointlike_analysis(roi, name, hypothesis, max_free,
-                       seddir='seds', datadir='data', 
+                       seddir, datadir, 
                        localize=False,
                        fit_extension=False, 
                        cutoff=False,
@@ -24,9 +24,6 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
                       ):
     """ emin + emax used for computing upper limits. """
     print 'Performing Pointlike analysis for %s' % hypothesis
-
-    for dir in [seddir, datadir]: 
-        if not os.path.exists(dir): os.makedirs(dir)
 
     print_summary = lambda: roi.print_summary(galactic=True, maxdist=10)
     print_summary()

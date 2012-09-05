@@ -1,35 +1,74 @@
 #!/usr/bin/env python
 # This import has to come first
-from . helper import pointlike_analysis, gtlike_analysis,plots,plot_phaseogram,plot_phase_vs_time
-
-from uw.like.SpatialModels import Gaussian
+import pyLikelihood
 
 import os
 from os.path import join
 from collections import defaultdict
+from argparse import ArgumentParser
 
 import yaml
 import numpy as np
 
+from skymaps import SkyDir
+
 from uw.like.SpatialModels import Gaussian
+from uw.like.SpatialModels import Gaussian
+
 
 from lande.utilities.save import loaddict,savedict
 from lande.utilities.load import import_module
+from lande.utilities.argumentparsing import argparse_to_kwargs
 
+from lande.fermi.pulsar.plotting import plot_phaseogram, plot_phase_vs_time
 from lande.fermi.likelihood.tools import force_gradient
 from lande.fermi.likelihood.parlimits import all_params_limited
 from lande.fermi.likelihood.variability import GtlikeVariabilityTester
 from lande.fermi.likelihood.save import pointlike_dict_to_spectrum
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
+
 from . setup import PWNRegion, load_pwn
+from . pointlike import pointlike_analysis
+from . gtlike import gtlike_analysis
+from . plots import plots
 
 class Pipeline(object):
+
+    @staticmethod
+    def get_kwargs():
+
+        parser = ArgumentParser()
+        parser.add_argument("--pwndata", required=True)
+        parser.add_argument("--pwnphase")
+        parser.add_argument("--name", required=True, help="Name of the pulsar")
+        parser.add_argument("--emin", default=1e2, type=float)
+        parser.add_argument("--emax", default=10**5.5, type=float)
+        parser.add_argument("--binsperdec", default=4, type=int)
+        parser.add_argument("--use-gradient", default=False, action="store_true")
+        parser.add_argument("--no-at-pulsar", default=False, action="store_true")
+        parser.add_argument("--no-point", default=False, action="store_true")
+        parser.add_argument("--no-extended", default=False, action="store_true")
+        parser.add_argument("--no-cutoff", default=False, action="store_true")
+        parser.add_argument("--no-savedir", default=False, action="store_true")
+        parser.add_argument("--max-free", default=5, type=float)
+        parser.add_argument("--modify", required=True)
+        args=parser.parse_args()
+        return argparse_to_kwargs(args)
+
+
     def __init__(self, **kwargs):
         self.__dict__.update(**kwargs)
 
         force_gradient(use_gradient=self.use_gradient)
         np.seterr(all='ignore')
+
+        self.datadir='data' 
+        self.plotdir='plots'
+        self.seddir='seds'
+
+        for dir in [self.seddir, self.datadir, self.plotdir]: 
+            if not os.path.exists(dir): os.makedirs(dir)
 
     def main(self):
         do_at_pulsar = not self.no_at_pulsar
@@ -76,9 +115,11 @@ class Pipeline(object):
 
         if do_at_pulsar:
             r['at_pulsar']['pointlike']=pointlike_analysis(roi, hypothesis='at_pulsar', 
+                                                           seddir=self.seddir, datadir=self.datadir, 
                                                            cutoff=do_cutoff, **pointlike_kwargs)
         if do_point:
             r['point']['pointlike']=pointlike_analysis(roi, hypothesis='point', localize=True, 
+                                                       seddir=self.seddir, datadir=self.datadir, 
                                                        cutoff=do_cutoff, 
                                                        model1 = model1,
                                                        **pointlike_kwargs)
@@ -86,17 +127,18 @@ class Pipeline(object):
             roi.modify(which=name, spatial_model=Gaussian(sigma=0.1), keep_old_center=True)
 
             r['extended']['pointlike']=pointlike_analysis(roi, hypothesis='extended', cutoff=False, 
+                                                          seddir=self.seddir, datadir=self.datadir, 
                                                           fit_extension=True, 
                                                           **pointlike_kwargs)
 
         savedict(results,'results_%s_pointlike.yaml' % name)
 
-    def reload_roi(hypothesis):
+    def reload_roi(self,hypothesis):
         name = self.name
         roi = load_pwn('roi_%s_%s.dat' % (hypothesis,name))
         return roi
 
-    def gtlike_followup(self, hypothesis, followup):
+    def gtlike_followup(self, hypothesis):
 
         name = self.name
         roi = self.reload_roi(hypothesis)
@@ -114,6 +156,7 @@ class Pipeline(object):
         results = {hypothesis:{}}
         results[hypothesis]['gtlike']=gtlike_analysis(roi, name=name,
                                                       max_free = self.max_free,
+                                                      seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
                                                       hypothesis=hypothesis, 
                                                       upper_limit=upper_limit,
                                                       cutoff=cutoff,
@@ -123,6 +166,7 @@ class Pipeline(object):
         savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
 
     def get_overlay_kwargs(self):
+        name = self.name
         pwndata=yaml.load(open(self.pwndata))[name]
         pulsar_position = SkyDir(*pwndata['cel'])
 
@@ -139,7 +183,7 @@ class Pipeline(object):
 
         overlay_kwargs = self.get_overlay_kwargs()
         
-        plots(roi, name, hypothesis, do_plots=False, do_tsmap=True, **overlay_kwargs)
+        tsmaps(roi, name, hypothesis, **overlay_kwargs)
 
     def plots_followup(self, hypothesis):
         name = self.name
@@ -162,7 +206,7 @@ class Pipeline(object):
 
         overlay_kwargs = self.get_overlay_kwargs()
         
-        plots(roi, name, hypothesis, do_plots=True, do_tsmap=False, **overlay_kwargs)
+        plots(roi, name, hypothesis, **overlay_kwargs)
 
     def variability_followup(self, hypothesis):
         name = self.name

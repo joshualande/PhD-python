@@ -22,15 +22,11 @@ from lande.fermi.spectra.gtlike import GtlikeSED
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
 
-
 def gtlike_analysis(roi, name, hypothesis, max_free,
-                    seddir='seds', datadir='data', plotdir='plots',
+                    seddir, datadir, plotdir,
                     upper_limit=False, cutoff=False, 
                     model1=None):
     print 'Performing Gtlike crosscheck for %s' % hypothesis
-
-    for dir in [seddir, datadir, plotdir]: 
-        if not os.path.exists(dir): os.makedirs(dir)
 
     frozen  = freeze_far_away(roi, roi.get_source(name).skydir, max_free)
     gtlike=Gtlike(roi)

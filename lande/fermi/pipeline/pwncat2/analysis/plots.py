@@ -119,13 +119,9 @@ def smooth_plots(roi, name, hypothesis, datadir, plotdir, size, kernel_rad, **co
                              title='Band Sources Map for %s (%s)' % (name,hypothesis),
                               **smooth_kwargs).show(filename='%s/band_sources_%s.png' % (plotdir,extra))
 
-
-def plots(roi, name, hypothesis, 
+def setup_plotting(roi, name, hypothesis, 
           pulsar_position, new_sources,
-          do_plots, do_tsmap,
-          datadir='data', plotdir='plots'):
-
-    print 'Making plots for hypothesis %s' % hypothesis
+          datadir, plotdir):
 
     extra_overlay = lambda ax: overlay_on_plot(ax, pulsar_position=pulsar_position)
 
@@ -135,20 +131,36 @@ def plots(roi, name, hypothesis,
     common_kwargs = dict(extra_overlay=extra_overlay, 
                          overlay_kwargs=dict(override_kwargs=override_kwargs))
 
-    for dir in [datadir, plotdir]: 
-        if not os.path.exists(dir): os.makedirs(dir)
-
     args = (roi, name, hypothesis, datadir, plotdir)
 
-    if do_plots:
-        for size in [5]:
-            smooth_plots(*args, kernel_rad=0.1, size=size, **common_kwargs)
-            counts_plots(*args, pixelsize=0.1, size=size, **common_kwargs)
+    return args, common_kwargs
 
-            smooth_plots(*args, kernel_rad=0.25, size=size, **common_kwargs)
-            counts_plots(*args, pixelsize=0.25, size=size, **common_kwargs)
-    if do_tsmap:
-        for size in [5,10]:
-            tsmap_plots(*args, tsmap_pixelsize=0.1, size=size, new_sources=new_sources, **common_kwargs)
+def plots(roi, name, hypothesis, 
+          pulsar_position, new_sources,
+          datadir, plotdir,
+          size=5):
 
-    roi.toRegion('%s/region_%s_%s.reg'%(datadir,hypothesis, name))
+    print 'Making plots for hypothesis %s' % hypothesis
+
+    args, common_kwargs = setup_plotting(roi, name, hypothesis, 
+                                         pulsar_position, new_sources,
+                                         datadir, plotdir)
+
+    smooth_plots(*args, kernel_rad=0.1, size=size, **common_kwargs)
+    counts_plots(*args, pixelsize=0.1, size=size, **common_kwargs)
+
+    smooth_plots(*args, kernel_rad=0.25, size=size, **common_kwargs)
+    counts_plots(*args, pixelsize=0.25, size=size, **common_kwargs)
+
+def tsmaps(roi, name, hypothesis, 
+          pulsar_position, new_sources,
+          datadir, plotdir):
+
+    print 'Making tsmaps for hypothesis %s' % hypothesis
+
+    args, common_kwargs = setup_plotting(roi, name, hypothesis, 
+                                         pulsar_position, new_sources,
+                                         datadir, plotdir)
+
+    for size in [5,10]:
+        tsmap_plots(*args, tsmap_pixelsize=0.1, size=size, new_sources=new_sources, **common_kwargs)
