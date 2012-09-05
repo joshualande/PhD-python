@@ -388,7 +388,7 @@ class GtlikeVariabilityTester(VariabilityTester):
         results['ll_1'] = ll()
         results['flux'] = flux_dict(like,name)
 
-        results['TS'] = TS = like.Ts(name,reoptimize=True,verbosity=4)
+        results['TS'] = TS = like.Ts(name,reoptimize=True,verbosity=self.verbosity)
         results['diffuse'] = diffuse_dict(like)
 
         if TS < self.min_ts or self.always_upper_limit:

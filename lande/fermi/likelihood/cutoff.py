@@ -16,7 +16,7 @@ from lande.fermi.spectra.sed import SED
 from . superstate import SuperState
 
 from . tools import gtlike_or_pointlike
-from . save import get_full_energy_range, spectrum_to_dict, dict_to_spectrum, flux_dict, energy_dict
+from . save import get_full_energy_range, spectrum_to_dict, energy_dict, source_dict
 from . fit import paranoid_gtlike_fit
 from . printing import summary
 from . models import build_gtlike_spectrum
@@ -60,8 +60,8 @@ class CutoffTester(BaseFitter):
                                 energy['emax']*units.fromstring(energy['energy_units']))
 
         sp = SpectrumPlotter(axes=axes)
-        sp.plot(self.results['model_0'], **model_0_kwargs)
-        sp.plot(self.results['model_1'], **model_1_kwargs)
+        sp.plot(self.results['hypothesis_0']['spectrum'], **model_0_kwargs)
+        sp.plot(self.results['hypothesis_1']['spectrum'], **model_1_kwargs)
 
         if title is not None: axes.set_title(title)
         if filename is not None: P.savefig(filename)
@@ -126,10 +126,10 @@ class PointlikeCutoffTester(CutoffTester):
             print 'Done fitting Model0'
             roi.print_summary()
 
-        d['ll_0'] = ll_0 = ll()
-        d['TS_0'] = ts()
-        d['model_0']=spectrum()
-        d['flux_0']=flux_dict(roi,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
+        d['hypothesis_0'] = source_dict(roi, name, emin=emin, emax=emax,
+                                        flux_units=self.flux_units,
+                                        energy_units=self.energy_units,
+                                        verbosity=self.verbosity)
 
         if self.model1 is not None:
             pass
@@ -154,12 +154,13 @@ class PointlikeCutoffTester(CutoffTester):
             print 'Done fitting Model1'
             roi.print_summary()
 
-        d['ll_1'] = ll_1 = ll()
-        d['TS_1'] = ts()
-        d['model_1']=spectrum()
-        d['flux_1']=flux_dict(roi,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
+        d['hypothesis_1'] = source_dict(roi, name, emin=emin, emax=emax,
+                                        flux_units=self.flux_units,
+                                        energy_units=self.energy_units,
+                                        verbosity=self.verbosity)
 
-        d['TS_cutoff']=2*(ll_1-ll_0)
+
+        d['TS_cutoff']=2*(d['hypothesis_1']['TS']-d['hypothesis_0']['TS'])
 
         saved_state.restore()
 
@@ -197,9 +198,6 @@ class GtlikeCutoffTester(CutoffTester):
             def get_flux():
                 return like.flux(name, emin, emax)
 
-            ll = lambda: like.logLike.value()
-            ts = lambda: like.Ts(name,reoptimize=True, verbosity=4)
-
             def spectrum():
                 source = like.logLike.getSource(name)
                 s=source.spectrum()
@@ -228,10 +226,10 @@ class GtlikeCutoffTester(CutoffTester):
                 print 'Done fitting spectrum0'
                 print summary(like)
 
-            d['ll_0'] = ll_0 = ll()
-            d['TS_0'] = ts()
-            d['model_0']=spectrum()
-            d['flux_0']=flux_dict(like,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
+            d['hypothesis_0'] = source_dict(like, name, emin=emin, emax=emax,
+                                            flux_units=self.flux_units,
+                                            energy_units=self.energy_units,
+                                            verbosity=self.verbosity)
 
             if self.model1 is None:
                 self.model1=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1, set_default_limits=True)
@@ -250,15 +248,17 @@ class GtlikeCutoffTester(CutoffTester):
 
             paranoid_gtlike_fit(like, verbosity=self.verbosity)
 
-            if ll() < ll_0:
+            ll = like.logLike.value()
+
+            if ll < d['hypothesis_0']['logLikelihood']:
                 # if fit is worse than PowerLaw fit, then
                 # restart fit with parameters almost
                 # equal to best fit powerlaw
                 cutoff_plaw=PLSuperExpCutoff(b=1)
                 cutoff_plaw.set_free('b', False)
-                cutoff_plaw.setp_gtlike('norm', d['model_0']['Prefactor'])
-                cutoff_plaw.setp_gtlike('index', d['model_0']['Index'])
-                cutoff_plaw.setp_gtlike('e0', d['model_0']['Scale'])
+                cutoff_plaw.setp_gtlike('norm', d['hypothesis_0']['spectrum']['Prefactor'])
+                cutoff_plaw.setp_gtlike('index', d['hypothesis_0']['spectrum']['Index'])
+                cutoff_plaw.setp_gtlike('e0', d['hypothesis_0']['spectrum']['Scale'])
                 cutoff_plaw.setp_gtlike('cutoff', 1e6)
                 cutoff_plaw.set_default_limits(oomp_limits=True)
 
@@ -275,12 +275,12 @@ class GtlikeCutoffTester(CutoffTester):
                 print 'Done fitting spectrum1'
                 print summary(like)
 
-            d['ll_1'] = ll_1 = ll()
-            d['TS_1'] = ts()
-            d['model_1']=spectrum()
-            d['flux_1']=flux_dict(like,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
+            d['hypothesis_1'] = source_dict(like, name, emin=emin, emax=emax,
+                                            flux_units=self.flux_units,
+                                            energy_units=self.energy_units,
+                                            verbosity=self.verbosity)
 
-            d['TS_cutoff']=2*(ll_1-ll_0)
+            d['TS_cutoff']=2*(d['hypothesis_1']['TS']['reoptimize']-d['hypothesis_0']['TS']['reoptimize'])
 
             if self.verbosity: 
                 print 'For cutoff test, TS_cutoff = ', d['TS_cutoff']

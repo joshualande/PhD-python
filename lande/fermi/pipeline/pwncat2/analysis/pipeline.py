@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # This import has to come first
-import pyLikelihood
+from lande.fermi.likelihood.roi_gtlike import Gtlike
 
 import os
 from os.path import join
@@ -31,7 +31,7 @@ from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 from . setup import PWNRegion, load_pwn
 from . pointlike import pointlike_analysis
 from . gtlike import gtlike_analysis
-from . plots import plots
+from . plots import plots, tsmaps
 
 class Pipeline(object):
 
@@ -163,17 +163,7 @@ class Pipeline(object):
                                                       model1=model1,
                                                      )
 
-        savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
-
-    def get_overlay_kwargs(self, roi):
-        name = self.name
-        pwndata=yaml.load(open(self.pwndata))[name]
-        pulsar_position = SkyDir(*pwndata['cel'])
-
-        new_sources = roi.extra['new_sources']
-        overlay_kwargs = dict(pulsar_position=pulsar_position, new_sources=new_sources)
-
-        return overlay_kwargs
+        savedict(results,'results_%s_gtlike_%s.yaml' % (name,hypothesis))
 
     def tsmaps_followup(self, hypothesis):
         name = self.name
@@ -181,9 +171,12 @@ class Pipeline(object):
 
         if not os.path.exists('plots'): os.makedirs('plots')
 
-        overlay_kwargs = self.get_overlay_kwargs(roi)
+        pwndata=yaml.load(open(self.pwndata))[name]
+        pulsar_position = SkyDir(*pwndata['cel'])
         
-        tsmaps(roi, name, hypothesis, **overlay_kwargs)
+        new_sources = roi.extra['new_sources']
+        tsmaps(roi, name, hypothesis, new_sources=new_sources, pulsar_position=pulsar_position,
+               datadir=self.datadir, plotdir=self.plotdir)
 
     def plots_followup(self, hypothesis):
         name = self.name
@@ -204,9 +197,10 @@ class Pipeline(object):
         plot_phaseogram(title='Phaseogram for %s' % name, filename='plots/phaseogram_%s.png' % name, **plot_kwargs)
         plot_phase_vs_time(title='Phase vs Time for %s' % name, filename='plots/phase_vs_time_%s.png' % name, **plot_kwargs)
 
-        overlay_kwargs = self.get_overlay_kwargs(roi)
+        new_sources = roi.extra['new_sources']
         
-        plots(roi, name, hypothesis, **overlay_kwargs)
+        plots(roi, name, hypothesis, new_sources=new_sources, pulsar_position=pulsar_position,
+              datadir=self.datadir, plotdir=self.plotdir)
 
     def variability_followup(self, hypothesis):
         name = self.name
@@ -223,7 +217,7 @@ class Pipeline(object):
         unfreeze_far_away(roi, frozen)
 
         results = {hypothesis:{'variability':v.todict()}}
-        savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
+        savedict(results,'results_%s_variability_%s.yaml' % (name,hypothesis))
 
     def extul_followup(self, hypothesis):
         print 'Calculating extension upper limit'
@@ -233,4 +227,4 @@ class Pipeline(object):
 
         r=roi.extension_upper_limit(which=name, confidence=0.95, spatial_model=Gaussian)
         results = {hypothesis:{'pointlike':{'extension_upper_limit':r}}}
-        savedict(results,'results_%s_%s_%s.yaml' % (name,followup,hypothesis))
+        savedict(results,'results_%s_extul_%s.yaml' % (name,hypothesis))

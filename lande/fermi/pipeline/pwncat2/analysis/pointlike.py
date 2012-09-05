@@ -14,7 +14,6 @@ from lande.fermi.likelihood.cutoff import PointlikeCutoffTester
 from lande.fermi.spectra.pointlike import PointlikeSED
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
-
 def pointlike_analysis(roi, name, hypothesis, max_free,
                        seddir, datadir, 
                        localize=False,
@@ -88,7 +87,7 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
     fit()
 
     print 'Making pointlike SED'
-    sed = PointlikeSED(roi, name, verbosity=True)
+    sed = PointlikeSED(roi, name, verbosity=4)
     sed.save('%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name))
     sed.plot('%s/sed_pointlike_%s_%s.png' % (seddir,hypothesis,name)) 
 
@@ -96,14 +95,14 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
 
     p = source_dict(roi, name)
 
-    pul = PointlikePowerLawUpperLimit(roi, name, emin=emin, emax=emax, cl=.95)
+    pul = PointlikePowerLawUpperLimit(roi, name, emin=emin, emax=emax, cl=.95, verbosity=4)
     p['powerlaw_upper_limit']=pul.todict()
-    cul = PointlikeCutoffUpperLimit(roi, name, Index=1.7, Cutoff=3e3, b=1, cl=.95)
+    cul = PointlikeCutoffUpperLimit(roi, name, Index=1.7, Cutoff=3e3, b=1, cl=.95, verbosity=4)
     p['cutoff_upper_limit']=cul.todict()
 
     if cutoff:
         try:
-            tc = PointlikeCutoffTester(roi,name, model1=model1, verbosity=True)
+            tc = PointlikeCutoffTester(roi,name, model1=model1, verbosity=4)
             p['test_cutoff']=tc.todict()
             tc.plot(sed_results='%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name),
                     filename='%s/test_cutoff_pointlike_%s_%s.png' % (plotdir,hypothesis,name))

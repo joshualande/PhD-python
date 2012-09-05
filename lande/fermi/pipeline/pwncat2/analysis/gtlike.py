@@ -21,6 +21,10 @@ from lande.fermi.likelihood.printing import summary
 from lande.fermi.spectra.gtlike import GtlikeSED
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
+from . binning import all_energy, high_energy, higher_energy, one_bin_per_dec, two_bin_per_dec, four_bin_per_dec
+
+    
+
 
 def gtlike_analysis(roi, name, hypothesis, max_free,
                     seddir, datadir, plotdir,
@@ -56,20 +60,20 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
     r=source_dict(like, name)
 
     if upper_limit:
-        pul = GtlikePowerlawUpperLimit(like, name, emin=emin, emax=emax, cl=.95, delta_log_like_limits=10)
+        pul = GtlikePowerLawUpperLimit(like, name, emin=emin, emax=emax, cl=.95, delta_log_like_limits=10, verbosity=4)
         r['powerlaw_upper_limit'] = pul.todict()
-        cul = GtlikeCutoffUpperLimit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95)
+        cul = GtlikeCutoffUpperLimit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95, verbosity=4)
         r['cutoff_upper_limit'] = cul.todict()
 
     if all_energy(emin,emax):
-        bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), verbosity=True)
+        bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), verbosity=4)
         bf.plot('%s/bandfit_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
         bf.save('%s/bandfit_gtlike_%s_%s.yaml' % (datadir,hypothesis,name))
 
     def sed(kind,**kwargs):
         try:
             print 'Making %s SED' % kind
-            sed = GtlikeSED(like, name, always_upper_limit=True, verbosity=True, **kwargs)
+            sed = GtlikeSED(like, name, always_upper_limit=True, verbosity=4, **kwargs)
             sed.plot('%s/sed_gtlike_%s_%s.png' % (seddir,kind,name)) 
             sed.save('%s/sed_gtlike_%s_%s.yaml' % (seddir,kind,name))
         except Exception, ex:
@@ -91,7 +95,7 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
 
     if cutoff:
         try:
-            tc = GtlikeCutoffTester(like,name, model1=model1, verbosity=True)
+            tc = GtlikeCutoffTester(like,name, model1=model1, verbosity=4)
             r['test_cutoff']=todict()
             tc.plot(sed_results='%s/sed_gtlike_2bpd_%s_%s.yaml' % (seddir,hypothesis,name),
                     filename='%s/test_cutoff_gtlike_%s_%s.png' % (plotdir,hypothesis,name))

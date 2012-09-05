@@ -11,7 +11,7 @@ from lande.pysed import units
 from lande.utilities.tools import tolist
 
 from . models import build_gtlike_spectrum, build_pointlike_model
-from . save import flux_dict, name_to_spectral_dict, dict_to_spectrum, energy_dict
+from . save import dict_to_spectrum, source_dict
 from . limits import GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState
@@ -130,18 +130,15 @@ class GtlikeBandFitter(BandFitter):
             bands=[],
         )
 
-        for i,(lower,upper,middle) in enumerate(zip(self.lower_energy,self.upper_energy,self.middle_energy)):
-            if self.verbosity: print 'Calculating spectrum from %.0dMeV to %.0dMeV' % (lower,upper)
+        for i,(emin,emax,e_middle) in enumerate(zip(self.lower_energy,self.upper_energy,self.middle_energy)):
+            if self.verbosity: print 'Calculating spectrum from %.0dMeV to %.0dMeV' % (emin,emax)
 
-            r = dict(energy=energy_dict(lower, upper, energy_units=self.energy_units))
 
-            self.results['bands'].append(r)
-
-            like.setEnergyRange(float(lower)+1, float(upper)-1)
+            like.setEnergyRange(float(emin)+1, float(emax)-1)
 
             # build new powerlaw, assuming initial model has a reasonable spectrum
-            init_dnde = self.init_model(middle)
-            model = PowerLaw(norm=init_dnde, index=2, e0=middle)
+            init_dnde = self.init_model(e_middle)
+            model = PowerLaw(norm=init_dnde, index=2, e0=e_middle)
             model.set_limits('norm',1e-4*init_dnde,1e4*init_dnde, scale=init_dnde)
             model.set_limits('index',-5,5)
             spectrum = build_gtlike_spectrum(model)
@@ -151,26 +148,20 @@ class GtlikeBandFitter(BandFitter):
 
             paranoid_gtlike_fit(like, verbosity=self.verbosity)
 
-            r['TS'] = like.Ts(name,reoptimize=False, verbosity=4)
+            r = source_dict(like, name, emin=emin, emax=emax,
+                            flux_units=self.flux_units,
+                            energy_units=self.energy_units,
+                            verbosity=self.verbosity)
 
-            fd = flux_dict(like,name,
-                          emin=lower,emax=upper,
-                          flux_units=self.flux_units,
-                          energy_units=self.energy_units)
-
-            r['flux'] = fd
-            r['spectrum'] = name_to_spectral_dict(like,name, errors=True)
-
-            if self.verbosity: print 'Calculating upper limit from %.0dMeV to %.0dMeV' % (lower,upper)
+            if self.verbosity: print 'Calculating upper limit from %.0dMeV to %.0dMeV' % (emin,emax)
             g = GtlikePowerLawUpperLimit(like, name,
                                          powerlaw_index=self.upper_limit_index,
                                          cl=self.ul_confidence,
-                                         emin=lower,emax=upper,
+                                         emin=emin,emax=emax,
                                          flux_units=self.flux_units,
                                          energy_units=self.energy_units)
-            ul_dict = g.todict()
-
-            r['upper_limit'] = ul_dict
+            r['upper_limit'] = g.todict()
+            self.results['bands'].append(r)
 
         # revert to old model
         like.setEnergyRange(*self.init_energes)

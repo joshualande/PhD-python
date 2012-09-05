@@ -6,6 +6,8 @@ from lande.fermi.likelihood.save import get_full_energy_range
 
 from lande.fermi.data.plotting import ROITSMapBandPlotter, ROISourceBandPlotter, ROISourcesBandPlotter
 
+from . binning import all_energy, one_bin_per_dec
+
 def overlay_on_plot(axes, pulsar_position):
     """ Function to overlay on all plots
         * The pulsar position

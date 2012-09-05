@@ -32,7 +32,6 @@ class GtlikeSED(SED):
         """
     defaults = SED.defaults + (
         ('bin_edges',None, 'if specified, calculate the SED in these bins.'),
-        ('verbosity',0,'how much output'),
         ('freeze_background',True,"don't refit background sources."),
         ('reoptimize_ts',False, """ reoptimize the background model in the null hypothesis
                                     when calculating the TS. By default, don't do the 
@@ -136,7 +135,7 @@ class GtlikeSED(SED):
                                  errors=True, include_prefactor=True, prefactor_energy=e)
             d['prefactor'] = powerlaw_prefactor_dict(like, name, errors=False, minos_errors=True,
                                                     flux_units=self.flux_units)
-            d['TS'] = ts_dict(like, name)
+            d['TS'] = ts_dict(like, name, verbosity=self.verbosity)
 
             ul = GtlikePowerLawUpperLimit(like, name, 
                                           flux_units=self.flux_units,

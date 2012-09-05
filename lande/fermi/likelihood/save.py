@@ -32,7 +32,9 @@ def pointlike_dict_to_spectrum(d):
         model = uw.like.Models.__dict__[d['name']]()
     for k,v in d.items(): 
         if k not in ['name','method','file']:
-            if k[-4:] == '_err': 
+            if len(k) > 10 and k[-10:] in ['_upper_err','_lower_err']:
+                pass
+            elif len(k) > 4 and k[-4:] == '_err': 
                 model.set_error(k[:-4],v)
             else:
                 model[k]=v
@@ -49,7 +51,9 @@ def gtlike_dict_to_spectrum(d):
         spectrum=_funcFactory.create(d['name'])
     for k,v in d.items(): 
         if k not in ['name','method','file']:
-            if k[-4:] == '_err': 
+            if len(k) > 10 and k[-10:] in ['_upper_err','_lower_err']:
+                pass
+            elif len(k) > 4 and k[-4:] == '_err': 
                 param =  spectrum.getParam(k[:-4])
                 param.setError(v/param.getScale())
             else:
@@ -118,19 +122,19 @@ def pointlike_spectrum_to_dict(model, errors=False):
             >>> c = SumModel(pl,lp)
             >>> s=spectrum_to_dict(c)
             >>> s.keys()
-            ['models', 'method', 'name']
+            ['spectrum', 'method', 'name']
             >>> print s['method']
             pointlike
-            >>> len(s['models'])
+            >>> len(s['spectrum'])
             2
-            >>> s['models'][0] == spectrum_to_dict(pl)
+            >>> s['spectrum'][0] == spectrum_to_dict(pl)
             True
-            >>> s['models'][1] == spectrum_to_dict(lp)
+            >>> s['spectrum'][1] == spectrum_to_dict(lp)
             True
     """
     d = dict(name = model.name, method='pointlike')
     if isinstance(model,CompositeModel):
-        d['models'] = map(pointlike_spectrum_to_dict,model.models)
+        d['spectrum'] = map(pointlike_spectrum_to_dict,model.models)
         return d
     else:
         for p in model.param_names:
@@ -324,15 +328,17 @@ def diffuse_dict(like_or_roi):
         f[name] = name_to_spectral_dict(like_or_roi, name, errors=True)
     return tolist(f)
 
-def gtlike_ts_dict(like, name):
+def gtlike_ts_dict(like, name, verbosity=True):
     return dict(
-        reoptimize=like.Ts(name,reoptimize=True, verbosity=4),
-        noreoptimize=like.Ts(name,reoptimize=False, verbosity=4)
+        reoptimize=like.Ts(name,reoptimize=True, verbosity=verbosity),
+        noreoptimize=like.Ts(name,reoptimize=False, verbosity=verbosity)
         )
 
 def gtlike_source_dict(like, name, emin=None, emax=None, 
-                      flux_units='erg', errors=True, minos_errors=True, 
-                      save_TS=True, add_diffuse_dict=True):
+                       flux_units='erg', energy_units='MeV', 
+                       errors=True, minos_errors=True, 
+                       save_TS=True, add_diffuse_dict=True,
+                       verbosity=True):
 
     if emin is None and emax is None:
         emin, emax = get_full_energy_range(like)
@@ -340,13 +346,17 @@ def gtlike_source_dict(like, name, emin=None, emax=None,
     d=dict(
         logLikelihood=logLikelihood(like),
     )
+
+    d['energy'] = energy_dict(emin=emin, emax=emax, energy_units=energy_units)
     
-    d['model']= name_to_spectral_dict(like, name, errors=errors, minos_errors=minos_errors)
+    d['spectrum']= name_to_spectral_dict(like, name, errors=errors, minos_errors=minos_errors)
 
     if save_TS:
-        d['TS']=gtlike_ts_dict(like, name)
+        d['TS']=gtlike_ts_dict(like, name, verbosity=verbosity)
 
-    d['flux']=flux_dict(like,name,emin,emax,flux_units=flux_units, errors=errors)
+    d['flux']=flux_dict(like,name,
+                        emin=emin, emax=emax,
+                        flux_units=flux_units, energy_units=energy_units, errors=errors)
 
 
     if add_diffuse_dict:
@@ -426,7 +436,11 @@ def skydirdict(skydir):
 def pointlike_ts_dict(roi, name):
     return roi.TS(name,quick=False)
 
-def pointlike_source_dict(roi, name, emin=None, emax=None, flux_units='erg', errors=True, save_TS=True, add_diffuse_dict=True):
+def pointlike_source_dict(roi, name, emin=None, emax=None, 
+                          flux_units='erg', energy_units='MeV',
+                          errors=True, save_TS=True, 
+                          add_diffuse_dict=True,
+                          verbosity=True):
     d={}
 
     if emin is None and emax is None:
@@ -440,9 +454,13 @@ def pointlike_source_dict(roi, name, emin=None, emax=None, flux_units='erg', err
 
     d['logLikelihood']=logLikelihood(roi)
 
-    d['flux']=flux_dict(roi,name,emin,emax,flux_units, errors=errors)
+    d['energy'] = energy_dict(emin=emin, emax=emax, energy_units=energy_units)
 
-    d['model']= name_to_spectral_dict(roi, name)
+    d['flux']=flux_dict(roi, name, 
+                        emin=emin, emax=emax, 
+                        flux_units=flux_units, energy_units=energy_units, errors=errors)
+
+    d['spectrum']= name_to_spectral_dict(roi, name)
 
     # Source position
     source = roi.get_source(name)
