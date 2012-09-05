@@ -1,4 +1,7 @@
 import yaml
+
+from uw.utilities import keyword_options
+
 from lande.utilities.tools import tolist
 from lande.utilities.save import loaddict
 
@@ -24,7 +27,10 @@ class BaseFitter(object):
         ('verbosity', False, 'Make lots of noise'),
     )
 
-    def __init__(self, results):
+    @keyword_options.decorate(defaults)
+    def __init__(self, results, **kwargs):
+        keyword_options.process(self, kwargs)
+
         if isinstance(results,dict):
             self.results = results
         elif isinstance(results, str):

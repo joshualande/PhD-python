@@ -14,9 +14,13 @@ from . save import dict_to_spectrum
 
 
 class SpectralAxes(Axes):
-    def __init__(self, energy_units, flux_units, *args, **kwargs):
+    def __init__(self, energy_units='MeV', flux_units='erg', *args, **kwargs):
         self.energy_units = energy_units
         self.flux_units = flux_units
+
+        self.energy_units_obj = units.fromstring(self.energy_units)
+        self.flux_units_obj = units.fromstring(self.flux_units)
+
 
         super(SpectralAxes,self).__init__(*args, **kwargs)
         
@@ -25,6 +29,13 @@ class SpectralAxes(Axes):
 
         self.set_xlabel('Energy (%s)' % self.energy_units)
         self.set_ylabel('E$^2$ dN/dE (%s cm$^{-2}$ s$^{-1}$)' % self.flux_units)
+
+    def set_xlim_units(self, emin, emax):
+        self.set_xlim(float(emin/self.energy_units_obj), float(emax/self.energy_units_obj))
+
+    def set_ylim_units(self, fmin, fmax):
+        f = self.flux_units_obj/units.cm**2/units.s
+        self.set_ylim(float(fmin/f), float(fmax/f))
 
 
 def set_xlim_mev(axes, emin, emax, energy_units, extra=0.1):
@@ -47,11 +58,9 @@ class SpectrumPlotter(object):
     )
 
     @keyword_options.decorate(defaults)
-    def __init__(self, **kwargs):
+    def __init__(self, axes, **kwargs):
+        self.axes = axes
         keyword_options.process(self, kwargs)
-
-        self.energy_units_obj     = units.fromstring(self.energy_units)
-        self.flux_units_obj       = units.fromstring(self.flux_units)
 
     @staticmethod
     def get_dnde(spectrum,energies):
@@ -82,6 +91,10 @@ class SpectrumPlotter(object):
 
         if emin is None and emax is None:
             emin,emax= axes.get_xlim()
+        else:
+            emin = float(emin/energy_units_obj)
+            emax = float(emax/energy_units_obj)
+
         energies = np.logspace(np.log10(emin), np.log10(emax), npts)
 
         e_units = units.tosympy(energies,energy_units_obj)
@@ -96,8 +109,6 @@ class SpectrumPlotter(object):
         e2_dnde = units.tonumpy(e2_dnde,flux_units_obj/units.cm**2/units.s)
         axes.plot(energies, e2_dnde, **kwargs)
 
-    def plot(self, spectrum, axes, emin=None, emax=None, **kwargs):
-        if axes is None: 
-            axes=self.axes
-        SpectrumPlotter._plot_spectrum(spectrum, axes, self.energy_units_obj, self.flux_units_obj, emin, emax, **kwargs)
+    def plot(self, spectrum, emin=None, emax=None, **kwargs):
+        SpectrumPlotter._plot_spectrum(spectrum, self.axes, self.axes.energy_units_obj, self.axes.flux_units_obj, emin, emax, **kwargs)
 

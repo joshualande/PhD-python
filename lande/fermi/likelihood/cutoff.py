@@ -16,7 +16,7 @@ from lande.fermi.spectra.sed import SED
 from . superstate import SuperState
 
 from . tools import gtlike_or_pointlike
-from . save import get_full_energy_range, spectrum_to_dict, dict_to_spectrum, flux_dict
+from . save import get_full_energy_range, spectrum_to_dict, dict_to_spectrum, flux_dict, energy_dict
 from . fit import paranoid_gtlike_fit
 from . printing import summary
 from . models import build_gtlike_spectrum
@@ -55,11 +55,13 @@ class CutoffTester(BaseFitter):
                          flux_units=self.flux_units,
                          energy_units=self.energy_units)
             fig.add_axes(axes)
-            set_xlim_mev(axes, self.results['emin'], self.results['emax'], self.energy_units)
+            energy = self.results['energy']
+            axes.set_xlim_units(energy['emin']*units.fromstring(energy['energy_units']), 
+                                energy['emax']*units.fromstring(energy['energy_units']))
 
-        sp = SpectrumPlotter(flux_units=self.flux_units, energy_units=self.energy_units)
-        sp.plot(self.results['model_0'], axes=axes, **model_0_kwargs)
-        sp.plot(self.results['model_1'], axes=axes, **model_1_kwargs)
+        sp = SpectrumPlotter(axes=axes)
+        sp.plot(self.results['model_0'], **model_0_kwargs)
+        sp.plot(self.results['model_1'], **model_1_kwargs)
 
         if title is not None: axes.set_title(title)
         if filename is not None: P.savefig(filename)
@@ -85,7 +87,10 @@ class PointlikeCutoffTester(CutoffTester):
         
         if self.verbosity: print 'Testing cutoff in pointlike'
         emin,emax=get_full_energy_range(roi)
-        self.results = d = dict(emin=emin, emax=emax)
+
+        self.results = d = dict(
+            energy = energy_dict(emin=emin, emax=emax, energy_units=self.energy_units)
+        )
 
         saved_state = PointlikeState(roi)
 
@@ -124,7 +129,7 @@ class PointlikeCutoffTester(CutoffTester):
         d['ll_0'] = ll_0 = ll()
         d['TS_0'] = ts()
         d['model_0']=spectrum()
-        d['flux_0']=flux_dict(roi,name,emin,emax,self.flux_units)
+        d['flux_0']=flux_dict(roi,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
 
         if self.model1 is not None:
             pass
@@ -152,7 +157,7 @@ class PointlikeCutoffTester(CutoffTester):
         d['ll_1'] = ll_1 = ll()
         d['TS_1'] = ts()
         d['model_1']=spectrum()
-        d['flux_1']=flux_dict(roi,name,emin,emax,self.flux_units)
+        d['flux_1']=flux_dict(roi,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
 
         d['TS_cutoff']=2*(ll_1-ll_0)
 
@@ -183,7 +188,9 @@ class GtlikeCutoffTester(CutoffTester):
 
         emin, emax = get_full_energy_range(like)
 
-        self.results = d = dict(emin=emin, emax=emax)
+        self.results = d = dict(
+            energy = energy_dict(emin=emin, emax=emax, energy_units=self.energy_units)
+        )
 
         try:
 
@@ -224,7 +231,7 @@ class GtlikeCutoffTester(CutoffTester):
             d['ll_0'] = ll_0 = ll()
             d['TS_0'] = ts()
             d['model_0']=spectrum()
-            d['flux_0']=flux_dict(like,name,emin,emax,self.flux_units)
+            d['flux_0']=flux_dict(like,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
 
             if self.model1 is None:
                 self.model1=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1, set_default_limits=True)
@@ -271,7 +278,7 @@ class GtlikeCutoffTester(CutoffTester):
             d['ll_1'] = ll_1 = ll()
             d['TS_1'] = ts()
             d['model_1']=spectrum()
-            d['flux_1']=flux_dict(like,name,emin,emax,self.flux_units)
+            d['flux_1']=flux_dict(like,name,emin,emax,flux_units=self.flux_units, energy_units=self.energy_units)
 
             d['TS_cutoff']=2*(ll_1-ll_0)
 

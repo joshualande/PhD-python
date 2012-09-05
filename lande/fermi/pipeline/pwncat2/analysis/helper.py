@@ -281,8 +281,8 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
 
     print 'Making pointlike SED'
     sed = PointlikeSED(roi, name, verbosity=True)
-    sed.plot('%s/sed_pointlike_%s_%s.png' % (seddir,hypothesis,name)) 
     sed.save('%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name))
+    sed.plot('%s/sed_pointlike_%s_%s.png' % (seddir,hypothesis,name)) 
 
     print_summary()
 

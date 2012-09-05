@@ -11,7 +11,7 @@ from lande.pysed import units
 from lande.utilities.tools import tolist
 
 from . models import build_gtlike_spectrum, build_pointlike_model
-from . save import flux_dict, name_to_spectral_dict, dict_to_spectrum
+from . save import flux_dict, name_to_spectral_dict, dict_to_spectrum, energy_dict
 from . limits import GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState
@@ -37,16 +37,23 @@ class BandFitter(BaseFitter):
                          flux_units=self.flux_units,
                          energy_units=self.energy_units)
             fig.add_axes(axes)
-            set_xlim_mev(axes, self.results['energy']['lower'][0],self.results['energy']['upper'][-1], self.energy_units)
+            axes.set_xlim_units(
+                self.results['bands'][0]['energy']['emin']*units.fromstring(self.results['bands'][0]['energy']['energy_units']),
+                self.results['bands'][-1]['energy']['emax']*units.fromstring(self.results['bands'][-1]['energy']['energy_units'])
+            )
             
-        sp = SpectrumPlotter(energy_units=self.energy_units, flux_units=self.flux_units)
+        sp = SpectrumPlotter(axes=axes)
 
-        for r in self.results['bands']:
-            emin=r['emin']
-            emax=r['emax']
+        for i,r in enumerate(self.results['bands']):
+            emin=r['energy']['emin']*units.fromstring(r['energy']['energy_units'])
+            emax=r['energy']['emax']*units.fromstring(r['energy']['energy_units'])
             spectrum = dict_to_spectrum(r['spectrum'])
 
-            sp.plot(spectrum, axes, emin=emin, emax=emax, **spectral_kwargs)
+            if i > 0 and 'label' in spectral_kwargs: 
+                # only one label
+                spectral_kwargs.pop('label') 
+
+            sp.plot(spectrum, emin=emin, emax=emax, **spectral_kwargs)
 
         if title is not None: axes.set_title(title)
         if filename is not None: P.savefig(filename)
@@ -121,17 +128,13 @@ class GtlikeBandFitter(BandFitter):
         self.results = dict(
             name=name,
             bands=[],
-            energy=dict(
-                lower=self.lower_energy,
-                upper=self.upper_energy,
-                middle=self.middle_energy,
-            ),
         )
 
         for i,(lower,upper,middle) in enumerate(zip(self.lower_energy,self.upper_energy,self.middle_energy)):
             if self.verbosity: print 'Calculating spectrum from %.0dMeV to %.0dMeV' % (lower,upper)
 
-            r = dict(emin=lower, emax=upper)
+            r = dict(energy=energy_dict(lower, upper, energy_units=self.energy_units))
+
             self.results['bands'].append(r)
 
             like.setEnergyRange(float(lower)+1, float(upper)-1)
@@ -152,7 +155,8 @@ class GtlikeBandFitter(BandFitter):
 
             fd = flux_dict(like,name,
                           emin=lower,emax=upper,
-                          flux_units=self.flux_units)
+                          flux_units=self.flux_units,
+                          energy_units=self.energy_units)
 
             r['flux'] = fd
             r['spectrum'] = name_to_spectral_dict(like,name, errors=True)
@@ -162,7 +166,8 @@ class GtlikeBandFitter(BandFitter):
                                          powerlaw_index=self.upper_limit_index,
                                          cl=self.ul_confidence,
                                          emin=lower,emax=upper,
-                                         flux_units=self.flux_units)
+                                         flux_units=self.flux_units,
+                                         energy_units=self.energy_units)
             ul_dict = g.todict()
 
             r['upper_limit'] = ul_dict

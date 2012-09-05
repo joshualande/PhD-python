@@ -26,7 +26,7 @@ class PointlikeSED(SED):
         self.name = name
         
         bf = BandFlux(self.roi, which=self.name, merge=self.merge, scale_factor=1)
-        results = PointlikeSED.pointlike_sed_to_dict(bf)
+        results = PointlikeSED.pointlike_sed_to_dict(bf, flux_units=self.flux_units, energy_units=self.energy_units)
 
         model = roi.get_model(name)
         results['spectrum'] = spectrum_to_dict(model)
@@ -65,6 +65,8 @@ class PointlikeSED(SED):
                 results['Significant'].append(False)
                 results['dNdE']['Value'].append(np.nan)
                 results['dNdE']['Average_Error'].append(np.nan)
+                results['dNdE']['Lower_Error'].append(np.nan)
+                results['dNdE']['Upper_Error'].append(np.nan)
                 results['dNdE']['Upper_Limit'].append(cp(r.uflux/fac))
 
         return tolist(results)

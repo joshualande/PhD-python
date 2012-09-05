@@ -40,14 +40,17 @@ class UpperLimit(BaseFitter):
                                 flux_units=self.flux_units,
                                 energy_units=self.energy_units)
             fig.add_axes(axes)
-            set_xlim_mev(axes, self.results['emin'], self.results['emax'], self.energy_units)
+            file_energy_units = units.fromstring(self.results['energy_units'])
+            axes.set_xlim_units(self.results['emin']*file_energy_units,
+                                self.results['emax']*file_energy_units)
 
-        sp=SpectrumPlotter(energy_units=self.energy_units, flux_units=self.flux_units)
-        sp.plot(self.results['spectrum'], axes=axes, **spectral_kwargs)
+        sp=SpectrumPlotter(axes=axes)
+        sp.plot(self.results['spectrum'], **spectral_kwargs)
 
         if title is not None: axes.set_title(title)
         if filename is not None: P.savefig(filename)
         return axes
+
 
 class GtlikeUpperLimit(UpperLimit):
     """ Compute gtlike upper limit for whatever spectral model is
@@ -120,11 +123,12 @@ class GtlikeUpperLimit(UpperLimit):
             prefactor.setTrueValue(pref_ul)
 
             self.results = flux_dict(like, name, 
-                                    emin=self.emin,emax=self.emax,
-                                    flux_units=self.flux_units, 
-                                    errors=False,
-                                    include_prefactor=self.include_prefactor,
-                                    prefactor_energy=self.prefactor_energy)
+                                     emin=self.emin,emax=self.emax,
+                                     flux_units=self.flux_units, 
+                                     energy_units=self.energy_units,
+                                     errors=False,
+                                     include_prefactor=self.include_prefactor,
+                                     prefactor_energy=self.prefactor_energy)
 
             self.results['spectrum'] = spectrum_to_dict(spectrum)
 
@@ -249,7 +253,9 @@ class PointlikeUpperLimit(UpperLimit):
             model = ful.upper_limit_model
 
             self.results  = pointlike_model_to_flux(model, emin=self.emin, emax=self.emax, 
-                                                    flux_units=self.flux_units, errors=False,
+                                                    flux_units=self.flux_units, 
+                                                    energy_units=self.energy_units, 
+                                                    errors=False,
                                                     include_prefactor=self.include_prefactor,
                                                     prefactor_energy=self.prefactor_energy,
                                                    )

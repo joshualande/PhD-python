@@ -34,24 +34,35 @@ class SED(BaseFitter):
         ('flux_units',  'erg', 'default units to plot energy (x axis) in'),
     )
 
-    @keyword_options.decorate(defaults)
-    def __init__(self, results, *args, **kwargs):
-        keyword_options.process(self, kwargs)
-
-        self.energy_units_obj = units.fromstring(self.energy_units)
-        self.flux_units_obj = units.fromstring(self.flux_units)
-
-        super(SED,self).__init__(results)
-
-
     def plot(self, filename=None, axes=None, title=None,
              fignum=None, figsize=(4,4),
              plot_spectral_fit=True,
              data_kwargs=dict(),
              spectral_kwargs=dict(color='red',zorder=1.9)):
         """ Plot the SED using matpotlib. """
-        edict = self.results['Energy']
-        ce = lambda x: units.convert(np.asarray(x),units.fromstring(edict['Units']), self.energy_units_obj)
+
+        edict = units.fromstring(self.results['Energy'])
+        fdict = units.fromstring(self.results['dNdE'])
+
+        file_energy_units = units.fromstring(edict['Units'])
+        file_flux_units = units.fromstring(fdict['Units'])
+
+        if axes is None:
+            fig = P.figure(fignum,figsize)
+            axes = SpectralAxes(fig=fig, 
+                                rect=(0.22,0.15,0.75,0.8),
+                                flux_units=self.flux_units,
+                                energy_units=self.energy_units)
+            fig.add_axes(axes)
+
+            if 'Lower' in edict and 'Upper' in edict:
+                # use BaseGtlikeSED.set_xlim to add 10% on either side.
+                axes.set_xlim_units(edict['Lower'][0]*file_energy_units, edict['Upper'][-1]*file_energy_units)
+            else:
+                axes.set_xlim_units(edict['Energy'][0]*file_energy_units, edict['Energy'][-1]*file_energy_units)
+
+
+        ce = lambda x: units.convert(np.asarray(x),file_energy_units, axes.energy_units_obj)
 
         # get energy part
         energy = ce(edict['Value'])
@@ -64,11 +75,10 @@ class SED(BaseFitter):
 
         # get spectral part
 
-        fdict = self.results['dNdE']
 
         cf = lambda y: units.convert(energy**2*np.asarray(y),
-                                     self.energy_units_obj**2*units.fromstring(fdict['Units']),
-                                     self.flux_units_obj/units.cm**2/units.s)
+                                     axes.energy_units_obj**2*file_flux_units,
+                                     axes.flux_units_obj/units.cm**2/units.s)
 
         dnde = cf(fdict['Value'])
 
@@ -90,27 +100,6 @@ class SED(BaseFitter):
             has_upper_limits=False
 
 
-        if axes is None:
-            fig = P.figure(fignum,figsize)
-            axes = SpectralAxes(fig=fig, 
-                                rect=(0.22,0.15,0.75,0.8),
-                                flux_units=self.flux_units,
-                                energy_units=self.energy_units)
-            fig.add_axes(axes)
-
-            if has_energy_errors:
-                # use BaseGtlikeSED.set_xlim to add 10% on either side.
-                set_xlim_mev(axes, lower_energy[0], upper_energy[-1], self.energy_units)
-            else:
-                set_xlim_mev(axes, energy[0], energy[-1], self.energy_units)
-
-        self.axes = axes
-
-        if plot_spectral_fit and 'spectrum' in self.results:
-            sp=SpectrumPlotter(energy_units=self.energy_units, flux_units=self.flux_units)
-            sp.plot(self.results['spectrum'], axes=axes, **spectral_kwargs)
-
-
         BaseGtlikeSED._plot_points(
             x=energy,
             xlo=lower_energy if has_energy_errors else None,
@@ -121,6 +110,11 @@ class SED(BaseFitter):
             y_ul=dnde_ul if has_upper_limits else None,
             significant=significant if has_upper_limits else np.ones(len(energy),dtype=bool),
             axes=axes, **data_kwargs)
+
+        if plot_spectral_fit and 'spectrum' in self.results:
+            sp=SpectrumPlotter(axes=axes)
+            sp.plot(self.results['spectrum'], **spectral_kwargs)
+
 
         if title is not None: axes.set_title(title)
         if filename is not None: P.savefig(filename)
