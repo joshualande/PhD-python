@@ -12,12 +12,8 @@ from lande.pysed import units
 
 from uw.utilities import keyword_options
 
-from lande.fermi.likelihood.base import BaseFitter
-from lande.fermi.likelihood.specplot import SpectralAxes, SpectrumPlotter, set_xlim_mev
-
-class SEDException(Exception): 
-    pass
-
+from lande.fermi.likelihood.basefit import BaseFitter
+from lande.fermi.likelihood.specplot import SpectralAxes, SpectrumPlotter
 
 class SED(BaseFitter):
     """ Base object for plotting SEDs.
@@ -113,6 +109,8 @@ class SED(BaseFitter):
 
         if plot_spectral_fit and 'spectrum' in self.results:
             sp=SpectrumPlotter(axes=axes)
+            sp.plot_error(self.results['spectrum'], self.results['spectrum']['covariance_matrix'],
+                          **spectral_kwargs)
             sp.plot(self.results['spectrum'], **spectral_kwargs)
 
 

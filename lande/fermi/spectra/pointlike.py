@@ -9,14 +9,14 @@ from uw.like.sed_plotter import BandFlux
 from lande.pysed import units
 from lande.utilities.tools import tolist
 
-from lande.fermi.likelihood.save import spectrum_to_dict
+from lande.fermi.likelihood.save import name_to_spectral_dict
 
 from . sed import SED
 
 class PointlikeSED(SED):
 
     defaults = SED.defaults + (
-        ('merge', True, 'merge edge bins'),
+        ('merge', False, 'merge edge bins if insignificant'),
     )
 
     @keyword_options.decorate(defaults)
@@ -28,8 +28,7 @@ class PointlikeSED(SED):
         bf = BandFlux(self.roi, which=self.name, merge=self.merge, scale_factor=1)
         results = PointlikeSED.pointlike_sed_to_dict(bf, flux_units=self.flux_units, energy_units=self.energy_units)
 
-        model = roi.get_model(name)
-        results['spectrum'] = spectrum_to_dict(model)
+        results['spectrum'] = name_to_spectral_dict(roi, name, errors=True, covariance_matrix=True)
 
         super(PointlikeSED,self).__init__(results, **keyword_options.defaults_to_kwargs(self, SED))
         

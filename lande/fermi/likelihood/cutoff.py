@@ -20,8 +20,8 @@ from . save import get_full_energy_range, spectrum_to_dict, energy_dict, source_
 from . fit import paranoid_gtlike_fit
 from . printing import summary
 from . models import build_gtlike_spectrum
-from . base import BaseFitter
-from . specplot import SpectrumPlotter,SpectralAxes,set_xlim_mev
+from . basefit import BaseFitter
+from . specplot import SpectrumPlotter,SpectralAxes
 
 class CutoffTester(BaseFitter):
 

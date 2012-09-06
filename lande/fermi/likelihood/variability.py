@@ -37,7 +37,7 @@ from . save import flux_dict, diffuse_dict, get_background, get_sources, source_
 from . limits import GtlikeUpperLimit, PointlikeUpperLimit
 from . fit import allow_fit_only_prefactor
 from . superstate import SuperState
-from . base import BaseFitter
+from . basefit import BaseFitter
 
 from lande.fermi.data.livetime import pointlike_ltcube
 

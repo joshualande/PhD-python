@@ -18,8 +18,8 @@ from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range, spectrum_to_dict, pointlike_model_to_flux, flux_dict
 from . fit import gtlike_allow_fit_only_prefactor, paranoid_gtlike_fit
 from . models import build_gtlike_spectrum
-from . base import BaseFitter
-from . specplot import SpectralAxes, SpectrumPlotter, set_xlim_mev
+from . basefit import BaseFitter
+from . specplot import SpectralAxes, SpectrumPlotter
 
 class UpperLimit(BaseFitter):
 

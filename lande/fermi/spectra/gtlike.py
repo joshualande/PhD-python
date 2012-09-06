@@ -74,7 +74,7 @@ class GtlikeSED(SED):
 
         self.results = dict(
             Name=name,
-            spectrum=name_to_spectral_dict(like,name),
+            spectrum=name_to_spectral_dict(like,name, errors=True, covariance_matrix=True),
         )
         self._calculate(like)
 

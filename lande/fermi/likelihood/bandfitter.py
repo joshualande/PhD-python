@@ -16,8 +16,8 @@ from . save import source_dict
 from . limits import GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState
-from . specplot import SpectrumPlotter,SpectralAxes,set_xlim_mev
-from . base import BaseFitter
+from . specplot import SpectrumPlotter,SpectralAxes
+from . basefit import BaseFitter
 
 class BandFitter(BaseFitter):
 

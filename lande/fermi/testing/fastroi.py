@@ -6,6 +6,7 @@
 # this import has to come first (shrugs)
 from lande.fermi.likelihood.roi_gtlike import Gtlike
 
+import numpy as np
 from os.path import join
 
 from skymaps import SkyDir
@@ -92,7 +93,7 @@ class FastROI(object):
 
         point_sources, diffuse_sources = [], []
 
-        model = PowerLaw()
+        model = PowerLaw(e0=np.sqrt(self.emin*self.emax))
         model.set_flux(self.flux, emin=self.emin, emax=self.emax)
         ps = PointSource(
             name = 'source',

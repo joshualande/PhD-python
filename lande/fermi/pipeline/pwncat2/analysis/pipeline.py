@@ -24,7 +24,7 @@ from lande.fermi.pulsar.plotting import plot_phaseogram, plot_phase_vs_time
 from lande.fermi.likelihood.tools import force_gradient
 from lande.fermi.likelihood.parlimits import all_params_limited
 from lande.fermi.likelihood.variability import GtlikeVariabilityTester
-from lande.fermi.likelihood.save import pointlike_dict_to_spectrum
+from lande.fermi.likelihood.load import pointlike_dict_to_spectrum
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
 
