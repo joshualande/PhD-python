@@ -1,14 +1,22 @@
 """ Module to convert from gtlike to pointlike spectral models (and vice-verca).
 """
-from uw.like.Models import FileFunction
-from uw.utilities.parmap import LimitMapper,LinearMapper
-from uw.utilities.xml_parsers import XML_to_Model
-
 import numpy as np
 
 import pyLikelihood
 
+from uw.like.Models import FileFunction
+from uw.utilities.parmap import LimitMapper,LinearMapper
+from uw.utilities.xml_parsers import XML_to_Model
+
+from . save import spectrum_to_dict
+from . load import dict_to_spectrum
+
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
+
+def gtlike_unscale_all_parameters(spectrum):
+    """ kind of a kluge. """
+    return dict_to_spectrum(spectrum_to_dict(spectrum))
+
 
 def build_gtlike_spectrum(model):
     """ Convert a pointlike uw.like.Models.Model to a pyLikelihood spectral model object. 

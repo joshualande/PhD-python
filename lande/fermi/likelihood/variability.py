@@ -270,7 +270,7 @@ class GtlikeVariabilityTester(VariabilityTester):
 
             if self.verbosity: print 'Performing gtlike spectral analyis over all energy'
             if self.verbosity: print '... Before'; print like.model
-            paranoid_gtlike_fit(like, verbosity=verbosity)
+            paranoid_gtlike_fit(like, verbosity=self.verbosity)
             if self.verbosity: print '... After'; print like.model
 
             self.best_gtlike_state = SuperState(like)

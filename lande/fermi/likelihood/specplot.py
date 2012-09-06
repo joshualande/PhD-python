@@ -10,8 +10,11 @@ from uw.like.Models import Model
 
 from lande.pysed import units
 
-from . save import dict_to_spectrum
+from . load import dict_to_spectrum
+from . models import gtlike_unscale_all_parameters
 
+class SEDException(Exception): 
+    pass
 
 class SpectralAxes(Axes):
     def __init__(self, energy_units='MeV', flux_units='erg', *args, **kwargs):
@@ -38,17 +41,6 @@ class SpectralAxes(Axes):
         self.set_ylim(float(fmin/f), float(fmax/f))
 
 
-def set_xlim_mev(axes, emin, emax, energy_units, extra=0.1):
-    """ Assume emin & emax in MeV. Set xlim. """
-    emin = units.convert(emin,'MeV',energy_units)
-    emax = units.convert(emax,'MeV',energy_units)
-    l=np.log10(emin)
-    h=np.log10(emax)
-
-    low_lim=10**(l - extra*(h-l))
-    hi_lim =10**(h + extra*(h-l))
-    axes.set_xlim(low_lim,hi_lim)
-
 
 class SpectrumPlotter(object):
     """ Plot spectra. """
@@ -74,7 +66,41 @@ class SpectrumPlotter(object):
             raise SEDException("Unrecognized type %s for spectrum." % type(spectrum))
 
     @staticmethod
-    def _plot_spectrum(spectrum, axes, energy_units_obj, flux_units_obj, emin=None, emax=None, npts=100, **kwargs):
+    def get_dnde_error_gtlike(spectrum,covariance_matrix,energies):
+        spectrum = gtlike_unscale_all_parameters(spectrum)
+
+        dnde_err = np.empty_like(energies)
+        for i,energy in enumerate(energies):
+
+            # method taken from pyLikelihood.FluxDensity
+            srcpars = pyLikelihood.StringVector()
+            spectrum.getParamNames(srcpars)
+            arg = pyLikelihood.dArg(energy)
+            partials = np.array([spectrum.derivByParam(arg, x) for x in srcpars])
+            dnde_err[i] = np.sqrt(np.dot(partials, np.dot(covariance_matrix, partials)))
+        return dnde_err
+
+    @staticmethod
+    def get_dnde_error_pointlike(model,covariance_matrix,energies):
+        dnde_err = np.empty_like(energies)
+        for i,energy in enumerate(energies):
+            partials = model.external_gradient(energy)
+            dnde_err[i] = np.sqrt(np.dot(partials, np.dot(covariance_matrix, partials)))
+        return dnde_err
+
+    @staticmethod
+    def get_dnde_error(spectrum,*args, **kwargs):
+        if isinstance(spectrum,pyLikelihood.Function):
+            return SpectrumPlotter.get_dnde_error_gtlike(spectrum, *args, **kwargs)
+        elif isinstance(spectrum,Model):
+            return SpectrumPlotter.get_dnde_error_pointlike(spectrum, *args, **kwargs)
+        elif isinstance(spectrum,dict):
+            return SpectrumPlotter.get_dnde_error(dict_to_spectrum(spectrum),*args, **kwargs)
+        else:
+            raise SEDException("Unrecognized type %s for spectrum." % type(spectrum))
+
+
+    def convert_spectrum(self, function, emin, emax, npts):
         """ Plot a pyLikelihood spectrum onto a matplotlib axes
             whose x axis has units energy_units_obj and y_axes has units
             flux_units_obj/cm^2/s. 
@@ -90,25 +116,34 @@ class SpectrumPlotter(object):
         """
 
         if emin is None and emax is None:
-            emin,emax= axes.get_xlim()
+            emin,emax= self.axes.get_xlim()
         else:
-            emin = float(emin/energy_units_obj)
-            emax = float(emax/energy_units_obj)
+            emin = float(emin/self.axes.energy_units_obj)
+            emax = float(emax/self.axes.energy_units_obj)
 
         energies = np.logspace(np.log10(emin), np.log10(emax), npts)
 
-        e_units = units.tosympy(energies,energy_units_obj)
+        e_units = units.tosympy(energies,self.axes.energy_units_obj)
 
         energies_mev = units.tonumpy(e_units, units.MeV)
+        dnde_mev = function(energies_mev)
 
         # (a) convert to acutal units. gtlike spectra take energy in MeV, return flux in ph/cm^2/s/MeV
-        dnde = units.tosympy(SpectrumPlotter.get_dnde(spectrum,energies_mev),units.ph/units.cm**2/units.s/units.MeV)
+        dnde = units.tosympy(dnde_mev,units.ph/units.cm**2/units.s/units.MeV)
         # (b) create E^2 dN/dE in acutal units
         e2_dnde = dnde.multiply_elementwise(e_units).multiply_elementwise(e_units)
         # (c) convert to desired units
-        e2_dnde = units.tonumpy(e2_dnde,flux_units_obj/units.cm**2/units.s)
-        axes.plot(energies, e2_dnde, **kwargs)
+        e2_dnde = units.tonumpy(e2_dnde,self.axes.flux_units_obj/units.cm**2/units.s)
 
-    def plot(self, spectrum, emin=None, emax=None, **kwargs):
-        SpectrumPlotter._plot_spectrum(spectrum, self.axes, self.axes.energy_units_obj, self.axes.flux_units_obj, emin, emax, **kwargs)
+        return energies, e2_dnde
 
+
+    def plot(self, spectrum, emin=None, emax=None, npts=100, **kwargs):
+        energies, e2_dnde = self.convert_spectrum(lambda e: self.get_dnde(spectrum, e), emin, emax, npts)
+        self.axes.plot(energies, e2_dnde, **kwargs)
+
+    def plot_error(self, spectrum, covariance_matrix, emin=None, emax=None, npts=100, **kwargs):
+        energies, e2_dnde = self.convert_spectrum(lambda e: self.get_dnde(spectrum, e), emin, emax, npts)
+        energies, e2_dnde_error = self.convert_spectrum(lambda e: self.get_dnde_error(spectrum, covariance_matrix, e), emin, emax, npts)
+        
+        self.axes.fill_between(energies, e2_dnde-e2_dnde_error, e2_dnde+e2_dnde_error, **kwargs)

@@ -9,90 +9,17 @@ from skymaps import DiffuseFunction,IsotropicSpectrum,IsotropicPowerLaw,Isotropi
 from pyLikelihood import ParameterVector, SpatialMap_cast, PointSource_cast
 import pyLikelihood
 
-from uw.like.Models import PowerLaw, FileFunction
+from uw.like.Models import PowerLaw, FileFunction, CompositeModel
 from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
-from uw.like.Models import CompositeModel
-import uw.like.Models
 
 from SED import SED as BaseGtlikeSED
+from FluxDensity import FluxDensity
 
 from lande.pysed import units
 from lande.utilities.tools import tolist
 from . tools import gtlike_or_pointlike
-from . models import build_pointlike_model
-
-_funcFactory = pyLikelihood.SourceFactory_funcFactory()
-
-def pointlike_dict_to_spectrum(d):
-    if d['name'] == 'FileFunction':
-        model = FileFunction(file=d['file'])
-    else:
-        model = uw.like.Models.__dict__[d['name']]()
-    for k,v in d.items(): 
-        if k not in ['name','method','file']:
-            if len(k) > 10 and k[-10:] in ['_upper_err','_lower_err']:
-                pass
-            elif len(k) > 4 and k[-4:] == '_err': 
-                model.set_error(k[:-4],v)
-            else:
-                model[k]=v
-    return model
-    
-def gtlike_dict_to_spectrum(d):
-    """ Load back as a pyLikelihood spectrum object
-        a spectrum that has been saved by the spectrum_to_string
-        object. This undoes the conversion of spectrum_to_dict """
-    if d['name'] == 'FileFunction':
-        spectrum = pyLikelihood.FileFunction()
-        spectrum.readFunction(d['file'])
-    else:
-        spectrum=_funcFactory.create(d['name'])
-    for k,v in d.items(): 
-        if k not in ['name','method','file']:
-            if len(k) > 10 and k[-10:] in ['_upper_err','_lower_err']:
-                pass
-            elif len(k) > 4 and k[-4:] == '_err': 
-                param =  spectrum.getParam(k[:-4])
-                param.setError(v/param.getScale())
-            else:
-                spectrum.getParam(k).setTrueValue(v)
-    return spectrum
-
-def dict_to_spectrum(d):
-    """ Test out FileFunction:
-
-            >>> pl= PowerLaw()
-            >>> from tempfile import NamedTemporaryFile
-            >>> tempfile = NamedTemporaryFile()
-            >>> filename = tempfile.name
-            >>> pl.save_profile(filename, 1, 100)
-
-            >>> d = dict(file=filename, method='pointlike', Normalization=3, name='FileFunction')
-            >>> model = dict_to_spectrum(d)
-            >>> isinstance(model,FileFunction)
-            True
-            >>> model.file == filename
-            True
-            >>> np.allclose(model['Normalization'],3)
-            True
-
-            >>> d = dict(file=filename, method='gtlike', Normalization=3, name='FileFunction')
-            >>> spectrum = dict_to_spectrum(d)
-            >>> isinstance(spectrum,pyLikelihood.FileFunction)
-            True
-            >>> spectrum.filename() == filename
-            True
-            >>> np.allclose(spectrum.getParam('Normalization').getTrueValue(),3)
-            True
-    """
-    assert d['method'] in ['gtlike','pointlike']
-    if d['method'] == 'gtlike':
-        return gtlike_dict_to_spectrum(d)
-    if d['method'] == 'pointlike':
-        return pointlike_dict_to_spectrum(d)
-
 
 def gtlike_get_full_energy_range(like): return like.energies[[0,-1]]
 def pointlike_get_full_energy_range(roi): return roi.bin_edges[[0,-1]]
@@ -135,7 +62,7 @@ def pointlike_spectrum_to_dict(model, errors=False):
     d = dict(name = model.name, method='pointlike')
     if isinstance(model,CompositeModel):
         d['spectrum'] = map(pointlike_spectrum_to_dict,model.models)
-        return d
+        return tolist(d)
     else:
         for p in model.param_names:
             d[p] = model[p]
@@ -163,7 +90,7 @@ def gtlike_spectrum_to_dict(spectrum, errors=False):
     return d
 
 
-def gtlike_name_to_spectral_dict(like, name, errors=False, minos_errors=False):
+def gtlike_name_to_spectral_dict(like, name, errors=False, minos_errors=False, covariance_matrix=False):
     source = like.logLike.getSource(name)
     spectrum = source.spectrum()
     d=gtlike_spectrum_to_dict(spectrum, errors)
@@ -179,11 +106,16 @@ def gtlike_name_to_spectral_dict(like, name, errors=False, minos_errors=False):
             else:
                 d['%s_lower_err' % pname] = np.nan
                 d['%s_upper_err' % pname] = np.nan
+    if covariance_matrix:
+        d['covariance_matrix'] = get_covariance_matrix(like, name)
     return d
 
-def pointlike_name_to_spectral_dict(roi, name, *args, **kwargs):
+def pointlike_name_to_spectral_dict(roi, name, errors=False, covariance_matrix=False):
     model = roi.get_model(name)
-    return pointlike_spectrum_to_dict(model, *args, **kwargs)
+    d = pointlike_spectrum_to_dict(model, errors=errors)
+    if covariance_matrix:
+        d['covariance_matrix'] = get_covariance_matrix(roi, name)
+    return d
 
 
 def gtlike_flux_dict(like,name, emin=None,emax=None,flux_units='erg', energy_units='MeV',
@@ -336,7 +268,7 @@ def gtlike_ts_dict(like, name, verbosity=True):
 
 def gtlike_source_dict(like, name, emin=None, emax=None, 
                        flux_units='erg', energy_units='MeV', 
-                       errors=True, minos_errors=True, 
+                       errors=True, minos_errors=False, covariance_matrix=True,
                        save_TS=True, add_diffuse_dict=True,
                        verbosity=True):
 
@@ -349,7 +281,8 @@ def gtlike_source_dict(like, name, emin=None, emax=None,
 
     d['energy'] = energy_dict(emin=emin, emax=emax, energy_units=energy_units)
     
-    d['spectrum']= name_to_spectral_dict(like, name, errors=errors, minos_errors=minos_errors)
+    d['spectrum']= name_to_spectral_dict(like, name, errors=errors, 
+                                         minos_errors=minos_errors, covariance_matrix=covariance_matrix)
 
     if save_TS:
         d['TS']=gtlike_ts_dict(like, name, verbosity=verbosity)
@@ -438,7 +371,8 @@ def pointlike_ts_dict(roi, name):
 
 def pointlike_source_dict(roi, name, emin=None, emax=None, 
                           flux_units='erg', energy_units='MeV',
-                          errors=True, save_TS=True, 
+                          errors=True, covariance_matrix=True,
+                          save_TS=True, 
                           add_diffuse_dict=True,
                           verbosity=True):
     d={}
@@ -460,7 +394,7 @@ def pointlike_source_dict(roi, name, emin=None, emax=None,
                         emin=emin, emax=emax, 
                         flux_units=flux_units, energy_units=energy_units, errors=errors)
 
-    d['spectrum']= name_to_spectral_dict(roi, name)
+    d['spectrum']= name_to_spectral_dict(roi, name, errors=errors, covariance_matrix=covariance_matrix)
 
     # Source position
     source = roi.get_source(name)
@@ -469,18 +403,19 @@ def pointlike_source_dict(roi, name, emin=None, emax=None,
     if add_diffuse_dict:
         d['diffuse'] = diffuse_dict(roi)
 
-    d['spatial_model'] = spatial_dict(source, roi)
+    d['spatial_model'] = spatial_dict(source, roi, errors=errors)
 
     return tolist(d)
 
-def spatial_dict(source, roi):
+def spatial_dict(source, roi, errors=True):
     f = dict()
     if isinstance(source,ExtendedSource):
         # Extended Source parameters
         spatial_model = source.spatial_model
         for param in spatial_model.param_names:
             f[param]=spatial_model[param]
-            f[param + '_err']=spatial_model.error(param)
+            if errors:
+                f[param + '_err']=spatial_model.error(param)
         f['r68'] = spatial_model.r68()
         f['r99'] = spatial_model.r99()
 
@@ -581,6 +516,45 @@ def pointlike_get_skydir(roi, name):
 
 def get_skydir(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_get_skydir, pointlike_get_skydir, *args, **kwargs)
+
+
+def gtlike_get_covariance_matrix(like, name):
+    """ Get the covarince matrix. 
+
+        We can mostly get this from FluxDensity, but
+        the covariance matrix returned by FluxDensity
+        is only for the free paramters. Here, we
+        transform it to have the covariance matrix
+        for all parameters, and set the covariance to 0
+        when the parameter is free.
+    """
+    fd = FluxDensity(like,name)
+
+    source = like.logLike.getSource(name)
+    spectrum = source.spectrum()
+
+    parameters=ParameterVector()
+    spectrum.getParams(parameters)
+    free = np.asarray([p.isFree() for p in parameters])
+    scales = np.abs(np.asarray([p.getScale() for p in parameters]))
+    scales_transpose = scales.reshape((scales.shape[0],1))
+
+    cov_matrix = np.zeros([len(parameters),len(parameters)])
+    cov_matrix[np.ix_(free,free)] = fd.covar
+
+    # create absolute covariance matrix:
+    cov_matrix = scales_transpose * cov_matrix * scales
+
+    return tolist(cov_matrix)
+
+def pointlike_get_covariance_matrix(roi, name):
+
+    model = roi.get_model(name)
+    return model.get_cov_matrix()
+
+def get_covariance_matrix(*args, **kwargs):
+    return gtlike_or_pointlike(gtlike_get_covariance_matrix, pointlike_get_covariance_matrix, *args, **kwargs)
+
 
 if __name__ == "__main__":
     import doctest

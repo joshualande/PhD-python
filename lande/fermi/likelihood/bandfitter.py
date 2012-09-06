@@ -11,7 +11,8 @@ from lande.pysed import units
 from lande.utilities.tools import tolist
 
 from . models import build_gtlike_spectrum, build_pointlike_model
-from . save import dict_to_spectrum, source_dict
+from . load import dict_to_spectrum
+from . save import source_dict
 from . limits import GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState

@@ -43,6 +43,7 @@ class SuperState(object):
         self.sources = dict()
 
         all_names = like.sourceNames()
+        self.covariance = like.covariance
 
         for name in all_names:
 
@@ -73,3 +74,4 @@ class SuperState(object):
                 pcache.setDataMembers(like_par)
 
         like.syncSrcParams()
+        like.covariance = self.covariance
