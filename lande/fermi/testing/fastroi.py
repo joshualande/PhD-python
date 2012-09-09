@@ -17,6 +17,7 @@ from uw.like.roi_monte_carlo import SpectralAnalysisMC
 from uw.utilities import keyword_options
 
 from lande.fermi.likelihood.diffuse import get_sreekumar
+from lande.fermi.data.livetime import fix_pointlike_ltcube
 
 class FastROI(object):
     """ Usage:
@@ -43,6 +44,7 @@ class FastROI(object):
         ('irf','P7SOURCE_V6'),
         ('flux',1e-7),
         ('isotropic_bg',False, 'simulate on top of an isotropic background'),
+        ('nearby_source',False, ''),
         ('conv_type',0),
         ('point_sources',None),
         ('diffuse_sources',None),
@@ -57,11 +59,11 @@ class FastROI(object):
         else:
             if self.point_sources is None: self.point_sources=[]
 
-
+        ltcube = join(self.tempdir,'ltcube.fits')
         ds = DataSpecification(
             ft1files = join(self.tempdir,'ft1.fits'),
             ft2files = join(self.tempdir,'ft2.fits'),
-            ltcube = join(self.tempdir,'ltcube.fits'),
+            ltcube = ltcube,
             binfile = join(self.tempdir,'binfile.fits')
         )
 
@@ -89,6 +91,8 @@ class FastROI(object):
 
         self.roi = roi
 
+        fix_pointlike_ltcube(ltcube)
+
     def get_default_sources(self):
 
         point_sources, diffuse_sources = [], []
@@ -97,13 +101,21 @@ class FastROI(object):
         model.set_flux(self.flux, emin=self.emin, emax=self.emax)
         ps = PointSource(
             name = 'source',
-            model = model,
+            model = model.copy(),
             skydir = self.roi_dir)
         point_sources.append(ps)
 
         if self.isotropic_bg:
             ds = get_sreekumar()
             diffuse_sources.append(ds)
+
+        if self.nearby_source:
+            ps = PointSource(
+                name = 'nearby_source',
+                model = model.copy(),
+                skydir = SkyDir(self.roi_dir.ra(),self.roi_dir.dec()+3)
+            )
+            point_sources.append(ps)
 
         if diffuse_sources == []: diffuse_sources = None
 
