@@ -44,15 +44,8 @@ class SpectralAxes(Axes):
 
 class SpectrumPlotter(object):
     """ Plot spectra. """
-    defaults= (
-        ('energy_units', 'MeV', 'default units to plot energy flux (y axis) in.'),
-        ('flux_units',  'erg', 'default units to plot energy (x axis) in'),
-    )
-
-    @keyword_options.decorate(defaults)
-    def __init__(self, axes, **kwargs):
+    def __init__(self, axes):
         self.axes = axes
-        keyword_options.process(self, kwargs)
 
     @staticmethod
     def get_dnde(spectrum,energies):
@@ -138,12 +131,33 @@ class SpectrumPlotter(object):
         return energies, e2_dnde
 
 
-    def plot(self, spectrum, emin=None, emax=None, npts=100, **kwargs):
+    def plot(self, spectrum, emin=None, emax=None, npts=100, autoscale=None, **kwargs):
         energies, e2_dnde = self.convert_spectrum(lambda e: self.get_dnde(spectrum, e), emin, emax, npts)
+
+        if autoscale is not None:
+            old_autoscale=self.axes.get_autoscale_on()
+            self.axes.autoscale(autoscale)
+
         self.axes.plot(energies, e2_dnde, **kwargs)
 
-    def plot_error(self, spectrum, covariance_matrix, emin=None, emax=None, npts=100, **kwargs):
+        if autoscale is not None:
+            self.axes.autoscale(old_autoscale)
+
+    def plot_error(self, spectrum, covariance_matrix, emin=None, emax=None, npts=100, autoscale=None, **kwargs):
         energies, e2_dnde = self.convert_spectrum(lambda e: self.get_dnde(spectrum, e), emin, emax, npts)
         energies, e2_dnde_error = self.convert_spectrum(lambda e: self.get_dnde_error(spectrum, covariance_matrix, e), emin, emax, npts)
         
-        self.axes.fill_between(energies, e2_dnde-e2_dnde_error, e2_dnde+e2_dnde_error, **kwargs)
+        # clip very small values, problems with log scale otherwise
+        low=e2_dnde-e2_dnde_error
+        low[low<1e-100]=1e-100
+
+        high=e2_dnde+e2_dnde_error
+
+        if autoscale is not None:
+            old_autoscale=self.axes.get_autoscale_on()
+            self.axes.autoscale(autoscale)
+
+        self.axes.fill_between(energies, low, high, **kwargs)
+
+        if autoscale is not None:
+            self.axes.autoscale(old_autoscale)

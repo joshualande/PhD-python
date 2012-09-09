@@ -31,6 +31,7 @@ class CutoffTester(BaseFitter):
     )
 
     def plot(self, filename=None, axes=None, title=None, 
+             sed_results=None,
              fignum=None, figsize=(4,4),
              model_0_kwargs=dict(color='red', zorder=0),
              model_1_kwargs=dict(color='blue', zorder=0),
@@ -59,9 +60,26 @@ class CutoffTester(BaseFitter):
             axes.set_xlim_units(energy['emin']*units.fromstring(energy['energy_units']), 
                                 energy['emax']*units.fromstring(energy['energy_units']))
 
+
+
+        if sed_results is not None:
+            sed = SED(sed_results)
+            sed.plot(axes=axes, plot_spectral_fit=False, plot_spectral_error=False, **sed_kwargs)
+
         sp = SpectrumPlotter(axes=axes)
-        sp.plot(self.results['hypothesis_0']['spectrum'], **model_0_kwargs)
-        sp.plot(self.results['hypothesis_1']['spectrum'], **model_1_kwargs)
+        sp.plot(self.results['hypothesis_0']['spectrum'], 
+                autoscale=False, **model_0_kwargs)
+        sp.plot_error(self.results['hypothesis_0']['spectrum'], 
+                      self.results['hypothesis_0']['spectrum']['covariance_matrix'],
+                      alpha=0.5,
+                      autoscale=False, **model_0_kwargs)
+
+        sp.plot(self.results['hypothesis_1']['spectrum'], 
+                autoscale=False, **model_1_kwargs)
+        sp.plot_error(self.results['hypothesis_1']['spectrum'], 
+                      self.results['hypothesis_1']['spectrum']['covariance_matrix'], 
+                      alpha=0.5,
+                      autoscale=False, **model_1_kwargs)
 
         if title is not None: axes.set_title(title)
         if filename is not None: P.savefig(filename)
@@ -71,6 +89,7 @@ class PointlikeCutoffTester(CutoffTester):
 
     defaults = CutoffTester.defaults + (
         ('model1',None,'starting value of spectral model'),
+        ('fit_kwargs',dict(),'kwargs to pass into roi.fit()'),
     )
 
     @keyword_options.decorate(defaults)
@@ -106,8 +125,7 @@ class PointlikeCutoffTester(CutoffTester):
 
             roi.modify(which=name, model=model0, keep_old_flux=False)
 
-        fit = lambda: roi.fit(estimate_errors=False)
-        ll = lambda: -1*roi.logLikelihood(roi.parameters())
+        fit = lambda: roi.fit(**self.fit_kwargs)
         def ts():
             old_quiet = roi.quiet; roi.quiet=True
             ts = roi.TS(name,quick=False)

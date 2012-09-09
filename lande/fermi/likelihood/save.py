@@ -528,7 +528,6 @@ def gtlike_get_covariance_matrix(like, name):
         for all parameters, and set the covariance to 0
         when the parameter is free.
     """
-    fd = FluxDensity(like,name)
 
     source = like.logLike.getSource(name)
     spectrum = source.spectrum()
@@ -536,14 +535,20 @@ def gtlike_get_covariance_matrix(like, name):
     parameters=ParameterVector()
     spectrum.getParams(parameters)
     free = np.asarray([p.isFree() for p in parameters])
-    scales = np.abs(np.asarray([p.getScale() for p in parameters]))
+    scales = np.asarray([p.getScale() for p in parameters])
     scales_transpose = scales.reshape((scales.shape[0],1))
 
     cov_matrix = np.zeros([len(parameters),len(parameters)])
-    cov_matrix[np.ix_(free,free)] = fd.covar
 
-    # create absolute covariance matrix:
-    cov_matrix = scales_transpose * cov_matrix * scales
+    try:
+        fd = FluxDensity(like,name)
+        cov_matrix[np.ix_(free,free)] = fd.covar
+
+        # create absolute covariance matrix:
+        cov_matrix = scales_transpose * cov_matrix * scales
+    except Exception, ex:
+        print 'ERROR unable to obtain covariance matrix for source %s:' % name, ex
+        traceback.print_exc(file=sys.stdout)
 
     return tolist(cov_matrix)
 
