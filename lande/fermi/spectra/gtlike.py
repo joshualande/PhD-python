@@ -59,7 +59,7 @@ class GtlikeSED(SED):
             raise Exception("The reoptimize_ts=True flag should only be set when freeze_background=False")
 
         if self.bin_edges is not None:
-            if not SED.good_binning(like, self.bin_edges):
+            if not BaseGtlikeSED.good_binning(like, self.bin_edges):
                 raise Exception("bin_edges is not commensurate with the underlying energy binning of pyLikelihood.")
             
             self.bin_edges = np.asarray(self.bin_edges)

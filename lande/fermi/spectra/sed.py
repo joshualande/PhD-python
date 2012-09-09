@@ -33,9 +33,20 @@ class SED(BaseFitter):
     def plot(self, filename=None, axes=None, title=None,
              fignum=None, figsize=(4,4),
              plot_spectral_fit=True,
+             plot_spectral_error=True,
              data_kwargs=dict(),
-             spectral_kwargs=dict(color='red',zorder=1.9)):
+             spectral_kwargs=dict(),
+             spectral_error_kwargs=dict(),
+            ):
         """ Plot the SED using matpotlib. """
+        pass_data_kwargs=dict()
+        pass_data_kwargs.update(data_kwargs)
+
+        pass_spectral_kwargs=dict(color='red',zorder=1.9)
+        pass_spectral_kwargs.update(spectral_kwargs)
+
+        pass_spectral_error_kwargs=dict(color='red',alpha=0.5,zorder=1.8)
+        pass_spectral_error_kwargs.update(spectral_error_kwargs)
 
         edict = units.fromstring(self.results['Energy'])
         fdict = units.fromstring(self.results['dNdE'])
@@ -105,13 +116,15 @@ class SED(BaseFitter):
             y_upper_err=dnde_upper_err if has_assymetric_errors else dnde_err,
             y_ul=dnde_ul if has_upper_limits else None,
             significant=significant if has_upper_limits else np.ones(len(energy),dtype=bool),
-            axes=axes, **data_kwargs)
+            axes=axes, **pass_data_kwargs)
 
         if plot_spectral_fit and 'spectrum' in self.results:
             sp=SpectrumPlotter(axes=axes)
+        if plot_spectral_error and 'spectrum' in self.results:
             sp.plot_error(self.results['spectrum'], self.results['spectrum']['covariance_matrix'],
-                          **spectral_kwargs)
-            sp.plot(self.results['spectrum'], **spectral_kwargs)
+                          autoscale=False, **pass_spectral_error_kwargs)
+            sp.plot(self.results['spectrum'], 
+                    autoscale=False, **pass_spectral_kwargs)
 
 
         if title is not None: axes.set_title(title)
