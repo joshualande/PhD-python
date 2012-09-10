@@ -1,6 +1,9 @@
+from os.path import expandvars
+
 import traceback
 import sys
 
+import sympy
 import pylab as P
 import numpy as np
 
@@ -10,6 +13,7 @@ from uw.like.roi_upper_limits import FluxUpperLimit
 from uw.utilities import keyword_options
 
 from lande.utilities.tools import tolist
+from lande.utilities.plotting import plot_points
 
 from lande.pysed import units
 
@@ -33,6 +37,9 @@ class UpperLimit(BaseFitter):
              spectral_kwargs=dict(color='red',zorder=1.9),
             ):
         """ Plot the upper limit. """
+        file_energy_units = units.fromstring(self.results['energy_units'])
+        emin = self.results['emin']*file_energy_units
+        emax = self.results['emax']*file_energy_units
         if axes is None:
             fig = P.figure(fignum,figsize)
             axes = SpectralAxes(fig=fig, 
@@ -40,15 +47,29 @@ class UpperLimit(BaseFitter):
                                 flux_units=self.flux_units,
                                 energy_units=self.energy_units)
             fig.add_axes(axes)
-            file_energy_units = units.fromstring(self.results['energy_units'])
-            axes.set_xlim_units(self.results['emin']*file_energy_units,
-                                self.results['emax']*file_energy_units)
+            axes.set_xlim_units(emin,emax)
 
+        # plot the spectral model
+        spectrum = self.results['spectrum']
         sp=SpectrumPlotter(axes=axes)
-        sp.plot(self.results['spectrum'], **spectral_kwargs)
+        sp.plot(spectrum, emin=emin, emax=emax, **spectral_kwargs)
+
+        # plot in the middle an arrow pointing down
+        e_middle = units.tosympy([np.sqrt(self.results['emin']*self.results['emax'])],file_energy_units)
+        dnde = sp.get_dnde(spectrum, e_middle)
+        energies, e2_dnde = axes.convert_points(e_middle, dnde)
+        if 'autoscale' in spectral_kwargs: spectral_kwargs.pop('autoscale')
+        if 'label' in spectral_kwargs: spectral_kwargs.pop('label')
+        plot_points(x=energies, y=e2_dnde,
+                    xlo=None, xhi=None,
+                    y_lower_err=None, y_upper_err=None,
+                    y_ul=e2_dnde,
+                    significant=False,
+                    axes=axes, **spectral_kwargs)
 
         if title is not None: axes.set_title(title)
-        if filename is not None: P.savefig(filename)
+        if filename is not None: 
+            P.savefig(expandvars(filename))
         return axes
 
 
@@ -114,6 +135,7 @@ class GtlikeUpperLimit(UpperLimit):
                                                            cl=self.cl,
                                                            emin=self.emin, 
                                                            emax=self.emax, 
+                                                           verbosity=self.verbosity,
                                                            **self.upper_limit_kwargs)
 
             source=like.logLike.getSource(name)
@@ -170,9 +192,12 @@ class GtlikePowerLawUpperLimit(GtlikeUpperLimit):
 
         e = np.sqrt(self.emin*self.emax)
 
+        old_flux = like.flux(name, self.emin, self.emax)
+
         # assume a canonical dnde=1e-11 at 1GeV index 2 starting value
         model = PowerLaw(index=self.powerlaw_index, e0=e, set_default_limits=True)
         model.set_limits('norm', model.getp('norm')*1e-10, model.getp('norm')*1e10)
+        model.set_flux(old_flux, self.emin, self.emax)
         spectrum = build_gtlike_spectrum(model)
 
         like.setSpectrum(name,spectrum)
@@ -202,8 +227,11 @@ class GtlikeCutoffUpperLimit(GtlikeUpperLimit):
 
         saved_state = SuperState(like)
 
+        old_flux = like.flux(name, self.emin, self.emax)
+
         cutoff_model = PLSuperExpCutoff(Index=self.Index, Cutoff=self.Cutoff, b=self.b, set_default_limits=True)
         cutoff_model.set_limits('norm', cutoff_model.getp('norm')*1e-10, cutoff_model.getp('norm')*1e10)
+        cutoff_model.set_flux(old_flux, self.emin, self.emax)
         cutoff_spectrum = build_gtlike_spectrum(cutoff_model)
 
         like.setSpectrum(name,cutoff_spectrum)
