@@ -34,7 +34,7 @@ def linspace_unit(min, max, npts):
     units = unit(min)
     min,max = val(min), val(max)
 
-    return u.tosympy(linspace(float(min),float(max), npts), units)
+    return u.tosympy(np.linspace(float(min),float(max), npts), units)
 
 
 def logspace_units(min, max, npts):
@@ -48,7 +48,7 @@ def logspace_units(min, max, npts):
     units = unit(min)
     min,max = val(min), val(max)
 
-    return u.tosympy(logspace(np.log(float(min)),np.log(float(max)), npts), units)
+    return u.tosympy(np.logspace(np.log10(float(min)),np.log10(float(max)), npts), units)
 
 
 def logrange_unit(min,max, per_decade):
@@ -81,7 +81,7 @@ def argmax_unit(array):
 
         >>> import sympy
         >>> x = sympy.Matrix([1*u.erg, 10*u.erg, 2*u.erg])
-        >> argmax_unit(x)
+        >> print argmax_unit(x)
         1
     """
     return np.argmax(array.tolist())
