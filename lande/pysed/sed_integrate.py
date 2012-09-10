@@ -7,7 +7,7 @@ import numpy as np
 from scipy import integrate
 
 from . import units as u
-from . sed_helper import logrange
+from . helper import logrange
 
 def dbltrapz(f, x, y):
     """ Perform a double trapezon integration of a vectorized function

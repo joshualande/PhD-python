@@ -12,7 +12,7 @@ import sympy
 
 from . import sed_config
 from . import units as u
-from . sed_helper import logrange,logrange_unit
+from . helper import logrange,logrange_unit
 
 class Spectrum(object):
     """ A base class which represents some

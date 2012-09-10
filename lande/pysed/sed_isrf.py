@@ -12,7 +12,7 @@ from scipy.special import lambertw
 
 from . import units as u
 from . sed_thermal import ThermalSpectrum
-from sed_helper import argmax_unit
+from helper import argmax_unit
 
 class ISRF(object):
 
