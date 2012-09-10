@@ -64,8 +64,19 @@ tosympy=lambda array,units: sympy.Matrix(array)*units
 
 # Convert sympy array to numpy array with desired units.
 def tonumpy(array,units):
+    """ Convert a sympy array of numbers (with units) to a numpy array:
+
+            >>> tonumpy(units.GeV, units.MeV)
+            1000.0
+            >>> print tonumpy(tosympy([1,2,3],units.GeV),units.MeV)
+            [ 1000.  2000.  3000.]
+    """
     try:
-        return sympy.list2numpy(array/units).astype(float)
+        temp = array/units
+        if hasattr(temp,'shape'):
+            return sympy.list2numpy(temp).astype(float)
+        else:
+            return float(temp)
     except:
         raise UnitsException("Unable to convert array %s to units %s." % (array,units))
 
@@ -80,3 +91,7 @@ def convert(x, from_units, to_units):
 repr=lambda value,unit_string,format='%g': format % float(value/fromstring(unit_string)) + ' ' + unit_string
 
 from sympy.physics.units import *
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
