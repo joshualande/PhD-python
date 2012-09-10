@@ -36,6 +36,21 @@ def linspace_unit(min, max, npts):
 
     return u.tosympy(linspace(float(min),float(max), npts), units)
 
+
+def logspace_units(min, max, npts):
+
+    val = lambda x: x.as_two_terms()[0]
+    unit = lambda x: x.as_two_terms()[1]
+
+    # make sure numbers have same units
+    assert(unit(min)==unit(max))
+
+    units = unit(min)
+    min,max = val(min), val(max)
+
+    return u.tosympy(logspace(np.log(float(min)),np.log(float(max)), npts), units)
+
+
 def logrange_unit(min,max, per_decade):
     """ Convenience function to compute
         an array of points uniformly
@@ -48,10 +63,10 @@ def logrange_unit(min,max, per_decade):
         >>> logrange_unit(1*u.cm,1e3*u.cm,1)
         [0.01*m, 0.1*m, 1.0*m, 10.0*m]
     """
-    # make sure numbers have same units
     val = lambda x: x.as_two_terms()[0]
     unit = lambda x: x.as_two_terms()[1]
 
+    # make sure numbers have same units
     assert(unit(min)==unit(max))
 
     units = unit(min)
