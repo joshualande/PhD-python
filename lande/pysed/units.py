@@ -10,6 +10,7 @@
     
     Author: Joshua Lande <joshualande@gmail.com>
 """
+import numpy as np
 import sympy
 import sympy.physics
 from sympy.physics import units
@@ -60,7 +61,26 @@ units.alpha = float(units.electron_charge**2/(units.hbar*units.speed_of_light))
 fromstring=lambda string: sympy.sympify(string, sympy.physics.units.__dict__)
 
 # Convert numpy array to sympy array with desired units
-tosympy=lambda array,units: sympy.Matrix(array)*units
+def tosympy(array, units):
+    """ Convert a numpy array, python array, or python float to a sympy matrix with units.
+
+        >>> print tosympy(np.asarray([1]), units.GeV)
+        [1.602176487e-10*kg*m**2/s**2]
+        >>> print tosympy([1], units.GeV)
+        [1.602176487e-10*kg*m**2/s**2]
+        >>> print tosympy(1, units.GeV)
+        1.602176487e-10*kg*m**2/s**2
+
+    """
+    try:
+        if isinstance(array,list):
+            return sympy.Matrix(np.asarray(array))*units
+        elif hasattr(array,'shape'):
+            return sympy.Matrix(array)*units
+        else:
+            return array*units
+    except:
+        raise UnitsException("Unable to convert array %s to units %s." % (array,units))
 
 # Convert sympy array to numpy array with desired units.
 def tonumpy(array,units):
