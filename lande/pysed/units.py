@@ -84,19 +84,22 @@ def tosympy(array, units):
 
 # Convert sympy array to numpy array with desired units.
 def tonumpy(array,units):
-    """ Convert a sympy array of numbers (with units) to a numpy array:
+    """ Convert to numpy aa sympy number, a sympy array, or a python array of sympy numbers.
 
-            >>> tonumpy(units.GeV, units.MeV)
+            >>> print tonumpy(units.GeV, units.MeV)
             1000.0
-            >>> print tonumpy(tosympy([1,2,3],units.GeV),units.MeV)
-            [ 1000.  2000.  3000.]
+            >>> print tonumpy(tosympy([1],units.GeV),units.MeV)
+            [ 1000.]
+            >>> print tonumpy([1*units.GeV],units.MeV)
+            [ 1000.]
     """
     try:
-        temp = array/units
-        if hasattr(temp,'shape'):
-            return sympy.list2numpy(temp).astype(float)
+        if isinstance(array,list):
+            return np.asarray([float(i/units) for i in array])
+        if hasattr(array,'shape'):
+            return sympy.list2numpy(array/units).astype(float)
         else:
-            return float(temp)
+            return float(array/units)
     except:
         raise UnitsException("Unable to convert array %s to units %s." % (array,units))
 
