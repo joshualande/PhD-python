@@ -50,7 +50,7 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
 
     print summary(like, maxdist=10)
 
-    paranoid_gtlike_fit(like, niter=3)
+    paranoid_gtlike_fit(like, niter=3, verbosity=4)
 
     print 'Done fiting gtlike ROI'
     print summary(like, maxdist=10)
@@ -59,21 +59,38 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
 
     r=source_dict(like, name)
 
+    #upper_limit_kwargs=dict(delta_log_like_limits=10)
+    upper_limit_kwargs=dict()
+
     if upper_limit:
-        pul = GtlikePowerLawUpperLimit(like, name, emin=emin, emax=emax, cl=.95, delta_log_like_limits=10, verbosity=4)
+        pul = GtlikePowerLawUpperLimit(like, name, emin=emin, emax=emax, cl=.95,
+                                       upper_limit_kwargs=upper_limit_kwargs,
+                                       verbosity=4)
         r['powerlaw_upper_limit'] = pul.todict()
-        cul = GtlikeCutoffUpperLimit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95, verbosity=4)
+        cul = GtlikeCutoffUpperLimit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95,
+                                     upper_limit_kwargs=upper_limit_kwargs,
+                                     override_model=model1,
+                                     verbosity=4)
         r['cutoff_upper_limit'] = cul.todict()
 
     if all_energy(emin,emax):
-        bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), verbosity=4)
-        bf.plot('%s/bandfit_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
-        bf.save('%s/bandfit_gtlike_%s_%s.yaml' % (datadir,hypothesis,name))
+        try:
+            bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), 
+                                  upper_limit_kwargs=upper_limit_kwargs,
+                                  verbosity=4)
+            bf.plot('%s/bandfit_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
+            bf.save('%s/bandfit_gtlike_%s_%s.yaml' % (datadir,hypothesis,name))
+        except Exception, ex:
+            print 'ERROR computing bandfit:', ex
+            traceback.print_exc(file=sys.stdout)
 
     def sed(kind,**kwargs):
         try:
             print 'Making %s SED' % kind
-            sed = GtlikeSED(like, name, always_upper_limit=True, verbosity=4, **kwargs)
+            sed = GtlikeSED(like, name, always_upper_limit=True, 
+                            verbosity=4, 
+                            upper_limit_kwargs=upper_limit_kwargs,
+                            **kwargs)
             sed.plot('%s/sed_gtlike_%s_%s.png' % (seddir,kind,name)) 
             sed.save('%s/sed_gtlike_%s_%s.yaml' % (seddir,kind,name))
         except Exception, ex:
@@ -96,7 +113,7 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
     if cutoff:
         try:
             tc = GtlikeCutoffTester(like,name, model1=model1, verbosity=4)
-            r['test_cutoff']=todict()
+            r['test_cutoff']=tc.todict()
             tc.plot(sed_results='%s/sed_gtlike_2bpd_%s_%s.yaml' % (seddir,hypothesis,name),
                     filename='%s/test_cutoff_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
         except Exception, ex:

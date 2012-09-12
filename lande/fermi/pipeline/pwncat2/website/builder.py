@@ -11,7 +11,7 @@ import asciitable
 
 from lande.utilities.website import t2t
 
-from lande.pipeline.pwncat2.interp.loader import PWNResultsLoader
+from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
 
@@ -34,10 +34,11 @@ class TableFormatter(object):
             table[k] = ['None']*len(pwnlist)
 
         for i,pwn in enumerate(pwnlist):
+            print ' - ',pwn
 
             table['PSR'][i]='[%s %s.html]' % (pwn,pwn)
 
-            results = self.loader.get_results(pwn, require_all_exists=False)
+            results = self.loader.get_results(pwn, require_all_exists=False, get_seds=False, get_bandfits=False)
             if results is None: continue
 
             pt_at_pulsar=results['at_pulsar']['pointlike']
@@ -153,14 +154,15 @@ class WebsiteBuilder(object):
         self.formatter = TableFormatter(self.loader)
 
     def build(self):
-        self.build_main_website()
         self.build_all_pages()
+        self.build_main_website()
 
     def build_all_pages(self):
         for pwn in self.pwnlist: 
             self.build_each_page(pwn)
 
     def build_main_website(self):
+        print 'Building Main Webpage'
 
         index_t2t = []
         index_t2t.append('PWNCatalog+\n\n')
@@ -169,6 +171,7 @@ class WebsiteBuilder(object):
         t2t(index_t2t, join(self.webdir,'index.t2t'))
 
     def build_each_page(self,pwn):
+        print 'Building webpage for %s' % pwn
         index_t2t = []
         index_t2t.append(pwn+'\n\n')
         index_t2t.append('([back index.html])')
@@ -180,51 +183,57 @@ class WebsiteBuilder(object):
 
         index_t2t.append('[results (pointlike) %s/%s/results_%s_pointlike.yaml]\n' % (self.relpath,pwn,pwn))
 
-        get_img_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
-        get_sed_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
+        get_plot_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/plots/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
+        get_sed_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/seds/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
 
         title = lambda i: index_t2t.append('\n\n== %s ==' % i)
 
         title('Phase Info')
-        get_img_table('plots/phaseogram_%s.png' % (pwn),'plots/phase_vs_time_%s.png' % (pwn))
+        get_plot_table('phaseogram_%s.png' % (pwn),'plots/phase_vs_time_%s.png' % (pwn))
 
         all = ['at_pulsar', 'point', 'extended']
 
         title('Big Residual TS map')
-        get_img_table(*['plots/tsmap_residual_%s_%s_10deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['tsmap_residual_%s_%s_10deg.png' % (i,pwn) for i in all])
 
         index_t2t.append('[tsmap_residual_%s_%s_10deg.fits %s/%s/data/tsmap_residual_%s_%s_10deg.fits]' % (pwn,'at_pulsar',self.relpath,pwn,'at_pulsar',pwn))
 
-        title('SED')
-        get_sed_table(*['seds/sed_gtlike_4bpd_%s_%s.png' % (i,pwn) for i in all])
+        title('SED gtlike (4bpd)')
+        get_sed_table(*['sed_gtlike_4bpd_%s_%s.png' % (i,pwn) for i in all])
+
+        title('Combined gtlike')
+        get_plot_table(*['combined_gtlike_spectra_%s_%s.png' % (i,pwn) for i in all])
 
         title('gtlike Cutoff test')
-        get_sed_table(*['plots/test_cutoff_%s_%s.png' % (i,pwn) for i in ['at_pulsar', 'point']])
+        get_plot_table(*['test_cutoff_gtlike_%s_%s.png' % (i,pwn) for i in ['at_pulsar', 'point']])
+
+        title('pointlike Cutoff test')
+        get_plot_table(*['test_cutoff_pointlike_%s_%s.png' % (i,pwn) for i in ['at_pulsar', 'point']])
 
                 
         title('Source TS Maps')
-        get_img_table(*['plots/tsmap_source_%s_%s_5deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_tsmap_source_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['tsmap_source_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_tsmap_source_%s_%s_5deg.png' % (i,pwn) for i in all])
 
         title('Residual TS Maps')
-        get_img_table(*['plots/tsmap_residual_%s_%s_5deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_tsmap_residual_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['tsmap_residual_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_tsmap_residual_%s_%s_5deg.png' % (i,pwn) for i in all])
 
         title('New Source TS Maps')
-        get_img_table(*['plots/tsmap_newsrc_%s_%s_5deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_tsmap_newsrc_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['tsmap_newsrc_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_tsmap_newsrc_%s_%s_5deg.png' % (i,pwn) for i in all])
 
         title('at_pulsar Smoothed Counts Diffuse Subtracted (0.1)')
-        get_img_table(*['plots/sources_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_sources_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['sources_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_sources_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
 
         title('Smoothed Counts BG Source Subtracted (0.1)')
-        get_img_table(*['plots/source_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['source_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
 
 
 
         title('Band Smoothed Counts BG Source Subtracted (0.1)')
-        get_img_table(*['plots/band_source_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_source_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
 
         title('gtlike SED')
         get_sed_table(*['seds/sed_gtlike_1bpd_%s_%s.png' % (i,pwn) for i in all])
@@ -233,41 +242,41 @@ class WebsiteBuilder(object):
 
 
         title('Pointlike SEDs')
-        get_sed_table(*['seds/sed_pointlike_%s_%s.png' % (i,pwn) for i in all])
+        get_sed_table(*['seds/sed_pointlike_4bpd_%s_%s.png' % (i,pwn) for i in all])
 
         title('Extra: Source TS Maps (10 deg)')
-        get_img_table(*['plots/tsmap_source_%s_%s_10deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_tsmap_source_%s_%s_10deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['tsmap_source_%s_%s_10deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_tsmap_source_%s_%s_10deg.png' % (i,pwn) for i in all])
 
         title('Extra: Residual TS Maps')
-        get_img_table(*['plots/tsmap_residual_%s_%s_10deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_tsmap_residual_%s_%s_10deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['tsmap_residual_%s_%s_10deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_tsmap_residual_%s_%s_10deg.png' % (i,pwn) for i in all])
 
         title('Extra: New Source TS Maps (10 deg)')
-        get_img_table(*['plots/tsmap_newsrc_%s_%s_10deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_tsmap_newsrc_%s_%s_10deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['tsmap_newsrc_%s_%s_10deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_tsmap_newsrc_%s_%s_10deg.png' % (i,pwn) for i in all])
 
 
         title('Extra: Smoothed Counts (0.25deg)')
-        get_img_table(*['plots/source_0.25_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['source_0.25_%s_%s_5deg.png' % (i,pwn) for i in all])
 
         title('Extra: Smoothed Counts (0.25deg)')
-        get_img_table(*['plots/sources_0.25_%s_%s_5deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['sources_0.25_%s_%s_5deg.png' % (i,pwn) for i in all])
 
 
         title('Extra: Band Smoothed Counts (0.25)')
-        get_img_table(*['plots/band_source_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/band_sources_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_source_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['band_sources_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
 
         title('Counts (0.1)')
-        get_img_table(*['plots/counts_residual_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['counts_residual_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
 
-        get_img_table(*['plots/counts_source_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['counts_source_%s_%s_5deg_0.1deg.png' % (i,pwn) for i in all])
 
 
         title('Extra: Counts (0.25)')
-        get_img_table(*['plots/counts_source_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
-        get_img_table(*['plots/counts_residual_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['counts_source_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
+        get_plot_table(*['counts_residual_%s_%s_5deg_0.25deg.png' % (i,pwn) for i in all])
 
 
         t2t(index_t2t, join(self.webdir,'%s.t2t' % pwn))

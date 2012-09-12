@@ -49,6 +49,7 @@ class Gtlike(object):
 
     common_defaults = (
         ("savedir",                 None, "Directory to put output files into. Default is to use a temporary file and delete it when done."),
+        ("savedir_prefix",   '/scratch/', "Directory to put tempdir in."),
         ("optimizer",           "MINUIT", "Optimizer to use when fitting."),
         ("chatter",                    2, "Passed into the ScienceTools."),
     )
@@ -136,7 +137,7 @@ class Gtlike(object):
                 os.makedirs(self.savedir)
         else:
             self.savedata = False
-            self.savedir=mkdtemp()
+            self.savedir=mkdtemp(prefix=self.savedir_prefix)
 
         # put pfiles into savedir
         os.environ['PFILES']=self.savedir+';'+os.environ['PFILES'].split(';')[-1]
@@ -287,7 +288,7 @@ class UnbinnedGtlike(object):
                 os.makedirs(self.savedir)
         else:
             self.savedata = False
-            self.savedir=mkdtemp()
+            self.savedir=mkdtemp(prefix=self.savedir_prefix)
 
         # put pfiles into savedir
         os.environ['PFILES']=self.savedir+';'+os.environ['PFILES'].split(';')[-1]

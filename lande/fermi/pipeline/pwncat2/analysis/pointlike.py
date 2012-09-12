@@ -15,7 +15,7 @@ from lande.fermi.spectra.pointlike import PointlikeSED
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
 def pointlike_analysis(roi, name, hypothesis, max_free,
-                       seddir, datadir, 
+                       seddir, datadir, plotdir,
                        localize=False,
                        fit_extension=False, 
                        cutoff=False,
@@ -88,8 +88,8 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
 
     print 'Making pointlike SED'
     sed = PointlikeSED(roi, name, verbosity=4)
-    sed.save('%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name))
-    sed.plot('%s/sed_pointlike_%s_%s.png' % (seddir,hypothesis,name)) 
+    sed.save('%s/sed_pointlike_4bpd_%s_%s.yaml' % (seddir,hypothesis,name))
+    sed.plot('%s/sed_pointlike_4bpd_%s_%s.png' % (seddir,hypothesis,name)) 
 
     print_summary()
 

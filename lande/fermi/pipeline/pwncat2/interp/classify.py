@@ -37,6 +37,9 @@ class PWNClassifier(object):
         spectral_model=classifier['spectral_model']
         assert spectral_model in PWNClassifier.allowed_spectral_models
 
+        source_class = classifier['source_class']
+        assert source_class in PWNClassifier.allowed_source_class
+
         results = self.loader.get_results(pwn, require_all_exists=True)
 
         if results is None:

@@ -1,3 +1,5 @@
+from os.path import expandvars
+
 import traceback
 import sys
 
@@ -82,7 +84,8 @@ class CutoffTester(BaseFitter):
                       autoscale=False, **model_1_kwargs)
 
         if title is not None: axes.set_title(title)
-        if filename is not None: P.savefig(filename)
+        if filename is not None: 
+            P.savefig(expandvars(filename))
         return axes
 
 class PointlikeCutoffTester(CutoffTester):

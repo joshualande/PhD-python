@@ -23,7 +23,7 @@ from lande.utilities.argumentparsing import argparse_to_kwargs
 from lande.fermi.pulsar.plotting import plot_phaseogram, plot_phase_vs_time
 from lande.fermi.likelihood.tools import force_gradient
 from lande.fermi.likelihood.parlimits import all_params_limited
-from lande.fermi.likelihood.variability import GtlikeVariabilityTester
+from lande.fermi.likelihood.variability import CombinedVariabilityTester
 from lande.fermi.likelihood.load import pointlike_dict_to_spectrum
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
@@ -53,6 +53,7 @@ class Pipeline(object):
         parser.add_argument("--no-savedir", default=False, action="store_true")
         parser.add_argument("--max-free", default=5, type=float)
         parser.add_argument("--modify", required=True)
+        parser.add_argument("--fast", default=False, action="store_true")
         args=parser.parse_args()
         return argparse_to_kwargs(args)
 
@@ -78,8 +79,21 @@ class Pipeline(object):
 
 
         name=self.name
-        emin=self.emin
-        emax=self.emax
+
+        if not self.fast:
+            emin=self.emin
+            emax=self.emax
+            binsperdec=self.binsperdec
+            free_radius=2
+            roi_size=5
+            max_free=self.max_free
+        else:
+            emin=1e4
+            emax=1e5
+            binsperdec=2
+            free_radius=5
+            roi_size=10
+            max_free=2
 
         pwnphase=yaml.load(open(self.pwnphase))[name]
         phase=pwnphase['phase']
@@ -94,14 +108,15 @@ class Pipeline(object):
         results['name']=name
         results['phase']=phase
 
-        pointlike_kwargs=dict(name=name, max_free=self.max_free) 
+        pointlike_kwargs=dict(name=name, max_free=max_free) 
 
         print 'Building the ROI'
         reg=PWNRegion(pwndata=self.pwndata, savedir=savedir)
         roi=reg.get_roi(name=name, phase=phase, 
-                        catalog_kwargs=dict(free_radius=5, max_free=self.max_free),
+                        catalog_kwargs=dict(free_radius=free_radius, max_free=max_free),
                         fit_emin=emin, fit_emax=emax, 
-                        binsperdec=self.binsperdec,
+                        binsperdec=binsperdec,
+                        roi_size=roi_size, 
                         extended=False)
 
         modify = import_module(self.modify)
@@ -115,11 +130,11 @@ class Pipeline(object):
 
         if do_at_pulsar:
             r['at_pulsar']['pointlike']=pointlike_analysis(roi, hypothesis='at_pulsar', 
-                                                           seddir=self.seddir, datadir=self.datadir, 
+                                                           seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
                                                            cutoff=do_cutoff, **pointlike_kwargs)
         if do_point:
             r['point']['pointlike']=pointlike_analysis(roi, hypothesis='point', localize=True, 
-                                                       seddir=self.seddir, datadir=self.datadir, 
+                                                       seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
                                                        cutoff=do_cutoff, 
                                                        model1 = model1,
                                                        **pointlike_kwargs)
@@ -127,7 +142,7 @@ class Pipeline(object):
             roi.modify(which=name, spatial_model=Gaussian(sigma=0.1), keep_old_center=True)
 
             r['extended']['pointlike']=pointlike_analysis(roi, hypothesis='extended', cutoff=False, 
-                                                          seddir=self.seddir, datadir=self.datadir, 
+                                                          seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
                                                           fit_extension=True, 
                                                           **pointlike_kwargs)
 
@@ -147,7 +162,7 @@ class Pipeline(object):
         upper_limit = hypothesis=='at_pulsar'
         if cutoff:
             pointlike_results = loaddict('results_%s_pointlike.yaml' % name)
-            model1=pointlike_results[hypothesis]['pointlike']['test_cutoff']['model_1']
+            model1=pointlike_results[hypothesis]['pointlike']['test_cutoff']['hypothesis_1']['spectrum']
             model1=pointlike_dict_to_spectrum(model1)
             model1.set_default_limits(oomp_limits=True)
         else:
@@ -206,13 +221,11 @@ class Pipeline(object):
         name = self.name
         roi = self.reload_roi(hypothesis)
 
-        roi.print_summary()
-        roi.fit(use_gradient=False)
-        roi.print_summary()
-
         frozen  = freeze_far_away(roi, roi.get_source(name).skydir, self.max_free)
-        v = GtlikeVariabilityTester(roi,name, nbins=36, 
-                              use_pointlike_ltcube=True, refit_background=True, refit_other_sources=True)
+        v = CombinedVariabilityTester(roi,name, nbins=36, 
+                                      use_pointlike_ltcube=True, refit_background=True, 
+                                      refit_other_sources=True,
+                                      verbosity=4)
         v.plot(filename='plots/variability_%s_hypothesis_%s.pdf' % (name,hypothesis))
         unfreeze_far_away(roi, frozen)
 

@@ -1,3 +1,5 @@
+from os.path import expandvars
+
 import numpy as np
 import pylab as P
 import yaml
@@ -13,11 +15,12 @@ from lande.utilities.tools import tolist
 from . models import build_gtlike_spectrum, build_pointlike_model
 from . load import dict_to_spectrum
 from . save import source_dict
-from . limits import GtlikePowerLawUpperLimit
+from . limits import UpperLimit,GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState
 from . specplot import SpectrumPlotter,SpectralAxes
 from . basefit import BaseFitter
+from . printing import summary
 
 class BandFitter(BaseFitter):
 
@@ -28,8 +31,15 @@ class BandFitter(BaseFitter):
 
     def plot(self, filename=None, axes=None, title=None, 
              fignum=None, figsize=(4,4), 
-             spectral_kwargs=dict(color='red',zorder=1.9),
+             spectral_kwargs=dict(),
+             spectral_error_kwargs=dict(),
              ):
+
+        pass_spectral_kwargs=dict(color='red',zorder=1.9)
+        pass_spectral_kwargs.update(spectral_kwargs)
+
+        pass_spectral_error_kwargs=dict(color='red',alpha=0.5,zorder=1.8)
+        pass_spectral_error_kwargs.update(spectral_error_kwargs)
 
         if axes is None:
             fig = P.figure(fignum,figsize)
@@ -43,21 +53,28 @@ class BandFitter(BaseFitter):
                 self.results['bands'][-1]['energy']['emax']*units.fromstring(self.results['bands'][-1]['energy']['energy_units'])
             )
             
-        sp = SpectrumPlotter(axes=axes)
 
         for i,r in enumerate(self.results['bands']):
             emin=r['energy']['emin']*units.fromstring(r['energy']['energy_units'])
             emax=r['energy']['emax']*units.fromstring(r['energy']['energy_units'])
-            spectrum = dict_to_spectrum(r['spectrum'])
+            spectrum = r['spectrum']
 
             if i > 0 and 'label' in spectral_kwargs: 
                 # only one label
                 spectral_kwargs.pop('label') 
 
-            sp.plot(spectrum, emin=emin, emax=emax, **spectral_kwargs)
+            if r['significant']:
+                sp = SpectrumPlotter(axes=axes)
+                sp.plot(spectrum, emin=emin, emax=emax, **pass_spectral_kwargs)
+                sp.plot_error(spectrum, emin=emin, emax=emax, **pass_spectral_error_kwargs)
+            else:
+                ul = UpperLimit(r['upper_limit'])
+                ul.plot(axes=axes, spectral_kwargs=pass_spectral_kwargs)
+                
 
         if title is not None: axes.set_title(title)
-        if filename is not None: P.savefig(filename)
+        if filename is not None: 
+            P.savefig(expandvars(filename))
         return axes
 
 
@@ -78,6 +95,8 @@ class GtlikeBandFitter(BandFitter):
         ('ul_algorithm','bayesian',"choices = 'frequentist', 'bayesian' "),
         ('ul_confidence',.95,'confidence level for upper limit.'),
         ('upper_limit_index',2,'what index to assume when computing upper limits.'),
+        ('min_ts',25,"minimum ts in which to quote a detection instead of an upper limit."),
+        ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
     )
 
     @keyword_options.decorate(defaults)
@@ -129,6 +148,7 @@ class GtlikeBandFitter(BandFitter):
         self.results = dict(
             name=name,
             bands=[],
+            min_ts=self.min_ts,
         )
 
         for i,(emin,emax,e_middle) in enumerate(zip(self.lower_energy,self.upper_energy,self.middle_energy)):
@@ -137,17 +157,25 @@ class GtlikeBandFitter(BandFitter):
 
             like.setEnergyRange(float(emin)+1, float(emax)-1)
 
-            # build new powerlaw, assuming initial model has a reasonable spectrum
+            # Scale the powerlaw to the input spectral model => helps with convergence
             init_dnde = self.init_model(e_middle)
             model = PowerLaw(norm=init_dnde, index=2, e0=e_middle)
-            model.set_limits('norm',1e-4*init_dnde,1e4*init_dnde, scale=init_dnde)
+            model.set_limits('norm',1e-10*init_dnde,1e10*init_dnde, scale=init_dnde)
             model.set_limits('index',-5,5)
             spectrum = build_gtlike_spectrum(model)
 
             like.setSpectrum(name,spectrum)
             like.syncSrcParams(name)
 
+            if self.verbosity:
+                print 'Before fitting from %.0dMeV to %.0dMeV' % (emin,emax)
+                print summary(like)
+
             paranoid_gtlike_fit(like, verbosity=self.verbosity)
+
+            if self.verbosity:
+                print 'After fitting from %.0dMeV to %.0dMeV' % (emin,emax)
+                print summary(like)
 
             r = source_dict(like, name, emin=emin, emax=emax,
                             flux_units=self.flux_units,
@@ -160,8 +188,13 @@ class GtlikeBandFitter(BandFitter):
                                          cl=self.ul_confidence,
                                          emin=emin,emax=emax,
                                          flux_units=self.flux_units,
-                                         energy_units=self.energy_units)
+                                         energy_units=self.energy_units,
+                                         upper_limit_kwargs=self.upper_limit_kwargs,
+                                         verbosity=self.verbosity)
             r['upper_limit'] = g.todict()
+
+            r['significant']=r['TS']['reoptimize']>self.min_ts
+
             self.results['bands'].append(r)
 
         # revert to old model

@@ -1,6 +1,8 @@
 """ 
     Code to deal with extended sources in pointlike.
 """
+from os.path import expandvars
+
 import numpy as np
 import yaml
 import pywcs
@@ -133,7 +135,7 @@ class ExtensionProfile(object):
 
         P.title('Extension profile %s' % self.source.name)
 
-        P.savefig(filename)
+        P.savefig(expandvars(filename))
 
 
 class TSExtVsEnergy(object):

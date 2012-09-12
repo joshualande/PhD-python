@@ -10,8 +10,12 @@ from uw.like.Models import PowerLaw
 from lande.utilities.tools import tolist
 
 from . superstate import SuperState
-
+from . save import logLikelihood
 from . tools import gtlike_or_pointlike
+from . printing import summary
+
+class FitterException(Exception): pass
+
 
 def paranoid_gtlike_fit(like, covar=True, niter=1, verbosity=False):
     """ Perform a sepctral fit in gtlike in
@@ -32,25 +36,42 @@ def paranoid_gtlike_fit(like, covar=True, niter=1, verbosity=False):
     saved_state = SuperState(like)
     try:
         if verbosity: print 'First, fitting with minuit'
+        init_likelihood = logLikelihood(like)
         like.fit(optverbosity, optimizer="MINUIT",covar=covar)
+        final_likelihood = logLikelihood(like)
+        if init_likelihood - final_likelihood > 10:
+            raise FitterException("Error, the final likelihood=%.1d is much worse than the initial likelihood=%.1d (dLL=%.1d)." % (final_likelihood,init_likelihood,final_likelihood-init_likelihood))
+
     except Exception, ex:
-        if verbosity: print 'Minuit fit failed with optimizer=MINUIT, Try again with DRMNFB + NEWMINUIT!', ex
+        if verbosity: 
+            print 'Minuit fit failed with optimizer=MINUIT, Try again with DRMNFB + NEWMINUIT!', ex
+            print 'The bad ROI is:'
+            print summary(like)
         traceback.print_exc(file=sys.stdout)
         saved_state.restore()
 
+        saved_state = SuperState(like)
         try:
-            saved_state = SuperState(like)
-            if verbosity: print 'Refitting, first with DRMNFB'
+            init_likelihood = logLikelihood(like)
+            if verbosity: print 'Resetting the ROI and Refitting, first with DRMNFB (and after with NEWMINUIT)'
             like.fit(optverbosity, optimizer='DRMNFB', covar=False)
             if verbosity: print 'Refitting, second with NEWMINUIT'
             like.fit(optverbosity, optimizer='NEWMINUIT', covar=covar)
+            final_likelihood = logLikelihood(like)
+            if init_likelihood - final_likelihood > 10:
+                raise FitterException("Error, the final likelihood=%.1d is much worse than the initial likelihood=%.1d (dLL=%.1d)." % (final_likelihood,init_likelihood,final_likelihood-init_likelihood))
+
         except Exception, ex:
-            if verbosity: print 'ERROR spectral fitting with DRMNFB + NEWMINUIT: ', ex
             traceback.print_exc(file=sys.stdout)
+            if verbosity: 
+                print 'ERROR spectral fitting with DRMNFB + NEWMINUIT: ', ex
+                print 'The bad ROI is:'
+                print summary(like)
+
             saved_state.restore()
             try:
                 saved_state = SuperState(like)
-                if verbosity: print 'Refitting with LBFGS'
+                if verbosity: print 'Restting the ROI and Refitting with LBFGS'
                 like.fit(optverbosity, optimizer='LBFGS', covar=False)
             except Exception, ex:
                 print 'ERROR spectral fitting with LBFGS', ex

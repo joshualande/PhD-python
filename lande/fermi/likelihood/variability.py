@@ -31,6 +31,7 @@ from uw.utilities.phasetools import phase_ltcube
 from roi_gtlike import Gtlike
 
 from lande.utilities.tools import tolist
+from lande.utilities.plotting import plot_points
 
 from . fit import paranoid_gtlike_fit, gtlike_modify
 from . save import flux_dict, diffuse_dict, get_background, get_sources, source_dict
@@ -45,39 +46,8 @@ from lande.fermi.data.livetime import pointlike_ltcube
 
 class VariabilityTester(BaseFitter):
 
-    @staticmethod
-    def _plot_points(axes, x, xerr, y, yerr, yup, significant, 
-                     ul_fraction=0.4, label=None, **kwargs):
-
-        plot_kwargs = dict(linestyle='none')
-        plot_kwargs.update(kwargs)
-
-        s = significant
-        if sum(s) > 0:
-            axes.errorbar(x[s],y[s],
-                          xerr=xerr[s], yerr=yerr[s], 
-                          capsize=0,
-                          label=label,
-                          **plot_kwargs)
-
-        ns = not_significant = ~s & ~np.isnan(yup) # possibly, some UL failed
-
-        if sum(ns) > 0:
-            axes.errorbar(x[ns], yup[ns], 
-                          yerr=[ul_fraction*yup[ns], np.zeros(sum(ns))],
-                          lolims=True,
-                          **plot_kwargs)
-
-            if sum(s) == 0: 
-                plot_kwargs['label'] = label
-
-            axes.errorbar(x[ns], yup[ns], 
-                          xerr=xerr[ns],
-                          capsize=0,
-                          **plot_kwargs)
-
     def plot(self, 
-              filename=None, 
+              filename=None,
               figsize=(7,4), 
               gtlike_color='black',
               pointlike_color='red',
@@ -128,14 +98,7 @@ class VariabilityTester(BaseFitter):
 
             fup=a([b[t]['upper_limit']['flux'] if b[t]['upper_limit'] is not None else None for b in bands])
 
-            #from matplotlib.ticker import ScalarFormatter
-            #formatter = ScalarFormatter(useMathText=True, useOffset=False)
-            #formatter.set_scientific(True)
-            #formatter.set_powerlimits((-1,1))
-            #axes.xaxis.set_major_formatter(formatter)
-            #axes.yaxis.set_major_formatter(formatter)
-
-            VariabilityTester._plot_points(
+            plot_points(
                 axes,
                 x=time/time_scale,
                 xerr=time_err/time_scale,
@@ -167,7 +130,8 @@ class VariabilityTester(BaseFitter):
             ('gtlike','pointlike')
             )
 
-        if filename is not None: P.savefig(filename)
+        if filename is not None: 
+            P.savefig(expandvars(filename))
         return axes
 
 class CombinedVariabilityTester(VariabilityTester):
@@ -187,6 +151,7 @@ class CombinedVariabilityTester(VariabilityTester):
         ("savedir",               None, """ Directory to put output files into. 
                                             Default is to use a temporary file and 
                                             delete it when done."""),
+        ("savedir_prefix", '/scratch/', "Directory to put tempdir in."),
         ("always_upper_limit",   False, """ Always compute an upper limit. """),
         ("min_ts",                   4, """ minimum ts in which to quote a SED points instead of an upper limit."""),
         ("ul_confidence",         0.95, """ confidence level for upper limit."""),
@@ -225,7 +190,7 @@ class CombinedVariabilityTester(VariabilityTester):
                 os.makedirs(self.savedir)
         else:
             self.save_data = False
-            self.savedir = mkdtemp()
+            self.savedir=mkdtemp(prefix=self.savedir_prefix)
 
 
     def _setup_time_bins(self):

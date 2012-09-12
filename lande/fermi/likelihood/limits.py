@@ -17,6 +17,7 @@ from lande.utilities.plotting import plot_points
 
 from lande.pysed import units
 
+from . printing import summary
 from . superstate import SuperState
 from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range, spectrum_to_dict, pointlike_model_to_flux, flux_dict
@@ -117,10 +118,18 @@ class GtlikeUpperLimit(UpperLimit):
 
             # Spectral fit whole ROI
 
+            if self.verbosity:
+                print 'Before fitting before Upper Limit:'
+                print summary(like)
+
             """ N.B. spectral fit in this function instead
                 of in upper limits code since my
                 paranoid_gtlike_fit function is more robust. """
             paranoid_gtlike_fit(like, verbosity=self.verbosity)
+
+            if self.verbosity:
+                print 'After fitting before Upper Limit:'
+                print summary(like)
 
             # Freeze everything but our source of interest
             for i in range(len(like.model.params)):
@@ -137,6 +146,10 @@ class GtlikeUpperLimit(UpperLimit):
                                                            emax=self.emax, 
                                                            verbosity=self.verbosity,
                                                            **self.upper_limit_kwargs)
+
+            if self.verbosity:
+                print 'After computing Upper limit:'
+                print summary(like)
 
             source=like.logLike.getSource(name)
             spectrum=source.spectrum()
@@ -192,16 +205,31 @@ class GtlikePowerLawUpperLimit(GtlikeUpperLimit):
 
         e = np.sqrt(self.emin*self.emax)
 
-        old_flux = like.flux(name, self.emin, self.emax)
-
-        # assume a canonical dnde=1e-11 at 1GeV index 2 starting value
-        model = PowerLaw(index=self.powerlaw_index, e0=e, set_default_limits=True)
-        model.set_limits('norm', model.getp('norm')*1e-10, model.getp('norm')*1e10)
-        model.set_flux(old_flux, self.emin, self.emax)
-        spectrum = build_gtlike_spectrum(model)
-
-        like.setSpectrum(name,spectrum)
-        like.syncSrcParams(name)
+        """ This is the most robust method I have found for computing upper limits
+            (a) assume a spectral model with scale=sqrt(emin*emax) and index=powerlaw_index.
+            (b) To start, Use pointlike's default parameter limits.
+            (b) Keep pointlike's default scale to scale the flux parameter,
+                but allow the prefactor to vary by a factor of 10^10 up or down.
+                This is important because the upper limit code seems to need the 'scale' parameter to 
+                be fairly reasonable so that the inintial fit will converge.
+            (c) Set the actual flux to be that of the input model to make sure
+                the starting value of the fit is reasonable. But do this with strict=False
+                incase the best-fit flux from before is not pathologically low. 
+        """
+        source = like.logLike.getSource(name)
+        spectrum=source.spectrum()
+        if spectrum.genericName() == 'PowerLaw':
+            spectrum.getParam('Index').setTrueValue(-self.powerlaw_index)
+            like.syncSrcParams(name)
+        else:
+            old_flux = like.flux(name, self.emin, self.emax)
+            model = PowerLaw(index=self.powerlaw_index, e0=e, set_default_limits=True)
+            norm_scale=model.get_scale('norm')
+            model.set_limits('norm', norm_scale*1e-10, norm_scale*1e10, scale=norm_scale)
+            model.set_flux(old_flux, emin=self.emin, emax=self.emax, strict=False)
+            spectrum = build_gtlike_spectrum(model)
+            like.setSpectrum(name,spectrum)
+            like.syncSrcParams(name)
 
         results = super(GtlikePowerLawUpperLimit,self)._compute()
 
@@ -214,6 +242,7 @@ class GtlikeCutoffUpperLimit(GtlikeUpperLimit):
         ('Index', 1.7, "'Index' parameter of PLSuperExpCutoff"),
         ('Cutoff', 3e3, "'Cutoff' parameter of PLSuperExpCutoff"),
         ('b', 1, "'b'parameter of PLSuperExpCutoff"),
+        ('override_model', None, 'Get cutoff parameter limits from override_model'),
     )
 
     @keyword_options.decorate(defaults)
@@ -226,12 +255,22 @@ class GtlikeCutoffUpperLimit(GtlikeUpperLimit):
         name = self.name
 
         saved_state = SuperState(like)
+        
+        # same disclaimer as with the GtlikePowerLawUpperLimit
+        if self.override_model is None:
+            old_flux = like.flux(name, self.emin, self.emax)
+            cutoff_model = PLSuperExpCutoff(Index=self.Index, Cutoff=self.Cutoff, b=self.b, set_default_limits=True)
+            norm_scale = cutoff_model.get_scale('norm')
+            cutoff_model.set_limits('norm', norm_scale*1e-10, norm_scale*1e10, scale=norm_scale)
+            cutoff_model.set_flux(old_flux, emin=self.emin, emax=self.emax, strict=False)
+        else:
+            # use parameter limits/scales from the override_model
+            assert isinstance(self.override_model,PLSuperExpCutoff)
+            cutoff_model = self.override_model.copy()
+            cutoff_model['index'] = self.Index
+            cutoff_model['cutoff'] = self.Cutoff
+            cutoff_model['b'] = self.b
 
-        old_flux = like.flux(name, self.emin, self.emax)
-
-        cutoff_model = PLSuperExpCutoff(Index=self.Index, Cutoff=self.Cutoff, b=self.b, set_default_limits=True)
-        cutoff_model.set_limits('norm', cutoff_model.getp('norm')*1e-10, cutoff_model.getp('norm')*1e10)
-        cutoff_model.set_flux(old_flux, self.emin, self.emax)
         cutoff_spectrum = build_gtlike_spectrum(cutoff_model)
 
         like.setSpectrum(name,cutoff_spectrum)

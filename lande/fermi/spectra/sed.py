@@ -2,15 +2,17 @@
 
     Author: J. Lande
 """
+from os.path import expandvars
+
 import pylab as P
 import numpy as np
 
 # overload SED namespace for our base object
-from SED import SED as BaseGtlikeSED
-
 from lande.pysed import units
 
 from uw.utilities import keyword_options
+
+from lande.utilities.plotting import plot_points
 
 from lande.fermi.likelihood.basefit import BaseFitter
 from lande.fermi.likelihood.specplot import SpectralAxes, SpectrumPlotter
@@ -39,7 +41,7 @@ class SED(BaseFitter):
              spectral_error_kwargs=dict(),
             ):
         """ Plot the SED using matpotlib. """
-        pass_data_kwargs=dict()
+        pass_data_kwargs=dict(color='black')
         pass_data_kwargs.update(data_kwargs)
 
         pass_spectral_kwargs=dict(color='red',zorder=1.9)
@@ -63,7 +65,6 @@ class SED(BaseFitter):
             fig.add_axes(axes)
 
             if 'Lower' in edict and 'Upper' in edict:
-                # use BaseGtlikeSED.set_xlim to add 10% on either side.
                 axes.set_xlim_units(edict['Lower'][0]*file_energy_units, edict['Upper'][-1]*file_energy_units)
             else:
                 axes.set_xlim_units(edict['Energy'][0]*file_energy_units, edict['Energy'][-1]*file_energy_units)
@@ -107,7 +108,7 @@ class SED(BaseFitter):
             has_upper_limits=False
 
 
-        BaseGtlikeSED._plot_points(
+        plot_points(
             x=energy,
             xlo=lower_energy if has_energy_errors else None,
             xhi=upper_energy if has_energy_errors else None,
@@ -120,15 +121,17 @@ class SED(BaseFitter):
 
         if plot_spectral_fit and 'spectrum' in self.results:
             sp=SpectrumPlotter(axes=axes)
-        if plot_spectral_error and 'spectrum' in self.results:
-            sp.plot_error(self.results['spectrum'], self.results['spectrum']['covariance_matrix'],
-                          autoscale=False, **pass_spectral_error_kwargs)
             sp.plot(self.results['spectrum'], 
                     autoscale=False, **pass_spectral_kwargs)
+        if plot_spectral_error and 'spectrum' in self.results:
+            sp=SpectrumPlotter(axes=axes)
+            sp.plot_error(self.results['spectrum'], self.results['spectrum']['covariance_matrix'],
+                          autoscale=False, **pass_spectral_error_kwargs)
 
 
         if title is not None: axes.set_title(title)
-        if filename is not None: P.savefig(filename)
+        if filename is not None: 
+            P.savefig(expandvars(filename))
         return axes
 
 

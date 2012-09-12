@@ -14,12 +14,12 @@ from uw.like.pointspec_helpers import PointSource
 from uw.like.roi_extended import ExtendedSource
 from uw.like.roi_diffuse import DiffuseSource
 
-from SED import SED as BaseGtlikeSED
 from FluxDensity import FluxDensity
 
 from lande.pysed import units
 from lande.utilities.tools import tolist
 from . tools import gtlike_or_pointlike
+from . specplot import SpectrumPlotter
 
 def gtlike_get_full_energy_range(like): return like.energies[[0,-1]]
 def pointlike_get_full_energy_range(roi): return roi.bin_edges[[0,-1]]
@@ -151,7 +151,7 @@ def gtlike_flux_dict(like,name, emin=None,emax=None,flux_units='erg', energy_uni
         source = like.logLike.getSource(name)
         spectrum = source.spectrum()
         cp = lambda e: units.convert(e,'1/MeV','1/%s' % flux_units)
-        f['prefactor'] = cp(BaseGtlikeSED.get_dnde(spectrum,prefactor_energy))
+        f['prefactor'] = cp(SpectrumPlotter.get_dnde_mev(spectrum,prefactor_energy))
         f['prefactor_units'] = 'ph/cm^2/s/%s' % flux_units
         f['prefactor_energy'] = ce(prefactor_energy)
     return tolist(f)
