@@ -48,6 +48,7 @@ class FastROI(object):
         ('conv_type',0),
         ('point_sources',None),
         ('diffuse_sources',None),
+        ('powerlaw_index',2),
     )
 
     @keyword_options.decorate(defaults)
@@ -97,7 +98,7 @@ class FastROI(object):
 
         point_sources, diffuse_sources = [], []
 
-        model = PowerLaw(e0=np.sqrt(self.emin*self.emax))
+        model = PowerLaw(index=self.powerlaw_index, e0=np.sqrt(self.emin*self.emax))
         model.set_flux(self.flux, emin=self.emin, emax=self.emax)
         ps = PointSource(
             name = 'source',
