@@ -44,6 +44,7 @@ class GtlikeSED(SED):
         ('ul_confidence',        0.95,"confidence level for upper limit."),
         ('always_upper_limit',  False, """ Always compute an upper limit. Default is only when source is not significant. """),
         ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
+        ('fit_range', 1e4, 'The range over which to allow the SED point to vary (compared to the input spectral model.'),
     )
 
 
@@ -120,10 +121,17 @@ class GtlikeSED(SED):
 
             if self.verbosity: print 'Calculating SED from %.0dMeV to %.0dMeV' % (lower,upper)
 
-            # Scale the powerlaw to the input spectral model => helps with convergence
-            init_dnde = self.init_model(e)
-            model = PowerLaw(norm=init_dnde, index=self.powerlaw_index, e0=e)
-            model.set_limits('norm',1e-10*init_dnde,1e10*init_dnde, scale=init_dnde)
+            """ Note, the most robust method I have found for computing SEDs in gtlike is:
+                    (a) Create a generic spectral model with a fixed spectral index.
+                    (b) Set the 'Scale' to sqrt(emin*emax) so the prefactor is dNdE in the middle
+                        of the sed bin.
+                    (b) Set the limits to go from norm/fit_range to norm*fit_range and set the scale to 'norm'
+            """ 
+            old_flux = self.init_model.i_flux(emin=lower,emax=upper)
+            model = PowerLaw(index=self.powerlaw_index, e0=e)
+            model.set_flux(old_flux, emin=lower, emax=upper)
+            norm = model['norm']
+            model.set_limits('norm',norm/float(self.fit_range),norm*self.fit_range, scale=norm)
             model.set_limits('index',-5,5)
             model.freeze('index')
             spectrum = build_gtlike_spectrum(model)
