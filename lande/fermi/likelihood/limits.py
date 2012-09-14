@@ -22,7 +22,7 @@ from . superstate import SuperState
 from . tools import gtlike_or_pointlike
 from . save import get_full_energy_range, spectrum_to_dict, pointlike_model_to_flux, flux_dict
 from . fit import gtlike_allow_fit_only_prefactor, paranoid_gtlike_fit
-from . models import build_gtlike_spectrum
+from . models import build_gtlike_spectrum, build_pointlike_model
 from . basefit import BaseFitter
 from . specplot import SpectralAxes, SpectrumPlotter
 
@@ -85,6 +85,7 @@ class GtlikeUpperLimit(UpperLimit):
         ('include_prefactor', False, 'Compute prefactor upper limit'),
         ('prefactor_energy', None, 'Energy to compute prefactor energy at'),
         ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
+        ('rescale_parameters_before_limit', True, '...')
     )
 
     @keyword_options.decorate(defaults)
@@ -135,6 +136,21 @@ class GtlikeUpperLimit(UpperLimit):
             for i in range(len(like.model.params)):
                 like.model[i].setFree(False)
                 like.syncSrcParams(like[i].srcName)
+
+            if self.rescale_parameters_before_limit:
+                source=like.logLike.getSource(name)
+                spectrum=source.spectrum()
+                model = build_pointlike_model(spectrum)
+                if self.verbosity:
+                    print 'Rescaling %s model parameters before limits' % model.name
+                    print ' * Initial mappers',model.mappers
+                model.set_default_limits(strict=False, oomp_limits=False, only_unbound_parameters=False)
+                if self.verbosity:
+                    print ' * Final mappers',model.mappers
+
+                spectrum = build_gtlike_spectrum(model)
+                like.setSpectrum(name,spectrum)
+                like.syncSrcParams(name)
 
             # Note, I think freeze_all is redundant, but flag it just 
             # to be paranoid
@@ -205,31 +221,46 @@ class GtlikePowerLawUpperLimit(GtlikeUpperLimit):
 
         e = np.sqrt(self.emin*self.emax)
 
-        """ This is the most robust method I have found for computing upper limits
-            (a) assume a spectral model with scale=sqrt(emin*emax) and index=powerlaw_index.
-            (b) To start, Use pointlike's default parameter limits.
-            (b) Keep pointlike's default scale to scale the flux parameter,
-                but allow the prefactor to vary by a factor of 10^10 up or down.
-                This is important because the upper limit code seems to need the 'scale' parameter to 
-                be fairly reasonable so that the inintial fit will converge.
-            (c) Set the actual flux to be that of the input model to make sure
-                the starting value of the fit is reasonable. But do this with strict=False
-                incase the best-fit flux from before is not pathologically low. 
+        """ I had tons of trouble getting a robust fitting algorithm. 
+            The problem with computing upper limits is
+                (a) Getting an initial fit of the region (with the spectral index
+                    fixed) to converge
+                (b) Getting the upper limit to integrate over a good range.
+
+            This is what I found to be most robust way to compute upper limits:
+                (a) Create a generic powerlaw model with the spectral index fixed
+                    at the desired value (typically set to -2).
+                    Note, don't set e0, use default. This ensures that the
+                    prefactor range really does convert to a physically reasonable
+                    range of parameters.
+                (b) Give the spectral model the pointlike default spectral limits.
+                    This is important because it gives the source a big enough range 
+                    such that the upper limit can find a proper integration range.
+                (c) Set the flux of the current model to equal the flux of the input model.
+                    This starts the fitter at a reasonable value. Do this setting with 
+                    the set_flux flag strict=False beacuse, in case the initial fit totally
+                    failed to converge (flux -> 0), you don't want to put the starting
+                    value fo the flux too far away from the true value.
+                (d) Keep the lower and upper limit on the prefactor as the pointlike default limits,
+                    but set the scale of the source to be the new 'norm' found by preserving
+                    the flux. This ensures the fitter doesn't have too much trouble finding
+                    the true minimum.
+            
+            Using this procedure, you get a reasonable parameter limits which allows the
+            preliminary fit to converge and the upper limits code to integrate over a reasonable
+            parameter range.
         """
         source = like.logLike.getSource(name)
         spectrum=source.spectrum()
-        if spectrum.genericName() == 'PowerLaw':
-            spectrum.getParam('Index').setTrueValue(-self.powerlaw_index)
-            like.syncSrcParams(name)
-        else:
-            old_flux = like.flux(name, self.emin, self.emax)
-            model = PowerLaw(index=self.powerlaw_index, e0=e, set_default_limits=True)
-            norm_scale=model.get_scale('norm')
-            model.set_limits('norm', norm_scale*1e-10, norm_scale*1e10, scale=norm_scale)
-            model.set_flux(old_flux, emin=self.emin, emax=self.emax, strict=False)
-            spectrum = build_gtlike_spectrum(model)
-            like.setSpectrum(name,spectrum)
-            like.syncSrcParams(name)
+
+        old_flux = like.flux(name, self.emin, self.emax)
+        model = PowerLaw(index=self.powerlaw_index)
+        model.set_flux(old_flux, emin=self.emin, emax=self.emax, strict=False)
+        model.set_default_limits(oomp_limits=True)
+
+        spectrum = build_gtlike_spectrum(model)
+        like.setSpectrum(name,spectrum)
+        like.syncSrcParams(name)
 
         results = super(GtlikePowerLawUpperLimit,self)._compute()
 
@@ -242,7 +273,6 @@ class GtlikeCutoffUpperLimit(GtlikeUpperLimit):
         ('Index', 1.7, "'Index' parameter of PLSuperExpCutoff"),
         ('Cutoff', 3e3, "'Cutoff' parameter of PLSuperExpCutoff"),
         ('b', 1, "'b'parameter of PLSuperExpCutoff"),
-        ('override_model', None, 'Get cutoff parameter limits from override_model'),
     )
 
     @keyword_options.decorate(defaults)
@@ -256,23 +286,12 @@ class GtlikeCutoffUpperLimit(GtlikeUpperLimit):
 
         saved_state = SuperState(like)
         
-        # same disclaimer as with the GtlikePowerLawUpperLimit
-        if self.override_model is None:
-            old_flux = like.flux(name, self.emin, self.emax)
-            cutoff_model = PLSuperExpCutoff(Index=self.Index, Cutoff=self.Cutoff, b=self.b, set_default_limits=True)
-            norm_scale = cutoff_model.get_scale('norm')
-            cutoff_model.set_limits('norm', norm_scale*1e-10, norm_scale*1e10, scale=norm_scale)
-            cutoff_model.set_flux(old_flux, emin=self.emin, emax=self.emax, strict=False)
-        else:
-            # use parameter limits/scales from the override_model
-            assert isinstance(self.override_model,PLSuperExpCutoff)
-            cutoff_model = self.override_model.copy()
-            cutoff_model['index'] = self.Index
-            cutoff_model['cutoff'] = self.Cutoff
-            cutoff_model['b'] = self.b
+        old_flux = like.flux(name, self.emin, self.emax)
+        cutoff_model = PLSuperExpCutoff(Index=self.Index, Cutoff=self.Cutoff, b=self.b)
+        cutoff_model.set_flux(old_flux, emin=self.emin, emax=self.emax, strict=False)
+        cutoff_model.set_default_limits(oomp_limits=True)
 
         cutoff_spectrum = build_gtlike_spectrum(cutoff_model)
-
         like.setSpectrum(name,cutoff_spectrum)
         like.syncSrcParams(name)
 
