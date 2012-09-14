@@ -97,6 +97,7 @@ class GtlikeBandFitter(BandFitter):
         ('upper_limit_index',2,'what index to assume when computing upper limits.'),
         ('min_ts',25,"minimum ts in which to quote a detection instead of an upper limit."),
         ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
+        ('fit_range', 1e4, 'Same disclaimer as in lande.fermi.spectra.gtlike.GtlikeSED'),
     )
 
     @keyword_options.decorate(defaults)
@@ -152,15 +153,17 @@ class GtlikeBandFitter(BandFitter):
         )
 
         for i,(emin,emax,e_middle) in enumerate(zip(self.lower_energy,self.upper_energy,self.middle_energy)):
-            if self.verbosity: print 'Calculating spectrum from %.0dMeV to %.0dMeV' % (emin,emax)
+            if self.verbosity: print 'Calculating bandfits from %.0dMeV to %.0dMeV' % (emin,emax)
 
 
             like.setEnergyRange(float(emin)+1, float(emax)-1)
 
             # Scale the powerlaw to the input spectral model => helps with convergence
-            init_dnde = self.init_model(e_middle)
-            model = PowerLaw(norm=init_dnde, index=2, e0=e_middle)
-            model.set_limits('norm',1e-10*init_dnde,1e10*init_dnde, scale=init_dnde)
+            old_flux = self.init_model.i_flux(emin=emin, emax=emax)
+            model = PowerLaw(index=2, e0=e_middle)
+            model.set_flux(old_flux, emin=emin, emax=emax)
+            norm = model['norm']
+            model.set_limits('norm',norm/float(self.fit_range),norm*self.fit_range, scale=norm)
             model.set_limits('index',-5,5)
             spectrum = build_gtlike_spectrum(model)
 
@@ -168,13 +171,13 @@ class GtlikeBandFitter(BandFitter):
             like.syncSrcParams(name)
 
             if self.verbosity:
-                print 'Before fitting from %.0dMeV to %.0dMeV' % (emin,emax)
+                print 'Before bandfits fitting from %.0dMeV to %.0dMeV' % (emin,emax)
                 print summary(like)
 
             paranoid_gtlike_fit(like, verbosity=self.verbosity)
 
             if self.verbosity:
-                print 'After fitting from %.0dMeV to %.0dMeV' % (emin,emax)
+                print 'After bandfits fitting from %.0dMeV to %.0dMeV' % (emin,emax)
                 print summary(like)
 
             r = source_dict(like, name, emin=emin, emax=emax,
@@ -182,7 +185,7 @@ class GtlikeBandFitter(BandFitter):
                             energy_units=self.energy_units,
                             verbosity=self.verbosity)
 
-            if self.verbosity: print 'Calculating upper limit from %.0dMeV to %.0dMeV' % (emin,emax)
+            if self.verbosity: print 'Calculating bandfits upper limit from %.0dMeV to %.0dMeV' % (emin,emax)
             g = GtlikePowerLawUpperLimit(like, name,
                                          powerlaw_index=self.upper_limit_index,
                                          cl=self.ul_confidence,
