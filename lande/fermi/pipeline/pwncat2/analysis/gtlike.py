@@ -29,7 +29,7 @@ from . binning import all_energy, high_energy, higher_energy, one_bin_per_dec, t
 def gtlike_analysis(roi, name, hypothesis, max_free,
                     seddir, datadir, plotdir,
                     upper_limit=False, cutoff=False, 
-                    model1=None):
+                    cutoff_model=None):
     print 'Performing Gtlike crosscheck for %s' % hypothesis
 
     frozen  = freeze_far_away(roi, roi.get_source(name).skydir, max_free)
@@ -69,7 +69,6 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
         r['powerlaw_upper_limit'] = pul.todict()
         cul = GtlikeCutoffUpperLimit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95,
                                      upper_limit_kwargs=upper_limit_kwargs,
-                                     override_model=model1,
                                      verbosity=4)
         r['cutoff_upper_limit'] = cul.todict()
 
@@ -112,7 +111,7 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
 
     if cutoff:
         try:
-            tc = GtlikeCutoffTester(like,name, model1=model1, verbosity=4)
+            tc = GtlikeCutoffTester(like,name, cutoff_model=cutoff_model, verbosity=4)
             r['test_cutoff']=tc.todict()
             tc.plot(sed_results='%s/sed_gtlike_2bpd_%s_%s.yaml' % (seddir,hypothesis,name),
                     filename='%s/test_cutoff_gtlike_%s_%s.png' % (plotdir,hypothesis,name))

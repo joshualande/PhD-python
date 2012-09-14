@@ -126,7 +126,7 @@ class Pipeline(object):
 
         assert all_params_limited(roi, except_sources=[name])
 
-        model1=modify.cutoff_model1(name)
+        cutoff_model=modify.get_cutoff_model(name)
 
         if do_at_pulsar:
             r['at_pulsar']['pointlike']=pointlike_analysis(roi, hypothesis='at_pulsar', 
@@ -136,7 +136,7 @@ class Pipeline(object):
             r['point']['pointlike']=pointlike_analysis(roi, hypothesis='point', localize=True, 
                                                        seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
                                                        cutoff=do_cutoff, 
-                                                       model1 = model1,
+                                                       cutoff_model = cutoff_model,
                                                        **pointlike_kwargs)
         if do_extended:
             roi.modify(which=name, spatial_model=Gaussian(sigma=0.1), keep_old_center=True)
@@ -148,9 +148,12 @@ class Pipeline(object):
 
         savedict(results,'results_%s_pointlike.yaml' % name)
 
-    def reload_roi(self,hypothesis):
+    def reload_roi(self,hypothesis, *args, **kwargs):
         name = self.name
-        roi = load_pwn('roi_%s_%s.dat' % (hypothesis,name))
+        roi = load_pwn('roi_%s_%s.dat' % (hypothesis,name), *args, **kwargs)
+
+        roi.print_summary(galactic=True, maxdist=10)
+
         return roi
 
     def gtlike_followup(self, hypothesis):
@@ -162,11 +165,11 @@ class Pipeline(object):
         upper_limit = hypothesis=='at_pulsar'
         if cutoff:
             pointlike_results = loaddict('results_%s_pointlike.yaml' % name)
-            model1=pointlike_results[hypothesis]['pointlike']['test_cutoff']['hypothesis_1']['spectrum']
-            model1=pointlike_dict_to_spectrum(model1)
-            model1.set_default_limits(oomp_limits=True)
+            cutoff_model=pointlike_results[hypothesis]['pointlike']['test_cutoff']['hypothesis_1']['spectrum']
+            cutoff_model=pointlike_dict_to_spectrum(cutoff_model)
+            cutoff_model.set_default_limits(oomp_limits=True)
         else:
-            model1=None
+            cutoff_model=None
 
         results = {hypothesis:{}}
         results[hypothesis]['gtlike']=gtlike_analysis(roi, name=name,
@@ -175,7 +178,6 @@ class Pipeline(object):
                                                       hypothesis=hypothesis, 
                                                       upper_limit=upper_limit,
                                                       cutoff=cutoff,
-                                                      model1=model1,
                                                      )
 
         savedict(results,'results_%s_gtlike_%s.yaml' % (name,hypothesis))

@@ -19,7 +19,7 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
                        localize=False,
                        fit_extension=False, 
                        cutoff=False,
-                       model1=None,
+                       cutoff_model=None,
                       ):
     """ emin + emax used for computing upper limits. """
     print 'Performing Pointlike analysis for %s' % hypothesis
@@ -102,7 +102,7 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
 
     if cutoff:
         try:
-            tc = PointlikeCutoffTester(roi,name, model1=model1, verbosity=4)
+            tc = PointlikeCutoffTester(roi,name, cutoff_model=cutoff_model, verbosity=4)
             p['test_cutoff']=tc.todict()
             tc.plot(sed_results='%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name),
                     filename='%s/test_cutoff_pointlike_%s_%s.png' % (plotdir,hypothesis,name))
