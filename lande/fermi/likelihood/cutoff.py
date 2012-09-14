@@ -91,7 +91,7 @@ class CutoffTester(BaseFitter):
 class PointlikeCutoffTester(CutoffTester):
 
     defaults = CutoffTester.defaults + (
-        ('model1',None,'starting value of spectral model'),
+        ('cutoff_model',None,'starting value of spectral model'),
         ('fit_kwargs',dict(),'kwargs to pass into roi.fit()'),
     )
 
@@ -120,13 +120,13 @@ class PointlikeCutoffTester(CutoffTester):
 
         if not isinstance(roi.get_model(name),PowerLaw):
 
-            model0=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax))
-            model0.set_mapper('Index', PowerLaw.default_limits['Index'])
-            model0.set_flux(old_flux,emin=emin,emax=emax)
+            powerlaw_model=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax))
+            powerlaw_model.set_mapper('Index', PowerLaw.default_limits['Index'])
+            powerlaw_model.set_flux(old_flux,emin=emin,emax=emax)
 
-            if self.verbosity: print "model0 is ",model0
+            if self.verbosity: print "powerlaw_model is ",powerlaw_model
 
-            roi.modify(which=name, model=model0, keep_old_flux=False)
+            roi.modify(which=name, model=powerlaw_model, keep_old_flux=False)
 
         fit = lambda: roi.fit(**self.fit_kwargs)
         def ts():
@@ -138,13 +138,13 @@ class PointlikeCutoffTester(CutoffTester):
         spectrum = lambda: spectrum_to_dict(roi.get_model(name), errors=True)
 
         if self.verbosity: 
-            print 'About to fit Model0'
+            print 'About to fit powerlaw_model'
             roi.print_summary()
 
         fit()
         
         if self.verbosity:
-            print 'Done fitting Model0'
+            print 'Done fitting powerlaw_model'
             roi.print_summary()
 
         d['hypothesis_0'] = source_dict(roi, name, emin=emin, emax=emax,
@@ -152,27 +152,50 @@ class PointlikeCutoffTester(CutoffTester):
                                         energy_units=self.energy_units,
                                         verbosity=self.verbosity)
 
-        if self.model1 is not None:
+        if self.cutoff_model is not None:
             pass
         else:
-            self.model1=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1)
+            self.cutoff_model=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1)
+            # Note, don't limit the normalization parameter
             for p in ['Index', 'Cutoff', 'b']:
-                self.model1.set_mapper(p, PLSuperExpCutoff.default_limits[p])
-            self.model1.set_free('b', False)
-            self.model1.set_flux(old_flux,emin=emin,emax=emax)
+                self.cutoff_model.set_mapper(p, PLSuperExpCutoff.default_limits[p])
+            self.cutoff_model.set_free('b', False)
+            self.cutoff_model.set_flux(old_flux,emin=emin,emax=emax)
 
-        if self.verbosity: print "model1 is ",self.model1
+        if self.verbosity: print "cutoff_model is ",self.cutoff_model
 
-        roi.modify(which=name, model=self.model1, keep_old_flux=False)
+        roi.modify(which=name, model=self.cutoff_model, keep_old_flux=False)
 
         if self.verbosity: 
-            print 'About to fit Model1'
+            print 'About to fit cutoff_model'
             roi.print_summary()
 
         fit()
 
+        ll = -roi.logLikelihood(roi.parameters())
+
+        if ll < d['hypothesis_0']['logLikelihood']:
+            # if fit is worse than PowerLaw fit, then
+            # restart fit with parameters almost
+            # equal to best fit powerlaw
+            self.cutoff_plaw=PLSuperExpCutoff(b=1)
+            self.cutoff_plaw.set_free('b', False)
+            self.cutoff_plaw.setp('norm', d['hypothesis_0']['spectrum']['Norm'])
+            self.cutoff_plaw.setp('index', d['hypothesis_0']['spectrum']['Index'])
+            self.cutoff_plaw.setp('e0', d['hypothesis_0']['spectrum']['e0'])
+            self.cutoff_plaw.setp('cutoff', 1e6)
+
+            roi.modify(which=name, model=self.cutoff_plaw, keep_old_flux=False)
+            fit()
+
+            if self.verbosity: 
+                print 'Redoing fit with cutoff same as plaw'
+                print 'Before:'
+                roi.print_summary()
+                print fit()
+
         if self.verbosity:
-            print 'Done fitting Model1'
+            print 'Done fitting cutoff_model'
             roi.print_summary()
 
         d['hypothesis_1'] = source_dict(roi, name, emin=emin, emax=emax,
@@ -188,7 +211,7 @@ class PointlikeCutoffTester(CutoffTester):
 class GtlikeCutoffTester(CutoffTester):
 
     defaults = CutoffTester.defaults + (
-        ('model1',None,'starting value of spectral model. Must be pointlike model objects.'),
+        ('cutoff_model',None,'starting value of spectral model. Must be pointlike model objects.'),
     )
 
 
@@ -229,22 +252,23 @@ class GtlikeCutoffTester(CutoffTester):
             if spectrum()['name'] == 'PowerLaw':
                 pass
             else:
-                model0=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax), set_default_limits=True)
-                model0.set_flux(old_flux,emin=emin,emax=emax)
+                powerlaw_model=PowerLaw(norm=1e-11, index=2, e0=np.sqrt(emin*emax))
+                powerlaw_model.set_flux(old_flux,emin=emin,emax=emax)
+                powerlaw_model.set_default_limits(oomp_limits=True)
 
-                if self.verbosity: print 'model0 is',model0
+                if self.verbosity: print 'powerlaw_model is',powerlaw_model
 
-                spectrum0=build_gtlike_spectrum(model0)
-                like.setSpectrum(name,spectrum0)
+                powerlaw_spectrum=build_gtlike_spectrum(powerlaw_model)
+                like.setSpectrum(name,powerlaw_spectrum)
 
             if self.verbosity: 
-                print 'About to fit spectrum0'
+                print 'About to fit powerlaw_spectrum'
                 print summary(like)
 
             paranoid_gtlike_fit(like, verbosity=self.verbosity)
 
             if self.verbosity: 
-                print 'Done fitting spectrum0'
+                print 'Done fitting powerlaw_spectrum'
                 print summary(like)
 
             d['hypothesis_0'] = source_dict(like, name, emin=emin, emax=emax,
@@ -252,19 +276,20 @@ class GtlikeCutoffTester(CutoffTester):
                                             energy_units=self.energy_units,
                                             verbosity=self.verbosity)
 
-            if self.model1 is None:
-                self.model1=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1, set_default_limits=True)
-                self.model1.set_free('b', False)
-                self.model1.set_flux(old_flux,emin=emin,emax=emax)
+            if self.cutoff_model is None:
+                self.cutoff_model=PLSuperExpCutoff(norm=1e-9, index=1, cutoff=1000, e0=1000, b=1)
+                self.cutoff_model.set_free('b', False)
+                self.cutoff_model.set_flux(old_flux,emin=emin,emax=emax)
+                self.cutoff_model.set_default_limits(oomp_limits=True)
 
             if self.verbosity: 
-                print 'model1 is',self.model1
+                print 'cutoff_model is',self.cutoff_model
 
-            spectrum1=build_gtlike_spectrum(self.model1)
-            like.setSpectrum(name,spectrum1)
+            cutoff_spectrum=build_gtlike_spectrum(self.cutoff_model)
+            like.setSpectrum(name,cutoff_spectrum)
 
             if self.verbosity: 
-                print 'About to fit model1'
+                print 'About to fit cutoff_model'
                 print summary(like)
 
             paranoid_gtlike_fit(like, verbosity=self.verbosity)
@@ -293,7 +318,7 @@ class GtlikeCutoffTester(CutoffTester):
                 paranoid_gtlike_fit(like, verbosity=self.verbosity)
 
             if self.verbosity: 
-                print 'Done fitting spectrum1'
+                print 'Done fitting cutoff_spectrum'
                 print summary(like)
 
             d['hypothesis_1'] = source_dict(like, name, emin=emin, emax=emax,
