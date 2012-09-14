@@ -101,8 +101,14 @@ def gtlike_name_to_spectral_dict(like, name, errors=False, minos_errors=False, c
             pname = p.getName()
             if p.isFree():
                 lower,upper=like.minosError(name, pname)
-                d['%s_lower_err' % pname] = -1*lower*p.getScale()
-                d['%s_upper_err' % pname] = upper*p.getScale()
+                try:
+                    d['%s_lower_err' % pname] = -1*lower*p.getScale()
+                    d['%s_upper_err' % pname] = upper*p.getScale()
+                except Exception, ex:
+                    print 'ERROR computing Minos errors on parameter %s for source %s:' % (pname,name), ex
+                    traceback.print_exc(file=sys.stdout)
+                    d['%s_lower_err' % pname] = np.nan
+                    d['%s_upper_err' % pname] = np.nan
             else:
                 d['%s_lower_err' % pname] = np.nan
                 d['%s_upper_err' % pname] = np.nan
@@ -170,9 +176,14 @@ def gtlike_powerlaw_prefactor_dict(like, name, flux_units='erg', errors=True, mi
     if errors:
         d['prefactor_err'] = cp(pref.error()*pref.getScale())
     if minos_errors:
-        lower,upper=like.minosError(name, 'Prefactor')
-        d['prefactor_lower_err'] = cp(-1*lower*pref.getScale())
-        d['prefactor_upper_err'] = cp(upper*pref.getScale())
+        try:
+            lower,upper=like.minosError(name, 'Prefactor')
+            d['prefactor_lower_err'] = cp(-1*lower*pref.getScale())
+            d['prefactor_upper_err'] = cp(upper*pref.getScale())
+        except Exception, ex:
+            print 'ERROR computing Minos errors on parameter Prefactor for source %s:' % (name), ex
+            d['prefactor_lower_err'] = np.nan
+            d['prefactor_upper_err'] = np.nan
 
     d['prefactor_units'] = 'ph/cm^2/s/%s' % flux_units
     d['prefactor_energy'] = scale.getTrueValue()
