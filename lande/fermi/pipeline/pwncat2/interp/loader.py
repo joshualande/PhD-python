@@ -4,21 +4,38 @@ from os.path import expandvars, join, exists
 from lande.utilities.tools import merge_dict
 from lande.utilities.save import loaddict
 
+class PWNResultsException(Exception): pass
+
 class PWNResultsLoader(object):
     """ Class to load in results from analysis. """
 
     all_hypotheses = ['at_pulsar', 'point', 'extended']
 
-    def __init__(self, pwndata, fitdir):
+    def __init__(self, pwndata, fitdir, verbosity=True):
         self.pwndata = expandvars(pwndata)
         self.fitdir = expandvars(fitdir)
+        self.verbosity = verbosity
 
     def get_pwnlist(self):
         return sorted(yaml.load(open(self.pwndata)).keys())
 
-    def get_results(self, pwn, require_all_exists=True, get_seds=True, get_bandfits=True, get_variability=True):
+    def all_exists(self,pwn, get_seds=True, get_variability=True):
+        try:
+            if self.verbosity:
+                print 'Checking if results for %s exist' % pwn
+            self.get_results(pwn, require_all_exists=True, get_seds=get_seds, get_variability=get_variability, verbosity=False)
+            if self.verbosity:
+                print ' * Results for %s exists!' % pwn
+            return True
+        except PWNResultsException, ex:
+            if self.verbosity:
+                print ' * Results for %s do not exist:' % pwn,ex
+            return False
+
+    def get_results(self, pwn, require_all_exists=True, get_seds=True, get_variability=True, verbosity=None):
         filename = join(self.fitdir,pwn,'results_%s_general.yaml' % pwn)
-        print filename,exists(filename)
+        if verbosity or (verbosity is None and self.verbosity):
+            print 'Getting results for %s' % pwn
         if not exists(filename): return None
 
         results = loaddict(filename)
@@ -32,7 +49,7 @@ class PWNResultsLoader(object):
                     results[hypothesis][code] = loaddict(filename)
                 else:
                     if require_all_exists:
-                        raise Exception("%s does not exist" % filename)
+                        raise PWNResultsException("%s does not exist" % filename)
 
         if get_variability:
             for hypothesis in ['at_pulsar','point']:
@@ -41,7 +58,7 @@ class PWNResultsLoader(object):
                     results[hypothesis]['variability'] = loaddict(filename)
                 else:
                     if require_all_exists:
-                        raise Exception('%s does not exist' % filename)
+                        raise PWNResultsException('%s does not exist' % filename)
 
         if get_seds:
             for hypothesis in self.all_hypotheses:
@@ -53,16 +70,8 @@ class PWNResultsLoader(object):
                             results[hypothesis][code]['seds'][binning] = loaddict(filename)
                         else:
                             if require_all_exists:
-                                raise Exception("%s does not exist" % filename)
+                                raise PWNResultsException("%s does not exist" % filename)
             
-        if get_bandfits:
-            for hypothesis in self.all_hypotheses:
-                    bandfit = join(self.fitdir,pwn,'data','bandfit_%s_%s_%s.yaml' % ('gtlike', hypothesis, pwn))
-                    if exists(bandfit):
-                        results[hypothesis][code]['bandfit'] = loaddict(bandfit)
-                    else:
-                        if require_all_exists:
-                            raise Exception("%s does not exist" % bandfit)
         return results
 
 

@@ -5,13 +5,20 @@ from os.path import expandvars
 
 from . loader import PWNResultsLoader
 
+def make_manual_classify(pwndata, fitdir):
+    loader = PWNResultsLoader(pwndata, fitdir)
+    pwnlist = loader.get_pwnlist()
+    return {pwn:dict(source_class=None, 
+                    spatial_model=None,
+                    spectral_model=None) for pwn in pwnlist}
+
 def auto_classify(pwndata, fitdir):
     loader = PWNResultsLoader(pwndata, fitdir)
     pwnlist = loader.get_pwnlist()
 
     classifier = PWNClassifier(loader=loader)
 
-    return {pwn:classifier.get_automatic_clasification(pwn) for pwn in pwnlist}
+    return {pwn:classifier.get_automatic_clasification(pwn) for pwn in pwnlist if loader.all_exists(pwn, get_variability=False)}
 
 
 class PWNClassifier(object):
@@ -26,6 +33,7 @@ class PWNClassifier(object):
         self.loader = loader
         self.pwn_classifications = pwn_classification
 
+    """
     def get_results(self, pwn):
 
         classifier = self.get_manual_clasification(pwn)
@@ -40,7 +48,7 @@ class PWNClassifier(object):
         source_class = classifier['source_class']
         assert source_class in PWNClassifier.allowed_source_class
 
-        results = self.loader.get_results(pwn, require_all_exists=True)
+        results = self.loader.get_results(pwn, require_all_exists=True, get_variability=False)
 
         if results is None:
             return None
@@ -75,18 +83,18 @@ class PWNClassifier(object):
                 d['flux_err'] = gtlike['flux']['flux_err']
 
                 if spectral_model == 'PowerLaw':
-                    d['prefactor'] = gtlike['model']['Prefactor']
-                    d['prefactor_err'] = gtlike['model']['Prefactor_err']
+                    d['prefactor'] = gtlike['spectrum']['Prefactor']
+                    d['prefactor_err'] = gtlike['spectrum']['Prefactor_err']
 
-                    d['index'] = gtlike['model']['Index']
-                    d['index_err'] = gtlike['model']['Index_err']
+                    d['index'] = gtlike['spectrum']['Index']
+                    d['index_err'] = gtlike['spectrum']['Index_err']
 
-                    d['model_scale'] = gtlike['model']['Scale']
+                    d['model_scale'] = gtlike['spectrum']['Scale']
 
                 elif spectral_model == 'FileFunction':
 
-                    d['prefactor'] = gtlike['model']['Normalization']
-                    d['prefactor_err'] = gtlike['model']['Normalization']
+                    d['prefactor'] = gtlike['spectrum']['Normalization']
+                    d['prefactor_err'] = gtlike['spectrum']['Normalization']
 
                     d['index'] = None
                     d['index_err'] = None
@@ -98,16 +106,16 @@ class PWNClassifier(object):
                 d['flux'] = gtlike['test_cutoff']['flux_1']['flux']
                 d['flux_err'] = gtlike['test_cutoff']['flux_1']['flux_err']
             
-                d['prefactor'] = gtlike['test_cutoff']['model_1']['Prefactor']
-                d['prefactor_err'] = gtlike['test_cutoff']['model_1']['Prefactor']
+                d['prefactor'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Prefactor']
+                d['prefactor_err'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Prefactor']
 
-                d['index'] = gtlike['test_cutoff']['model_1']['Index1']
-                d['index_err'] = gtlike['test_cutoff']['model_1']['Index1_err']
+                d['index'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Index1']
+                d['index_err'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Index1_err']
 
-                d['model_scale'] = gtlike['test_cutoff']['model_1']['Scale']
+                d['model_scale'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Scale']
 
-                d['cutoff'] = gtlike['test_cutoff']['model_1']['Cutoff']
-                d['cutoff_err'] = gtlike['test_cutoff']['model_1']['Cutoff_err']
+                d['cutoff'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Cutoff']
+                d['cutoff_err'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Cutoff_err']
 
         # spatial stuff
 
@@ -131,6 +139,7 @@ class PWNClassifier(object):
             d['extension_err'] = pointlike['spatial_model']['Sigma_err']
 
         return d
+    """
 
 
     def get_manual_clasification(self, pwn):
@@ -138,7 +147,7 @@ class PWNClassifier(object):
         return yaml.load(open(expandvars(self.pwn_classifications)))[pwn]
 
     def get_automatic_clasification(self, pwn):
-        results = self.loader.get_results(pwn)
+        results = self.loader.get_results(pwn, require_all_exists=True, get_variability=False)
 
         point_gtlike = results['point']['gtlike']
         extended_gtlike = results['extended']['gtlike']
@@ -147,8 +156,8 @@ class PWNClassifier(object):
         ts_point = max(point_gtlike['TS']['reoptimize'],0)
         ts_ext = max(extended_gtlike['TS']['reoptimize']-point_gtlike['TS']['reoptimize'],0)
 
-        assert point_gtlike['model']['name'] == extended_gtlike['model']['name']
-        spectral_name = point_gtlike['model']['name']
+        assert point_gtlike['spectrum']['name'] == extended_gtlike['spectrum']['name']
+        spectral_name = point_gtlike['spectrum']['name']
 
         try:
             ts_cutoff = max(cutoff['TS_cutoff'],0)
