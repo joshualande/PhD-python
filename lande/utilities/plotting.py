@@ -7,6 +7,8 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from matplotlib.patheffects import withStroke
 from mpl_toolkits.axes_grid.axes_grid import Grid, AxesGrid, ImageGrid
+import matplotlib.lines as mlines
+
 
 from . arrays import nzip
 
@@ -82,6 +84,65 @@ def label_axes(plots, stroke=True, **kwargs):
             _at.txt._text.set_path_effects([withStroke(foreground="w", linewidth=3)])
 
         g.add_artist(_at)
+
+
+def plot_points(x, y, xlo, xhi,
+                y_lower_err, y_upper_err, y_ul, significant,
+                axes,
+                ul_fraction=0.4,
+                **kwargs):
+        """ Plot data points with errors using matplotlib.
+
+        if no x errors, set xlo=xhi=None. 
+        """
+        plot_kwargs = dict(linestyle='none')
+        plot_kwargs.update(kwargs)
+
+        if isinstance(significant,bool):
+            significant = np.asarray([significant]*len(x),dtype=bool)
+
+        s = significant
+
+        if xhi is not None:
+            dx_hi=xhi-x
+        else:
+            dx_hi=np.zeros_like(y, dtype=float)
+
+        if xlo is not None:
+            dx_lo=x-xlo
+        else:
+            dx_lo=np.zeros_like(x)
+
+        if y_lower_err is None:
+            y_lower_err = np.zeros_like(y, dtype=float)
+        else:
+            y_lower_err = y_lower_err.copy()
+
+        if y_upper_err is None:
+            y_upper_err = np.zeros_like(y, dtype=float)
+        else:
+            y_upper_err = y_upper_err.copy()
+
+        # plot data points
+        y[~s] = y_ul[~s]
+        y_lower_err[~s]  = ul_fraction*y_ul[~s]
+        y_upper_err[~s]  = np.zeros(sum(~s), dtype=float)
+
+        axes.errorbar(x, y,
+                      xerr=[dx_lo, dx_hi], yerr=[y_lower_err, y_upper_err],
+                      capsize=0,
+                      **plot_kwargs)
+
+        # and upper limits
+        if sum(~s)>0:
+            if 'label' in plot_kwargs: plot_kwargs.pop('label')
+
+            # plot the upper limit down arrow markers
+            axes.plot(x[~s], (1-ul_fraction)*y_ul[~s],
+                      marker=mlines.CARETDOWN,
+                      **plot_kwargs)
+
+
 
 if __name__ == "__main__":
     import doctest
