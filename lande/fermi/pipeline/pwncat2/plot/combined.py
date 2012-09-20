@@ -37,7 +37,7 @@ class CombinedGtlikeSpectralPlotter(object):
         self.powerlaw_limit = self.results[self.hypothesis]['gtlike']['powerlaw_upper_limit']
         self.cutoff_limit = self.results[self.hypothesis]['gtlike']['cutoff_upper_limit']
 
-        self.bandfit = self.results[self.hypothesis]['gtlike']['bandfit']
+        self.bandfits = self.results[self.hypothesis]['gtlike']['bandfits']
 
     def plot(self, filename=None, axes=None,
             fignum=None, figsize=(5.5,4.5),
@@ -76,10 +76,8 @@ class CombinedGtlikeSpectralPlotter(object):
         ul=UpperLimit(self.cutoff_limit)
         ul.plot(axes=axes, spectral_kwargs=dict(color='purple', zorder=1.9, autoscale=False))
 
-        bf = BandFitter(self.bandfit)
+        bf = BandFitter(self.bandfits)
         bf.plot(axes=axes, spectral_kwargs=dict(color='green',zorder=1.9), spectral_error_kwargs=dict(color='green', alpha=0.1))
-
-
 
         if filename is not None:
             P.savefig(expandvars(filename))
