@@ -13,18 +13,42 @@ from uw.utilities import rotations
 
 from . fit import fit_prefactor
 from . tools import galstr
-from . save import logLikelihood
+from . save import logLikelihood,skydirdict,ts_dict
+from . base import BaseFitter
 
 
-def paranoid_localize(roi, *args, **kwargs):
+def paranoid_localize(roi, name, verbosity=True):
 
     state = PointlikeState(roi)
     try:
-        roi.localize(*args, **kwargs)
+        if verbosity: print 'Trying ROILocalizer'
+        roi.localize(which=name, update=True, verbose=verbosity)
+        ellipse = roi.get_ellipse()
+        ellipse['method'] = 'ROILocalizer'
+
+        roi.get_source(which=name).localization = ellipse
+        return ellipse
+
     except Exception, ex:
-        print 'ERROR localizing', ex
+        print 'ERROR with ROILocalizer', ex
         traceback.print_exc(file=sys.stdout)
         state.restore()
+
+        try:
+            if verbosity: print 'Trying MinuitLocalizer:'
+            m=MinuitLocalizer(roi,name, verbosity=True)
+            ellipse = m.todict()
+        except Exception, ex:
+            print 'ERROR with MinuitLocalizer', ex
+            traceback.print_exc(file=sys.stdout)
+            state.restore()
+
+            ellipse = dict(method='Failed')
+            roi.get_source(which=name).localization = ellipse
+
+        return ellipse
+
+
 
 class GridLocalize(object):
     """ Simple class evalulates the TS of a source
@@ -42,28 +66,28 @@ class GridLocalize(object):
 
 
     defaults = (
-        ('size',     2,     'size of image in degrees'),
-        ('pixelsize',0.1,   'size, in degrees, of pixels'),
+        ('size',         2, 'size of image in degrees'),
+        ('pixelsize',  0.1, 'size, in degrees, of pixels'),
         ('galactic', False, 'galactic or equatorial coordinates'),
         ('proj',     'ZEA', 'projection name: can change if desired'),
-        ('update',   False, 'Update the source of interest with the best fit'),
+        ('update',    True, 'Update the source of interest with the best fit'),
+        ('verbosity',   True, "Print more stuff during fit."),
     )
 
     @keyword_options.decorate(defaults)
-    def __init__(self, roi, which, **kwargs):
+    def __init__(self, roi, name, **kwargs):
         keyword_options.process(self, kwargs)
 
         self.roi = roi
-        self.source = roi.get_source(which)
-        self.which = self.source.name
+        self.name = name
 
         self.__fill__()
 
     def __call__(self,skydir):
         roi = self.roi
-        which = self.which
+        name = self.name
 
-        roi.modify(which=which,skydir=skydir)
+        roi.modify(which=name,skydir=skydir)
 
         # always start with same spectral model (better good for convergence)
         self.state.restore(just_spectra=True)
@@ -72,7 +96,7 @@ class GridLocalize(object):
             try:
                 # Fit just prefactor to begin with.
                 # Helps with convergence
-                fit_prefactor(roi,which)
+                fit_prefactor(roi,name)
 
                 roi.fit(estimate_errors=False)
             except Exception, ex:
@@ -82,7 +106,7 @@ class GridLocalize(object):
         fit()
         ll = logLikelihood(roi)
 
-        best_model = roi.get_model(which).copy()
+        best_model = roi.get_model(name).copy()
 
         self.state.restore(just_spectra=True)
 
@@ -92,16 +116,16 @@ class GridLocalize(object):
         new_model = best_model.copy()
         new_model.set_all_parameters(new_model.default_p)
 
-        roi.modify(which=which, model=new_model)
+        roi.modify(which=name, model=new_model)
         fit()
         ll_alt = logLikelihood(roi)
 
         if ll_alt > ll:
             ll = ll_alt
-            best_model = roi.get_model(which).copy()
+            best_model = roi.get_model(name).copy()
 
 
-        if not self.old_quiet: print '-- %s, ll=%.2f, ll-ll_0=%.2f' % (galstr(skydir), ll, ll-self.ll_0)
+        if self.verbosity: print '-- %s, ll=%.2f, ll-ll_initial=%.2f' % (galstr(skydir), ll, ll-self.ll_initial)
 
 
         return ll,best_model
@@ -109,17 +133,21 @@ class GridLocalize(object):
     def __fill__(self):
 
         roi = self.roi
+        name = self.name
+        source = roi.get_source(name)
+
         self.state = PointlikeState(roi)
 
-        self.ll_0 = logLikelihood(roi)
+        self.ll_initial = logLikelihood(roi)
 
         self.old_quiet = roi.quiet
         roi.quiet = True
 
-        self.init_skydir = self.source.skydir
-        self.init_model = self.source.model.copy()
+        self.init_skydir = source.skydir
+        self.init_model = source.model.copy()
 
-        if not self.old_quiet: print 'Grid localizing around initial position %s' % (galstr(self.init_skydir))
+        if self.verbosity: 
+            print 'Grid localizing around initial position %s' % (galstr(self.init_skydir))
 
         # here, create skyimage
 
@@ -130,10 +158,11 @@ class GridLocalize(object):
 
         self.state.restore()
 
-        if not self.old_quiet: print 'Done Grid localizing, best position=%s, best ll=%.2f' % (galstr(self.best_position), self.best_logLikelihood-self.ll_0)
+        if self.verbosity: 
+            print 'Done Grid localizing, best position=%s, best ll=%.2f' % (galstr(self.best_position), self.best_logLikelihood-self.ll_initial)
 
         if self.update:
-            roi.modify(which=self.which, 
+            roi.modify(which = name, 
                        skydir = self.best_position,
                        model = self.best_model)
 
@@ -150,7 +179,7 @@ class GridLocalize(object):
         return self.all_models[int(np.argmax(self.all_ll))]
         
 
-class MinuitLocalizer(object):
+class MinuitLocalizer(BaseFitter):
     """ Fit two point sources at the same time. Fit the center of position
         and relative difference since they are more robust parameters.
 
@@ -163,48 +192,52 @@ class MinuitLocalizer(object):
     defaults = (
         ('fit_kwargs', dict(), 'kwargs into fit function'),
         ('tolerance',    0.01, "Fit tolerance to use when fitting"),
-        ('verbose',      True, "Print more stuff during fit.")
+        ('verbosity',   True, "Print more stuff during fit."),
+        ('update',      True,"Update the source position after localization"),
     )
 
 
     @keyword_options.decorate(defaults)
-    def __init__(self, roi, which, **kwargs):
+    def __init__(self, roi, name, **kwargs):
         keyword_options.process(self, kwargs)
 
         self.roi = roi
-        self.which = which
-        self.source = roi.get_source(self.which)
+        self.name = name
+
+        self.localize()
 
     def fit(self,p):
         roi=self.roi
+        name = self.name
+        source = roi.get_source(name)
 
         x,y = p
         s = SkyDir(x,y)
         rot_back = rotations.anti_rotate_equator(s,self.start)
 
         self.init_state.restore(just_spectra=True)
-        roi.modify(which=self.which,skydir=rot_back)
+        roi.modify(which=self.name,skydir=rot_back)
 
         roi.fit(estimate_errors=False, **self.fit_kwargs)
         ll=logLikelihood(roi)
 
-        if self.verbose: print 'd=%s f=%.1e, dist=%.3f logL=%.3f dlogL=%.3f' % \
-                (rot_back, DualLocalizer.print_flux(self.source,roi),
+        if self.verbosity: print 'd=%s f=%.1e, dist=%.3f logL=%.3f dlogL=%.3f' % \
+                (galstr(rot_back), DualLocalizer.print_flux(source,roi),
                  np.degrees(rot_back.difference(self.start)),
-                 ll,ll-self.ll_0)
+                 ll,ll-self.ll_initial)
 
         return -ll # minimize negative log likelihood
 
     def localize(self):
         roi=self.roi
-        source = self.source
+        name=self.name
 
-        if not roi.quiet: print 'Localizing source %s' % (self.source.name)
+        if self.verbosity: print 'Using MinuitLocalizer to localize source %s' % name
 
-        self.start = self.source.skydir
+        self.start = roi.get_source(name).skydir
 
-
-        self.ll_0=logLikelihood(roi)
+        self.ll_initial=ll_initial=logLikelihood(roi)
+        TS_initial=ts_dict(roi,name)
         self.init_state = PointlikeState(roi)
 
         old_quiet=roi.quiet
@@ -217,14 +250,43 @@ class MinuitLocalizer(object):
                    p0,
                    tolerance = self.tolerance,
                    maxcalls  = 500,
+                   limits    = [[-1,1],[-1,1]],
                    printMode = True, 
                    steps     = steps)
 
-        best_spatial,fval = m.minimize(method="SIMPLEX")
+        best_p,fval = m.minimize(method="SIMPLEX")
+
+        if self.verbosity: print 'Computing covariance matrix for source %s' % name 
+        self.fit(best_p)
+        cov_matrix = m.errors(method="HESSE")
+
+        if self.verbosity: print 'Fitting one last time with best parameters'
+        self.fit(best_p)
+        best_spatial = roi.get_source(name).skydir
+        TS_best = ts_dict(roi,name)
+        ll_best = logLikelihood(roi)
+
+        self.results = dict(
+            ll_initial = ll_initial,
+            ll_best = ll_best,
+            delta_TS = 2*(ll_best-ll_initial),
+            position = skydirdict(best_spatial),
+            TS_best = TS_best,
+            TS_initial = TS_initial,
+            method = 'MinuitLocalizer'
+        )
+
+        sigma_x = np.sqrt(cov_matrix[0,0])
+        sigma_y = np.sqrt(cov_matrix[1,1])
+        self.results['position_error'] = np.sqrt(sigma_x*sigma_y)
 
         roi.quiet = old_quiet
 
-        return
+        if not self.update: self.init_state.restore()
+
+        # save localization into source.
+        roi.get_source(which=name).localization = self.results
+
 
 if __name__ == "__main__":
     import doctest

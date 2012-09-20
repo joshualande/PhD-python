@@ -11,6 +11,7 @@ from uw.like.Models import PowerLaw, PLSuperExpCutoff
 from uw.like.roi_state import PointlikeState
 from uw.like.roi_upper_limits import FluxUpperLimit
 from uw.utilities import keyword_options
+from uw.utilities.parmap import LimitMapper
 
 from lande.utilities.tools import tolist
 from lande.utilities.plotting import plot_points
@@ -143,10 +144,16 @@ class GtlikeUpperLimit(UpperLimit):
                 model = build_pointlike_model(spectrum)
                 if self.verbosity:
                     print 'Rescaling %s model parameters before limits' % model.name
-                    print ' * Initial mappers',model.mappers
-                model.set_default_limits(strict=False, oomp_limits=False, only_unbound_parameters=False)
+                    print ' * Initial mappers:',model.mappers
+                norm_name = model.param_names[0]
+                default_norm_limits = model.default_limits[norm_name]
+                lower,upper = model.get_limits(norm_name)
+                norm_min = min(lower, default_norm_limits.lower)
+                norm_max = max(upper, default_norm_limits.upper)
+
+                model.set_limits(norm_name, norm_min, norm_max, scale=1)
                 if self.verbosity:
-                    print ' * Final mappers',model.mappers
+                    print ' * New mappers:',model.mappers
 
                 spectrum = build_gtlike_spectrum(model)
                 like.setSpectrum(name,spectrum)
@@ -182,6 +189,7 @@ class GtlikeUpperLimit(UpperLimit):
                                      prefactor_energy=self.prefactor_energy)
 
             self.results['spectrum'] = spectrum_to_dict(spectrum)
+            self.results['confidence'] = self.cl
 
         except Exception, ex:
             print 'ERROR gtlike upper limit: ', ex
@@ -305,9 +313,9 @@ class PointlikeUpperLimit(UpperLimit):
         ('emin', None, 'minimum energy (for quoted flux). Default is full energy range'),
         ('emax', None, 'maximum energy (for quoted flux). Default is full energy range'),
         ('flux_units', 'erg', 'Units to quote flux in'),
-        ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
         ('include_prefactor', False, 'Compute prefactor upper limit'),
         ('prefactor_energy', None, 'Energy to compute prefactor energy at'),
+        ('simps_points',   100, 'Number of integration points (per decade of energy).'),
     )
 
     @keyword_options.decorate(defaults)
@@ -320,10 +328,6 @@ class PointlikeUpperLimit(UpperLimit):
         if self.emin is None and self.emax is None: 
             self.emin, self.emax = get_full_energy_range(roi)
 
-        # Just to be safe, make sure integral is over VERY large range
-        if 'integral_min' not in self.upper_limit_kwargs: self.upper_limit_kwargs['integral_min']=-20
-        if 'integral_max' not in self.upper_limit_kwargs: self.upper_limit_kwargs['integral_max']=-5
-
 
         self._compute()
 
@@ -331,20 +335,27 @@ class PointlikeUpperLimit(UpperLimit):
 
         roi = self.roi
         name = self.name
+        model = roi.get_model(name)
 
         saved_state = PointlikeState(roi)
 
         try:
-            ful = FluxUpperLimit(roi=roi, which=name, confidence=self.cl, **self.upper_limit_kwargs)
+            ful = FluxUpperLimit(roi=roi, 
+                                 which=name, 
+                                 confidence=self.cl, 
+                                 simps_points=self.simps_points,
+                                 verbosity=self.verbosity)
             model = ful.upper_limit_model
 
-            self.results  = pointlike_model_to_flux(model, emin=self.emin, emax=self.emax, 
+            self.results  = pointlike_model_to_flux(model, 
+                                                    emin=self.emin, emax=self.emax, 
                                                     flux_units=self.flux_units, 
                                                     energy_units=self.energy_units, 
                                                     errors=False,
                                                     include_prefactor=self.include_prefactor,
                                                     prefactor_energy=self.prefactor_energy,
                                                    )
+            self.results['confidence'] = self.cl
 
             self.results['spectrum'] = spectrum_to_dict(model)
 

@@ -430,12 +430,16 @@ def spatial_dict(source, roi, errors=True):
         f['r68'] = spatial_model.r68()
         f['r99'] = spatial_model.r99()
 
-    # add elliptical error, if they exist.
-    # N.B. If no localization performed, this will return
-    # an empty dictionary.
-    # N.B. This method will do the wrong thing if you have recently relocalized
-    # another source. This is rarely the case.
-    f['ellipse'] = roi.get_ellipse()
+    if hasattr(source,'localization'):
+        f['ellipse'] = source.localization
+
+    else:
+        # add elliptical error, if they exist.
+        # N.B. If no localization performed, this will return
+        # an empty dictionary.
+        # N.B. This method will do the wrong thing if you have recently relocalized
+        # another source. This is rarely the case.
+        f['ellipse'] = roi.get_ellipse()
     return tolist(f)
 
 def ts_dict(*args, **kwargs):

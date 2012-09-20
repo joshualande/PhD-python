@@ -47,43 +47,39 @@ from lande.fermi.data.livetime import pointlike_ltcube
 class VariabilityTester(BaseFitter):
 
     def plot(self, 
-              filename=None,
-              figsize=(7,4), 
-              gtlike_color='black',
-              pointlike_color='red',
-              time_scale = None,
-              flux_scale = None,
-              **kwargs):
+             filename=None,
+             axes=None,
+             figsize=(7,4), 
+             plot_gtlike=True,
+             plot_pointlike=True,
+             gtlike_color='black',
+             pointlike_color='red',
+             **kwargs):
         """ Create a plot from a dictionary. """
 
-        time  = self.results['time']
         bands = self.results['bands']
         all_time = self.results['all_time']
         min_ts = self.results['min_ts']
 
 
-        fig = P.figure(None,figsize)
-        axes = fig.add_subplot(111)
+        if axes is None:
+            fig = P.figure(None,figsize)
+            axes = fig.add_subplot(111)
 
         # astype(float) converts None to nan
         a=lambda x: np.asarray(x).astype(float)
 
-        starts=a(time['starts'])
-        stops=a(time['stops'])
-        time=(starts+stops)/2
-        time_err=(stops-starts)/2
+        starts=a(self.results['time']['starts'])
+        stops=a(self.results['time']['stops'])
+        time=(starts+stops)/2.0
 
-        if time_scale is None:
-            time_scale = 1e8
-        if flux_scale is None:
-            fg=np.mean(a([b['gtlike']['flux']['flux'] for b in bands]))
-            #flux_scale = 10**np.floor(np.log10(fg))
-            flux_scale = 1e-8
+        loop = [ ]
+        if plot_gtlike:
+            loop.append(['gtlike',gtlike_color],)
+        if plot_pointlike:
+            loop.append(['pointlike',pointlike_color])
 
-        for t,color in [
-            ['gtlike',gtlike_color],
-            ['pointlike',pointlike_color]
-        ]:
+        for t,color in loop:
 
             f0 = all_time[t]['flux']['flux']
 
@@ -99,36 +95,24 @@ class VariabilityTester(BaseFitter):
             fup=a([b[t]['upper_limit']['flux'] if b[t]['upper_limit'] is not None else None for b in bands])
 
             plot_points(
-                axes,
-                x=time/time_scale,
-                xerr=time_err/time_scale,
-                y=f/flux_scale,
-                yerr=ferr/flux_scale,
-                yup=fup/flux_scale, 
+                axes=axes,
+                x=time,
+                xlo=starts,
+                xhi=stops,
+                y=f,
+                y_lower_err=ferr,
+                y_upper_err=ferr,
+                y_ul=fup,
                 significant=significant,
                 color=color,
                 label=t,
                 **kwargs)
             
-            axes.axhline(f0/flux_scale, color=color, dashes=[5,2])
+            axes.axhline(f0, color=color, dashes=[5,2])
 
-        t = np.log10(time_scale)
-        assert t == int(t)
-
-        f = np.log10(flux_scale)
-        assert f == int(f)
-
-        axes.set_xlabel('MET (10$^{%d}$ s)' % t)
-        axes.set_ylabel('Flux (10$^{%d}$ ph$\,$cm$^{-2}$s$^{-1}$)' % f)
-
-        # Kluge legend due to buggy legend impolementaiton
-        # for errorbar in matplotlib
-        from matplotlib.lines import Line2D
-        l=lambda c:Line2D([0],[0],linestyle='-', color=c)
-        axes.legend(
-            (l(gtlike_color), l(pointlike_color)),
-            ('gtlike','pointlike')
-            )
+        axes.set_xlabel('MET (s)')
+        axes.set_ylabel('Flux (ph$\,$cm$^{-2}$s$^{-1}$)')
+        axes.legend()
 
         if filename is not None: 
             P.savefig(expandvars(filename))
@@ -297,7 +281,7 @@ class CombinedVariabilityTester(VariabilityTester):
 
 
         if TS < self.min_ts or self.always_upper_limit:
-            pul=PointlikeUpperLimit(smaller_roi, name, cl=0.95)
+            pul=PointlikeUpperLimit(smaller_roi, name, cl=0.95, verbosity=self.verbosity)
             results['upper_limit'] = pul.todict()
         else:
             results['upper_limit'] = None
@@ -362,7 +346,9 @@ class CombinedVariabilityTester(VariabilityTester):
         results['diffuse'] = diffuse_dict(like)
 
         if TS < self.min_ts or self.always_upper_limit:
-            gul = GtlikeUpperLimit(like, name, cl=0.95)
+            if self.verbosity: 
+                print 'Compute Gtlike Upper Limit'
+            gul = GtlikeUpperLimit(like, name, cl=0.95, verbosity=self.verbosity)
             results['upper_limit'] = gul.todict()
         else:
             results['upper_limit'] = None
