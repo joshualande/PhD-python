@@ -64,10 +64,10 @@ class CombinedGtlikeSpectralPlotter(object):
         # plot spectral model
         sp=SpectrumPlotter(axes=axes)
         sp.plot(self.spectral_model, autoscale=False, **spectral_kwargs)
-        sp.plot_error(self.spectral_model, autoscale=False, alpha=0.1, **spectral_kwargs)
+        sp.plot_error(self.spectral_model, autoscale=False, alpha=0.25, **spectral_kwargs)
 
         sp.plot(self.cutoff_model, autoscale=False, **cutoff_kwargs)
-        sp.plot_error(self.cutoff_model, autoscale=False, alpha=0.1, **cutoff_kwargs)
+        sp.plot_error(self.cutoff_model, autoscale=False, alpha=0.25, **cutoff_kwargs)
 
         # plot limits
         ul=UpperLimit(self.powerlaw_limit)
@@ -77,7 +77,7 @@ class CombinedGtlikeSpectralPlotter(object):
         ul.plot(axes=axes, spectral_kwargs=dict(color='purple', zorder=1.9, autoscale=False))
 
         bf = BandFitter(self.bandfits)
-        bf.plot(axes=axes, spectral_kwargs=dict(color='green',zorder=1.9), spectral_error_kwargs=dict(color='green', alpha=0.1))
+        bf.plot(axes=axes, spectral_kwargs=dict(color='green',zorder=1.9), spectral_error_kwargs=dict(color='green', alpha=0.25))
 
         if filename is not None:
             P.savefig(expandvars(filename))
