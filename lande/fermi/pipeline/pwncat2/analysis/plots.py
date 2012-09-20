@@ -26,16 +26,26 @@ def tsmap_plots(roi, name, hypothesis, datadir, plotdir, size, new_sources, tsma
     tsmap_kwargs = dict(size=size, pixelsize=tsmap_pixelsize, **common_kwargs)
 
     def _plot(filename,title):
-        roi.plot_tsmap(filename='%s/tsmap_%s_%s.png' % (plotdir,filename,extra), 
-                       fitsfile='%s/tsmap_%s_%s.fits' % (datadir,filename,extra),
-                       title='%s TS Map for %s (%s)' % (title,name,hypothesis),
-                       **tsmap_kwargs)
+        try:
+            print 'Making Band %s TS Map (size=%s, pixelsize=%s)' % (title,size,tsmap_pixelsize)
+            roi.plot_tsmap(filename='%s/tsmap_%s_%s.png' % (plotdir,filename,extra), 
+                           fitsfile='%s/tsmap_%s_%s.fits' % (datadir,filename,extra),
+                           title='%s TS Map for %s (%s)' % (title,name,hypothesis),
+                           **tsmap_kwargs)
+        except Exception, ex:
+            print 'ERROR making TS map:', ex
+            traceback.print_exc(file=sys.stdout) 
 
         if all_energy(emin,emax):
-            ROITSMapBandPlotter(roi,  
-                                title='Band %s TS Map for %s (%s)' % (title,name,hypothesis),
-                                bin_edges=one_bin_per_dec(emin,emax),
-                                **tsmap_kwargs).show(filename='%s/band_tsmap_%s_%s.png' % (plotdir,filename,extra))
+            try:
+                print 'Making Band %s TS Map (size=%s, pixelsize=%s)' % (title,size,tsmap_pixelsize)
+                ROITSMapBandPlotter(roi,  
+                                    title='Band %s TS Map for %s (%s)' % (title,name,hypothesis),
+                                    bin_edges=one_bin_per_dec(emin,emax),
+                                    **tsmap_kwargs).show(filename='%s/band_tsmap_%s_%s.png' % (plotdir,filename,extra))
+            except Exception, ex:
+                print 'ERROR making band TS map:', ex
+                traceback.print_exc(file=sys.stdout) 
 
     # reisidual ts map
     _plot('residual','Residual')
@@ -59,36 +69,46 @@ def counts_plots(roi, name, hypothesis, datadir, plotdir, size, pixelsize, **com
     extra='%s_%s_%sdeg_%sdeg' % (hypothesis,name,size,pixelsize)
 
     counts_kwargs = dict(size=size, **common_kwargs)
+    title = 'Counts Residual for %s (%s)' % (name,hypothesis)
+    print title
     roi.plot_counts_map(filename="%s/counts_residual_%s.png"%(plotdir,extra),
                         countsfile="%s/counts_residual_%s.fits"%(datadir,extra),
                         modelfile="%s/model_residual_%s.fits"%(datadir,extra),
                         pixelsize=pixelsize,
-                        title='Counts Residual for %s (%s)' % (name,hypothesis),
+                        title=title,
                         **counts_kwargs)
     roi.zero_source(which=name)
 
+    title = 'Counts Source for %s (%s)' % (name,hypothesis)
+    print title
     roi.plot_counts_map(filename="%s/counts_source_%s.png"%(plotdir,extra),
                         countsfile="%s/counts_source_%s.fits"%(datadir,extra),
                         modelfile="%s/model_source_%s.fits"%(datadir,extra),
                         pixelsize=pixelsize,
-                        title='Counts Source for %s (%s)' % (name,hypothesis),
+                        title=title,
                         **counts_kwargs)
     roi.unzero_source(which=name)
 
+    title = 'Slice for %s (%s)' % (name,hypothesis)
+    print title
     roi.plot_slice(which=name,
                    pixelsize=pixelsize,
                    filename="%s/counts_slice_%s.png"%(plotdir,extra),
                    datafile='%s/counts_slice_%s.dat'%(datadir,extra),
-                   title='Slice for %s (%s)' % (name,hypothesis))
+                   title=title)
 
+    title = 'Radial Integral for %s (%s)' % (name,hypothesis)
+    print title
     roi.plot_radial_integral(which=name,
                              pixelsize=pixelsize,
                              filename="%s/radial_integral_%s.png"%(plotdir,extra),
                              datafile='%s/radial_integral_%s.dat'%(datadir,extra),
-                             title='Radial Integral for %s (%s)' % (name,hypothesis))
+                             title=title)
     try:
+        title = 'Spectra for %s (%s)' % (name,hypothesis)
+        print title
         roi.plot_counts_spectra(filename="%s/spectra_%s_%s.png"%(plotdir,hypothesis, name),
-                               title='Spectra for %s (%s)' % (name,hypothesis))
+                               title=title)
     except Exception, ex:
         print 'ERROR with plot_counts_spectra: ', ex
         traceback.print_exc(file=sys.stdout) 
@@ -106,19 +126,28 @@ def smooth_plots(roi, name, hypothesis, datadir, plotdir, size, kernel_rad, **co
                          kernel_rad=kernel_rad,
                          **common_kwargs)
 
+    title = 'Source Map for %s (%s)' % (name,hypothesis)
+    print title
     roi.plot_source(filename='%s/source_%s.png' % (plotdir, extra), 
-                    title='Source Map for %s (%s)' % (name,hypothesis),
+                    title=title,
                     **smooth_kwargs)
+
+    title = 'Sources Map for %s (%s)' % (name,hypothesis)
+    print title
     roi.plot_sources(filename='%s/sources_%s.png' % (plotdir, extra), 
-                     title='Sources Map for %s (%s)' % (name,hypothesis),
+                     title=title,
                      **smooth_kwargs)
 
     if all_energy(emin,emax):
+        title = 'Band Source Map for %s (%s)' % (name,hypothesis)
+        print title
         ROISourceBandPlotter(roi, bin_edges=one_bin_per_dec(emin,emax), 
-                             title='Band Source Map for %s (%s)' % (name,hypothesis),
+                             title=title,
                              **smooth_kwargs).show(filename='%s/band_source_%s.png' % (plotdir,extra))
+        title = 'Band Sources Map for %s (%s)' % (name,hypothesis)
+        print title
         ROISourcesBandPlotter(roi, bin_edges=one_bin_per_dec(emin,emax), 
-                             title='Band Sources Map for %s (%s)' % (name,hypothesis),
+                             title=title,
                               **smooth_kwargs).show(filename='%s/band_sources_%s.png' % (plotdir,extra))
 
 def setup_plotting(roi, name, hypothesis, 

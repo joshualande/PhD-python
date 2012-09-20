@@ -9,7 +9,7 @@ from lande.fermi.likelihood.save import source_dict, get_full_energy_range
 from lande.fermi.likelihood.limits import PointlikePowerLawUpperLimit, PointlikeCutoffUpperLimit
 
 
-from lande.fermi.likelihood.localize import GridLocalize, paranoid_localize
+from lande.fermi.likelihood.localize import GridLocalize, paranoid_localize,MinuitLocalizer
 from lande.fermi.likelihood.cutoff import PointlikeCutoffTester
 from lande.fermi.spectra.pointlike import PointlikeSED
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
@@ -20,6 +20,7 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
                        fit_extension=False, 
                        cutoff=False,
                        cutoff_model=None,
+                       override_localization=None,
                       ):
     """ emin + emax used for computing upper limits. """
     print 'Performing Pointlike analysis for %s' % hypothesis
@@ -45,7 +46,7 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
                 # For some reason, one final fit seems to help with convergence and not getting negative TS values *shurgs*
                 roi.fit() 
         except Exception, ex:
-            print 'ERROR spectral fitting pointlike: ', ex
+            print 'ERROR spectral fitting pointlike for hypothesis %s:' % hypothesis, ex
             traceback.print_exc(file=sys.stdout)
         print_summary()
 
@@ -56,37 +57,33 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
     frozen  = freeze_far_away(roi, roi.get_source(name).skydir, max_free)
 
     if localize:
-        try:
-
-            print 'About to Grid localize'
-            grid=GridLocalize(roi,which=name,
-                              update=True,
-                              size=0.5, pixelsize=0.1)
+        if override_localization is None:
+            print 'About to Grid localize for hypothesis %s' % hypothesis
+            grid=GridLocalize(roi, name, size=0.5, pixelsize=0.1, verbosity=4)
             print_summary()
+            
+            ellipse = paranoid_localize(roi, name, verbosity=4)
+            print 'Localization Ellipse:',ellipse
+        else:
+            print 'Override Localization for source %s:', name
+            print 'override_localization=',override_localization
+            roi.modify(which=None, skydir=override_localization['init_position'])
 
-            paranoid_localize(roi, name, update=True)
-        except Exception, ex:
-            print 'ERROR localizing pointlike: ', ex
-            traceback.print_exc(file=sys.stdout)
+            assert override_localization['method'] == 'MinuitLocalizer'
+            m=MinuitLocalizer(roi, name, verbosity=4)
+            print 'Localization Ellipse:',m.todict()
+
 
     if fit_extension:
-        init_flux = roi.get_model(which=name).i_flux(emin,emax)
-        try:
-            before_state = PointlikeState(roi)
-
-            roi.fit_extension(which=name)
-            paranoid_localize(roi, name, update=True)
-
-        except Exception, ex:
-            print 'ERROR extension fitting pointlike: ', ex
-            traceback.print_exc(file=sys.stdout)
-
+        roi.fit_extension(which=name)
+        ellipse = paranoid_localize(roi, name)
+        print ellipse
 
     unfreeze_far_away(roi, frozen)
 
     fit()
 
-    print 'Making pointlike SED'
+    print 'Making pointlike SED for hypothesis %s' % hypothesis
     sed = PointlikeSED(roi, name, verbosity=4)
     sed.save('%s/sed_pointlike_4bpd_%s_%s.yaml' % (seddir,hypothesis,name))
     sed.plot('%s/sed_pointlike_4bpd_%s_%s.png' % (seddir,hypothesis,name)) 
@@ -104,10 +101,10 @@ def pointlike_analysis(roi, name, hypothesis, max_free,
         try:
             tc = PointlikeCutoffTester(roi,name, cutoff_model=cutoff_model, verbosity=4)
             p['test_cutoff']=tc.todict()
-            tc.plot(sed_results='%s/sed_pointlike_%s_%s.yaml' % (seddir,hypothesis,name),
+            tc.plot(sed_results='%s/sed_pointlike_4bpd_%s_%s.yaml' % (seddir,hypothesis,name),
                     filename='%s/test_cutoff_pointlike_%s_%s.png' % (plotdir,hypothesis,name))
         except Exception, ex:
-            print 'ERROR plotting cutoff test:', ex
+            print 'ERROR plotting cutoff test for hypothesis %s:' % hypothesis, ex
             traceback.print_exc(file=sys.stdout)
 
 

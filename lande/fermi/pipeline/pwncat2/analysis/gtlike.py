@@ -50,7 +50,7 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
 
     print summary(like, maxdist=10)
 
-    paranoid_gtlike_fit(like, niter=3, verbosity=4)
+    paranoid_gtlike_fit(like, verbosity=4)
 
     print 'Done fiting gtlike ROI'
     print summary(like, maxdist=10)
@@ -77,8 +77,8 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
             bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), 
                                   upper_limit_kwargs=upper_limit_kwargs,
                                   verbosity=4)
-            bf.plot('%s/bandfit_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
-            bf.save('%s/bandfit_gtlike_%s_%s.yaml' % (datadir,hypothesis,name))
+            bf.plot('%s/bandfits_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
+            r['bandfits'] = bf.todict()
         except Exception, ex:
             print 'ERROR computing bandfit:', ex
             traceback.print_exc(file=sys.stdout)
