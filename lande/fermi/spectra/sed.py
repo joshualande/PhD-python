@@ -32,43 +32,34 @@ class SED(BaseFitter):
         ('flux_units',  'erg', 'default units to plot energy (x axis) in'),
     )
 
-    def plot(self, filename=None, axes=None, title=None,
-             fignum=None, figsize=(4,4),
-             plot_spectral_fit=True,
-             plot_spectral_error=True,
-             data_kwargs=dict(),
-             spectral_kwargs=dict(),
-             spectral_error_kwargs=dict(),
-            ):
+    def plot_spectral_error(self, axes, **kwargs):
+        spectral_error_kwargs=dict(color='red',alpha=0.5,zorder=1.8)
+        spectral_error_kwargs.update(kwargs)
+
+        sp=SpectrumPlotter(axes=axes)
+        sp.plot_error(self.results['spectrum'], self.results['spectrum']['covariance_matrix'],
+                      autoscale=False, **spectral_error_kwargs)
+
+    def plot_spectral_fit(self,axes, **kwargs):
+
+        spectral_kwargs=dict(color='red',zorder=1.9)
+        spectral_kwargs.update(kwargs)
+
+        sp=SpectrumPlotter(axes=axes)
+        sp.plot(self.results['spectrum'], 
+                autoscale=False, **spectral_kwargs)
+
+    def plot_points(self, axes, **kwargs):
         """ Plot the SED using matpotlib. """
-        pass_data_kwargs=dict(color='black')
-        pass_data_kwargs.update(data_kwargs)
+        data_kwargs=dict(color='black')
+        data_kwargs.update(kwargs)
 
-        pass_spectral_kwargs=dict(color='red',zorder=1.9)
-        pass_spectral_kwargs.update(spectral_kwargs)
-
-        pass_spectral_error_kwargs=dict(color='red',alpha=0.5,zorder=1.8)
-        pass_spectral_error_kwargs.update(spectral_error_kwargs)
 
         edict = units.fromstring(self.results['Energy'])
         fdict = units.fromstring(self.results['dNdE'])
 
         file_energy_units = units.fromstring(edict['Units'])
         file_flux_units = units.fromstring(fdict['Units'])
-
-        if axes is None:
-            fig = P.figure(fignum,figsize)
-            axes = SpectralAxes(fig=fig, 
-                                rect=(0.22,0.15,0.75,0.8),
-                                flux_units=self.flux_units,
-                                energy_units=self.energy_units)
-            fig.add_axes(axes)
-
-            if 'Lower' in edict and 'Upper' in edict:
-                axes.set_xlim_units(edict['Lower'][0]*file_energy_units, edict['Upper'][-1]*file_energy_units)
-            else:
-                axes.set_xlim_units(edict['Energy'][0]*file_energy_units, edict['Energy'][-1]*file_energy_units)
-
 
         ce = lambda x: units.convert(np.asarray(x),file_energy_units, axes.energy_units_obj)
 
@@ -107,7 +98,6 @@ class SED(BaseFitter):
         else:
             has_upper_limits=False
 
-
         plot_points(
             x=energy,
             xlo=lower_energy if has_energy_errors else None,
@@ -117,22 +107,40 @@ class SED(BaseFitter):
             y_upper_err=dnde_upper_err if has_assymetric_errors else dnde_err,
             y_ul=dnde_ul if has_upper_limits else None,
             significant=significant if has_upper_limits else np.ones(len(energy),dtype=bool),
-            axes=axes, **pass_data_kwargs)
+            axes=axes, **data_kwargs)
 
-        if plot_spectral_fit and 'spectrum' in self.results:
-            sp=SpectrumPlotter(axes=axes)
-            sp.plot(self.results['spectrum'], 
-                    autoscale=False, **pass_spectral_kwargs)
-        if plot_spectral_error and 'spectrum' in self.results:
-            sp=SpectrumPlotter(axes=axes)
-            sp.plot_error(self.results['spectrum'], self.results['spectrum']['covariance_matrix'],
-                          autoscale=False, **pass_spectral_error_kwargs)
+    def plot(self, filename=None, axes=None, title=None,
+             fignum=None, figsize=(4,4),
+             plot_spectral_fit=True,
+             plot_spectral_error=True,
+             data_kwargs=dict(),
+             spectral_kwargs=dict(),
+             spectral_error_kwargs=dict(),
+            ):
 
+        edict = units.fromstring(self.results['Energy'])
+        file_energy_units = units.fromstring(edict['Units'])
+        if axes is None:
+            fig = P.figure(fignum,figsize)
+            axes = SpectralAxes(fig=fig, 
+                                rect=(0.22,0.15,0.75,0.8),
+                                flux_units=self.flux_units,
+                                energy_units=self.energy_units)
+            fig.add_axes(axes)
+
+            if 'Lower' in edict and 'Upper' in edict:
+                axes.set_xlim_units(edict['Lower'][0]*file_energy_units, edict['Upper'][-1]*file_energy_units)
+            else:
+                axes.set_xlim_units(edict['Energy'][0]*file_energy_units, edict['Energy'][-1]*file_energy_units)
+
+            if plot_spectral_fit:
+                self.plot_spectral_fit(axes=axes, **spectral_kwargs)
+            if plot_spectral_error:
+                self.plot_spectral_error(axes=axes, **spectral_error_kwargs)
+
+            self.plot_points(axes=axes, **data_kwargs)
 
         if title is not None: axes.set_title(title)
         if filename is not None: 
             P.savefig(expandvars(filename))
         return axes
-
-
-
