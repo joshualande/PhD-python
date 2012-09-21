@@ -21,6 +21,13 @@ from lande.utilities.tools import tolist
 from . tools import gtlike_or_pointlike
 from . specplot import SpectrumPlotter
 
+def gtlike_get_energies(like):
+    kmin,kmax=like.logLike.klims()
+    return like.energies[kmin:kmax+1]
+get_energies = gtlike_get_energies
+
+
+
 def gtlike_get_full_energy_range(like): return like.energies[[0,-1]]
 def pointlike_get_full_energy_range(roi): return roi.bin_edges[[0,-1]]
 def get_full_energy_range(*args, **kwargs):
