@@ -11,7 +11,7 @@ from lande.fermi.likelihood.limits import UpperLimit
 from lande.fermi.likelihood.bandfitter import BandFitter
 
 
-class CombinedGtlikeSpectralPlotter(object):
+class CombinedSpectralPlotter(object):
 
     defaults = (
         ('fignum', None, 'matplotlib figure number'),
@@ -22,22 +22,31 @@ class CombinedGtlikeSpectralPlotter(object):
 
 
     @keyword_options.decorate(defaults)
-    def __init__(self, results, hypothesis, **kwargs):
+    def __init__(self, code, results, hypothesis, **kwargs):
         keyword_options.process(self, kwargs)
 
+        self.code = code
         self.results = results
         self.hypothesis = hypothesis
 
-        self.spectral_model = self.results[self.hypothesis]['gtlike']['spectrum']
+        assert self.code in ['gtlike','pointlike']
 
-        self.cutoff_model = self.results[self.hypothesis]['gtlike']['test_cutoff']['hypothesis_1']['spectrum']
+        self._load_results()
 
-        self.sed_4bpd = self.results[self.hypothesis]['gtlike']['seds']['4bpd']
+    def _load_results(self):
+        self.spectral_model = self.results[self.hypothesis][self.code]['spectrum']
 
-        self.powerlaw_limit = self.results[self.hypothesis]['gtlike']['powerlaw_upper_limit']
-        self.cutoff_limit = self.results[self.hypothesis]['gtlike']['cutoff_upper_limit']
+        if self.hypothesis != 'extended':
+            self.cutoff_model = self.results[self.hypothesis][self.code]['test_cutoff']['hypothesis_1']['spectrum']
 
-        self.bandfits = self.results[self.hypothesis]['gtlike']['bandfits']
+        self.sed_4bpd = self.results[self.hypothesis][self.code]['seds']['4bpd']
+
+        if self.hypothesis == 'at_pulsar':
+            self.powerlaw_limit = self.results[self.hypothesis][self.code]['powerlaw_upper_limit']
+            self.cutoff_limit = self.results[self.hypothesis][self.code]['cutoff_upper_limit']
+
+        if self.code == 'gtlike':
+            self.bandfits = self.results[self.hypothesis][self.code]['bandfits']
 
     def plot(self, filename=None, axes=None,
             fignum=None, figsize=(5.5,4.5),
@@ -57,27 +66,34 @@ class CombinedGtlikeSpectralPlotter(object):
     
         # plot sed
         sed = SED(self.sed_4bpd)
-        sed.plot(axes=axes,
-                 plot_spectral_fit=False, plot_spectral_error=False,
-                )
+        sed.plot_points(axes=axes)
+
+        if self.hypothesis == 'at_pulsar':
+            # plot power-law limits
+            ul=UpperLimit(self.powerlaw_limit)
+            ul.plot(axes=axes, spectral_kwargs=dict(color='orange', zorder=1.9))
+
+        axes.autoscale(False)
 
         # plot spectral model
         sp=SpectrumPlotter(axes=axes)
-        sp.plot(self.spectral_model, autoscale=False, **spectral_kwargs)
-        sp.plot_error(self.spectral_model, autoscale=False, alpha=0.25, **spectral_kwargs)
+        sp.plot(self.spectral_model, **spectral_kwargs)
+        sp.plot_error(self.spectral_model, alpha=0.25, **spectral_kwargs)
 
-        sp.plot(self.cutoff_model, autoscale=False, **cutoff_kwargs)
-        sp.plot_error(self.cutoff_model, autoscale=False, alpha=0.25, **cutoff_kwargs)
+        if self.hypothesis != 'extended':
+            # plot cutoff model
+            sp.plot(self.cutoff_model, **cutoff_kwargs)
+            sp.plot_error(self.cutoff_model, alpha=0.25, **cutoff_kwargs)
 
-        # plot limits
-        ul=UpperLimit(self.powerlaw_limit)
-        ul.plot(axes=axes, spectral_kwargs=dict(color='orange', zorder=1.9, autoscale=False))
+        if self.hypothesis == 'at_pulsar':
+            ul=UpperLimit(self.cutoff_limit)
+            ul.plot(axes=axes, spectral_kwargs=dict(color='purple', zorder=1.9))
 
-        ul=UpperLimit(self.cutoff_limit)
-        ul.plot(axes=axes, spectral_kwargs=dict(color='purple', zorder=1.9, autoscale=False))
-
-        bf = BandFitter(self.bandfits)
-        bf.plot(axes=axes, spectral_kwargs=dict(color='green',zorder=1.9), spectral_error_kwargs=dict(color='green', alpha=0.25))
+        if self.code == 'gtlike':
+            bf = BandFitter(self.bandfits)
+            bf.plot(axes=axes, 
+                    spectral_kwargs=dict(color='green',zorder=1.9), 
+                    spectral_error_kwargs=dict(color='green', alpha=0.25))
 
         if filename is not None:
             P.savefig(expandvars(filename))
