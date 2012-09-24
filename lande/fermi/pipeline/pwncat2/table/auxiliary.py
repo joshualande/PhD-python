@@ -43,7 +43,7 @@ def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
     psr_name=add_string('PSR', maxwidth, shape=len(pwnlist))
 
     len_class = max(map(len,PWNClassifier.allowed_source_class))
-    source_class_name=add_string('Source_Class', len_class)
+    classification_name=add_string('Classification', len_class)
 
 
     # Phase Stuff
@@ -107,7 +107,7 @@ def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
         table[psr_name][i]=pwn
 
         source_class = r['source_class']
-        table[source_class_name][i] = source_class
+        table[classification_name][i] = source_class
 
         if phase.is_continuous():
             a,b = phase.tolist(dense=True)
