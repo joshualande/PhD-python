@@ -11,20 +11,22 @@ from lande.utilities.tools import OrderedDefaultDict
 
 from . writer import TableWriter
 from . format import PWNFormatter
-from lande.pipeline.pwncat2.interp.classify import PWNClassifier
-from lande.pipeline.pwncat2.interp.loader import PWNResultsLoader
+from lande.fermi.pipeline.pwncat2.interp.classify import PWNManualClassifier
+from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
-def spatial_spectral_table(pwndata, fitdir, savedir, pwn_classification, filebase, table_type):
+def spatial_spectral_table(pwndata, pwnphase, fitdir, savedir, pwn_classification, filebase, table_type):
     assert table_type in ['latex', 'confluence']
+
+    pwnphase = yaml.load(open(expandvars(pwnphase)))
 
     format=PWNFormatter(table_type=table_type, precision=2)
 
-    results_loader = PWNResultsLoader(
+    loader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir)
 
-    classifier = PWNClassifier(results_loader, pwn_classification)
+    classifier = PWNManualClassifier(loader=loader, pwn_classification=pwn_classification)
 
     table = OrderedDefaultDict(list)
 
@@ -39,27 +41,23 @@ def spatial_spectral_table(pwndata, fitdir, savedir, pwn_classification, filebas
         cutoff_name = 'E_cutoff'
     elif table_type == 'latex':
         ts_point_name=r'$\ts_\text{point}$'
-        ts_ext_name=r'\tsext'
+        ts_ext_name=r'$\tsext$'
         ts_cutoff_name = r'$\ts_\text{cutoff}$'
         flux_name = r'$F_{0.1-316}$'
         index_name = r'$\Gamma$'
         cutoff_name = r'$E_\text{cutoff}$'
 
-    data = yaml.load(open(expandvars('$pwncode/data/pwncat2_phase_lande.yaml')))
-
-    pwnlist = results_loader.get_pwnlist()
+    pwnlist = loader.get_pwnlist()
 
     for pwn in pwnlist:
         print pwn
-
-        phase=PhaseRange(data[pwn]['phase'])
 
         r = classifier.get_results(pwn)
 
         if r is None:
             print 'Skipping %s' % pwn
             table[psr_name].append(format.pwn(pwn))
-            table[phase_name].append(phase.pretty_format())
+            table[phase_name].append('None')
             table[ts_point_name].append('None')
             table[ts_ext_name].append('None')
             table[ts_cutoff_name].append('None')
@@ -67,10 +65,10 @@ def spatial_spectral_table(pwndata, fitdir, savedir, pwn_classification, filebas
             table[index_name].append('None')
             table[cutoff_name].append('None')
         else:
-            if r['source_class'] == 'upper_limit': 
+            if r['source_class'] == 'Upper_Limit': 
                 continue
 
-            phase=PhaseRange(data[pwn]['phase'])
+            phase=PhaseRange(pwnphase[pwn]['phase'])
 
             table[psr_name].append(format.pwn(pwn))
             table[phase_name].append(phase.pretty_format())

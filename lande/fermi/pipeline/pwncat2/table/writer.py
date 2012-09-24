@@ -37,7 +37,7 @@ class TableWriter(object):
             \documentclass{aastex}
             \usepackage{amsmath}
 
-            \input{$pwnpaper/style/style.tex}
+            \input{$lat2pc/style.tex}
 
             \begin{document}
             %s

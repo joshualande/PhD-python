@@ -11,20 +11,21 @@ from uw.pulsar.phase_range import PhaseRange
 from lande.utilities.tools import OrderedDefaultDict
 
 from . writer import TableWriter
-from lande.pipeline.pwncat2.interp.classify import PWNClassifier
-from lande.pipeline.pwncat2.interp.loader import PWNResultsLoader
+from lande.fermi.pipeline.pwncat2.interp.classify import PWNClassifier,PWNManualClassifier
+from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
-def auxiliary_table(pwndata, fitdir, filename, pwn_classification):
+def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
 
-    results_loader = PWNResultsLoader(
+    pwnphase = yaml.load(open(expandvars(pwnphase)))
+
+    loader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir)
 
-    classifier = PWNClassifier(results_loader, pwn_classification)
+    classifier = PWNManualClassifier(loader=loader, pwn_classification=pwn_classification)
 
-    pwnlist = results_loader.get_pwnlist()
-    pwnlist = pwnlist[0:15]
+    pwnlist = loader.get_pwnlist()
 
     table=atpy.Table(name='Off_Peak')
 
@@ -76,8 +77,6 @@ def auxiliary_table(pwndata, fitdir, filename, pwn_classification):
     cutoff_name = add_float('Energy_cutoff', unit='MeV')
     cutoff_err_name = add_float('Energy_err_cutoff', unit='MeV')
 
-    data = yaml.load(open(expandvars('$pwncode/data/pwncat2_phase_lande.yaml')))
-
     # Spatial Stuff
 
     len_spatial = max(map(len,PWNClassifier.allowed_spatial_models))
@@ -97,14 +96,13 @@ def auxiliary_table(pwndata, fitdir, filename, pwn_classification):
     for i,pwn in enumerate(pwnlist):
         print pwn
 
-        phase=PhaseRange(data[pwn]['phase'])
+        phase=PhaseRange(pwnphase[pwn]['phase'])
 
         r = classifier.get_results(pwn)
 
-        if r is None:
-            continue
+        if r is None: continue
 
-        phase=PhaseRange(data[pwn]['phase'])
+        phase=PhaseRange(pwnphase[pwn]['phase'])
 
         table[psr_name][i]=pwn
 
@@ -135,12 +133,12 @@ def auxiliary_table(pwndata, fitdir, filename, pwn_classification):
 
         # spectral stuff
 
+        table[spectral_model_name][i]=r['spectral_model']
+
         if source_class in ['Confused', 'Pulsar', 'PWN']:
 
             table[flux_name][i]=r['flux']
             table[flux_err_name][i]=r['flux_err']
-
-            table[spectral_model_name][i]=r['spectral_model']
 
             if r['spectral_model'] in ['PowerLaw','PLSuperExpCutoff']:
                 # Don't include prefactor for FileFunction model, since the units are wrong
