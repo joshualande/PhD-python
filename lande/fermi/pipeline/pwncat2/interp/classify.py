@@ -11,7 +11,7 @@ def compare_classifications(pwndata,fitdir,pwn_classification):
     loader = PWNResultsLoader(pwndata, fitdir, verbosity=False)
 
     auto=PWNAutomaticClassifier(loader)
-    manual=PWNManualClassification(pwn_classification)
+    manual=PWNManualClassifier(loader,pwn_classification)
 
     pwnlist = loader.get_pwnlist()
 
@@ -39,15 +39,11 @@ def compare_classifications(pwndata,fitdir,pwn_classification):
                 print '  - source class:   %20s %20s' % (auto_results['source_class'],manual_results['source_class'])
 
 
-
-
-
 class PWNClassifier(object):
 
     allowed_source_class = ['Pulsar', 'PWN', 'Confused', 'Upper_Limit']
     allowed_spatial_models = ['At_Pulsar','Point','Extended']
     allowed_spectral_models = ['FileFunction','PowerLaw','PLSuperExpCutoff']
-
 
     def get_results(self, pwn):
 
@@ -215,11 +211,12 @@ class PWNAutomaticClassifier(PWNClassifier):
         return {pwn:classifier.get_classification(pwn) for pwn in pwnlist if loader.all_exists(pwn, get_variability=False)}
 
 
-class PWNManualClassification(object):
+class PWNManualClassifier(PWNClassifier):
     """ Classify a PWN """
 
 
-    def __init__(self, pwn_classification):
+    def __init__(self, loader, pwn_classification):
+        self.loader = loader
         self.pwn_classifications = yaml.load(open(expandvars(pwn_classification)))
 
     def get_classification(self, pwn):
@@ -227,7 +224,8 @@ class PWNManualClassification(object):
 
     @staticmethod
     def get_manual_classify(pwndata, fitdir):
-        """ Create an empty dict which can be used for manual classification. """
+        """ Create an empty dict which can be used for manual classification. 
+            The acutal manual classification has to be created in by hand (duh). """
         loader = PWNResultsLoader(pwndata, fitdir)
         pwnlist = loader.get_pwnlist()
         return {pwn:dict(source_class=None, 
