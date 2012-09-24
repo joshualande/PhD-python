@@ -40,7 +40,7 @@ class TableFormatter(object):
 
             table['PSR'][i]='[%s %s.html]' % (pwn,pwn)
 
-            results = self.loader.get_results(pwn, require_all_exists=False, get_seds=False, get_bandfits=False)
+            results = self.loader.get_results(pwn, require_all_exists=False, get_seds=False)
             if results is None: continue
 
             # do pointlike stuff
@@ -203,6 +203,9 @@ class WebsiteBuilder(object):
 
         title('Combined gtlike')
         get_plot_table(*['combined_gtlike_spectra_%s_%s.png' % (i,pwn) for i in all])
+
+        title('Combined pointlike')
+        get_plot_table(*['combined_pointlike_spectra_%s_%s.png' % (i,pwn) for i in all])
 
         title('gtlike Cutoff test')
         get_plot_table(*['test_cutoff_gtlike_%s_%s.png' % (i,pwn) for i in ['at_pulsar', 'point']])
