@@ -157,18 +157,20 @@ class GtlikeSED(SED):
             d['flux'] = flux_dict(like, name, emin=lower,emax=upper, flux_units=self.flux_units, 
                                  errors=True, include_prefactor=True, prefactor_energy=e)
             d['prefactor'] = powerlaw_prefactor_dict(like, name, errors=False, minos_errors=True,
-                                                    flux_units=self.flux_units)
+                                                     flux_units=self.flux_units)
             d['TS'] = ts_dict(like, name, verbosity=self.verbosity)
 
             if self.verbosity: print 'Calculating SED upper limit from %.0dMeV to %.0dMeV' % (lower,upper)
 
             if self.always_upper_limit or d['TS']['reoptimize'] < self.min_ts:
                 ul = GtlikePowerLawUpperLimit(like, name,
+                                              cl=self.ul_confidence,
+                                              emin=lower,emax=upper,
                                               flux_units=self.flux_units,
                                               energy_units=self.energy_units,
+                                              upper_limit_kwargs=self.upper_limit_kwargs,
                                               include_prefactor=True,
                                               prefactor_energy=e,
-                                              upper_limit_kwargs=self.upper_limit_kwargs,
                                               verbosity=self.verbosity,
                                              )
                 d['upper_limit'] = ul.todict()
