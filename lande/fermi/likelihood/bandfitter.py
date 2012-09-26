@@ -14,7 +14,7 @@ from lande.utilities.tools import tolist
 
 from . models import build_gtlike_spectrum, build_pointlike_model
 from . load import dict_to_spectrum
-from . save import source_dict
+from . save import source_dict, powerlaw_prefactor_dict
 from . limits import UpperLimit,GtlikePowerLawUpperLimit
 from . fit import paranoid_gtlike_fit
 from . superstate import SuperState
@@ -197,6 +197,9 @@ class GtlikeBandFitter(BandFitter):
                                          prefactor_energy=e_middle,
                                          verbosity=self.verbosity)
             r['upper_limit'] = g.todict()
+            
+            r['prefactor'] = powerlaw_prefactor_dict(like, name, errors=True, minos_errors=False,
+                                                     flux_units=self.flux_units)
 
             r['significant']=r['TS']['reoptimize']>self.min_ts
 
