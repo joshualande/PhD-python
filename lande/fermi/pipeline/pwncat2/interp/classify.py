@@ -1,7 +1,9 @@
 """ Code to clasify regions. """
 import copy
-import yaml
 from os.path import expandvars
+
+import numpy as np
+import yaml
 
 from . loader import PWNResultsLoader
 
@@ -40,6 +42,12 @@ def compare_classifications(pwndata,fitdir,pwn_classification):
 
 
 class PWNClassifier(object):
+
+    abbreviated_source_class_mapper = dict(
+        Pulsar='M', # Emission "Magnetospheric"
+        PWN='W', # From Pulsar "Wind"
+        Confused='C',
+        Upper_Limit='U')
 
     allowed_source_class = ['Pulsar', 'PWN', 'Confused', 'Upper_Limit']
     allowed_spatial_models = ['At_Pulsar','Point','Extended']
@@ -81,14 +89,39 @@ class PWNClassifier(object):
 
         d['ts_point'] = max(point_gtlike['TS']['reoptimize'],0)
 
+        d['abbreviated_source_class'] = self.abbreviated_source_class_mapper[source_class]
+
         if source_class in ['Confused', 'Pulsar', 'PWN']:
             d['ts_ext'] = max(extended_gtlike['TS']['reoptimize']-point_gtlike['TS']['reoptimize'],0)
             d['ts_cutoff'] = max(point_cutoff['TS_cutoff'],0)
+        elif source_class == 'Upper_Limit':
+            pass
+        else:
+            raise Exception("...")
 
         d['ts_var'] = None
 
         # spectral stuff
 
+        d['flux'] = None
+        d['flux_err'] = None
+
+        d['energy_flux'] = None
+        d['energy_flux_err'] = None
+
+        d['prefactor'] = None
+        d['prefactor_err'] = None
+
+        d['normalization'] = None
+        d['normalization_err'] = None
+
+        d['index'] = None
+        d['index_err'] = None
+
+        d['model_scale'] = None
+
+        d['cutoff'] = None
+        d['cutoff_err'] = None
 
         if source_class != 'Upper_Limit':
 
@@ -96,40 +129,51 @@ class PWNClassifier(object):
                 d['flux'] = gtlike['flux']['flux']
                 d['flux_err'] = gtlike['flux']['flux_err']
 
+                assert gtlike['flux']['flux_units'] == 'ph/cm^2/s'
+                d['energy_flux'] = gtlike['flux']['eflux']
+                d['energy_flux_err'] = gtlike['flux']['eflux_err']
+                assert gtlike['flux']['eflux_units'] == 'erg/cm^2/s'
+
                 if spectral_model == 'PowerLaw':
+
+                    # Note, prefactor is 
                     d['prefactor'] = gtlike['spectrum']['Prefactor']
                     d['prefactor_err'] = gtlike['spectrum']['Prefactor_err']
 
-                    d['index'] = gtlike['spectrum']['Index']
-                    d['index_err'] = gtlike['spectrum']['Index_err']
+                    d['index'] = -1*gtlike['spectrum']['Index']
+                    d['index_err'] = np.abs(gtlike['spectrum']['Index_err'])
 
                     d['model_scale'] = gtlike['spectrum']['Scale']
 
                 elif spectral_model == 'FileFunction':
 
-                    d['prefactor'] = gtlike['spectrum']['Normalization']
-                    d['prefactor_err'] = gtlike['spectrum']['Normalization']
-
-                    d['index'] = None
-                    d['index_err'] = None
-
-                d['cutoff'] = None
-                d['cutoff_err'] = None
+                    d['normalization'] = gtlike['spectrum']['Normalization']
+                    d['normalization_err'] = gtlike['spectrum']['Normalization_err']
 
             elif spectral_model == 'PLSuperExpCutoff':
-                d['flux'] = gtlike['test_cutoff']['hypothesis_1']['flux']['flux']
-                d['flux_err'] = gtlike['test_cutoff']['hypothesis_1']['flux']['flux_err']
+                h1 = gtlike['test_cutoff']['hypothesis_1']
+                d['flux'] = h1['flux']['flux']
+                d['flux_err'] = h1['flux']['flux_err']
+
+                d['energy_flux'] = h1['flux']['eflux']
+                d['energy_flux_err'] = h1['flux']['eflux_err']
+
+                assert h1['flux']['flux_units'] == 'ph/cm^2/s'
+                assert h1['flux']['eflux_units'] == 'erg/cm^2/s'
             
-                d['prefactor'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Prefactor']
-                d['prefactor_err'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Prefactor']
+                d['prefactor'] = h1['spectrum']['Prefactor']
+                d['prefactor_err'] = h1['spectrum']['Prefactor']
 
-                d['index'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Index1']
-                d['index_err'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Index1_err']
+                d['index'] = -1*h1['spectrum']['Index1']
+                d['index_err'] = np.abs(h1['spectrum']['Index1_err'])
 
-                d['model_scale'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Scale']
+                d['model_scale'] = h1['spectrum']['Scale']
 
-                d['cutoff'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Cutoff']
-                d['cutoff_err'] = gtlike['test_cutoff']['hypothesis_1']['spectrum']['Cutoff_err']
+                d['cutoff'] = h1['spectrum']['Cutoff']
+                d['cutoff_err'] = h1['spectrum']['Cutoff_err']
+        else:
+            # add in upper limits
+            pass
 
         # spatial stuff
 
@@ -151,6 +195,124 @@ class PWNClassifier(object):
         if spatial_model == 'Extended':
             d['extension'] = pointlike['spatial_model']['Sigma']
             d['extension_err'] = pointlike['spatial_model']['Sigma_err']
+
+        d['powerlaw_flux_upper_limit'] = None
+        d['powerlaw_energy_flux_upper_limit'] = None
+
+        d['cutoff_flux_upper_limit'] = None
+        d['cutoff_energy_flux_upper_limit'] = None
+
+        if source_class in ['Confused', 'Pulsar', 'PWN']:
+            pass
+        elif source_class == 'Upper_Limit':
+            d['powerlaw_flux_upper_limit'] = gtlike['powerlaw_upper_limit']['flux']
+            d['powerlaw_energy_flux_upper_limit'] = gtlike['powerlaw_upper_limit']['eflux']
+
+            assert gtlike['powerlaw_upper_limit']['flux_units'] == 'ph/cm^2/s'
+            assert gtlike['powerlaw_upper_limit']['eflux_units'] == 'erg/cm^2/s'
+
+            d['cutoff_flux_upper_limit'] = gtlike['cutoff_upper_limit']['flux']
+            d['cutoff_energy_flux_upper_limit'] = gtlike['cutoff_upper_limit']['eflux']
+            
+            assert gtlike['cutoff_upper_limit']['flux_units'] == 'ph/cm^2/s'
+            assert gtlike['cutoff_upper_limit']['eflux_units'] == 'erg/cm^2/s'
+        else:
+            raise Exception("...")
+
+        # add in 4BPD SED
+        sed = gtlike['seds']['4bpd']
+        sed_ts = np.asarray(sed['Test_Statistic'])
+        sed_lower_energy = np.asarray(sed['Energy']['Lower'])
+        sed_upper_energy = np.asarray(sed['Energy']['Upper'])
+        sed_middle_energy = np.asarray(sed['Energy']['Value'])
+        sed_prefactor = np.asarray(sed['dNdE']['Value'])
+        sed_prefactor_lower_err = np.asarray(sed['dNdE']['Lower_Error'])
+        sed_prefactor_upper_err = np.asarray(sed['dNdE']['Upper_Error'])
+        sed_prefactor_upper_limit = np.asarray(sed['dNdE']['Upper_Limit'])
+
+        assert sed['Energy']['Units'] == 'MeV'
+        assert sed['dNdE']['Units'] == 'ph/cm^2/s/erg'
+
+        # Note, when overall source is not significant, do not include upper limits
+        d['sed_ts'] = sed_ts
+        d['sed_lower_energy'] = sed_lower_energy
+        d['sed_upper_energy'] = sed_upper_energy
+        d['sed_middle_energy'] = sed_middle_energy
+        if source_class in ['Confused', 'Pulsar', 'PWN']:
+            significant = (sed_ts >= 4)
+            d['sed_prefactor'] = np.where(significant, sed_prefactor, np.nan)
+            d['sed_prefactor_lower_err'] = np.where(significant, sed_prefactor_lower_err, np.nan)
+            d['sed_prefactor_upper_err'] = np.where(significant, sed_prefactor_upper_err, np.nan)
+            d['sed_prefactor_upper_limit'] = np.where(~significant, sed_prefactor_upper_limit, np.nan)
+        elif source_class == 'Upper_Limit':
+            array_from = lambda x: np.asarray([x]*len(sed_ts))
+            d['sed_prefactor'] = array_from(np.nan)
+            d['sed_prefactor_lower_err'] = array_from(np.nan)
+            d['sed_prefactor_upper_err'] = array_from(np.nan)
+            d['sed_prefactor_upper_limit'] = sed_prefactor_upper_limit
+        else:
+            raise Exception("...")
+
+
+        # add in bandfits
+
+        bf = gtlike['bandfits']
+
+        bandfits_ts = np.asarray([ i['TS']['reoptimize'] for i in bf['bands']])
+        bandfits_lower_energy = np.asarray([ i['energy']['emin'] for i in bf['bands']])
+        bandfits_upper_energy = np.asarray([ i['energy']['emax'] for i in bf['bands']])
+        bandfits_middle_energy = np.asarray([ i['energy']['emiddle'] for i in bf['bands']])
+
+        bandfits_flux = [ i['flux']['flux'] for i in bf['bands']]
+        bandfits_flux_err = [ i['flux']['flux_err'] for i in bf['bands']]
+        bandfits_flux_upper_limit = [ i['upper_limit']['flux'] for i in bf['bands']]
+
+        bandfits_energy_flux = [ i['flux']['eflux'] for i in bf['bands']]
+        bandfits_energy_flux_err = [ i['flux']['eflux_err'] for i in bf['bands']]
+        bandfits_energy_flux_upper_limit = [ i['upper_limit']['eflux'] for i in bf['bands']]
+
+        bandfits_prefactor = [ i['spectrum']['Prefactor'] for i in bf['bands']]
+        bandfits_prefactor_err = [ i['spectrum']['Prefactor_err'] for i in bf['bands']]
+        
+        bandfits_index = [ -1*i['spectrum']['Index'] for i in bf['bands']]
+        bandfits_index_err = [ np.abs(i['spectrum']['Index_err']) for i in bf['bands']]
+
+        d['bandfits_ts'] = bandfits_ts
+        d['bandfits_lower_energy'] = bandfits_lower_energy
+        d['bandfits_upper_energy'] = bandfits_upper_energy
+        d['bandfits_middle_energy'] = bandfits_middle_energy
+
+        if source_class in ['Confused', 'Pulsar', 'PWN']:
+            significant = (bandfits_ts >= 25)
+            d['bandfits_flux'] = np.where(significant,bandfits_flux,np.nan)
+            d['bandfits_flux_err'] = np.where(significant,bandfits_flux_err,np.nan)
+            d['bandfits_flux_upper_limit'] = np.where(~significant,bandfits_flux_upper_limit,np.nan)
+
+            d['bandfits_energy_flux'] = np.where(significant,bandfits_energy_flux,np.nan)
+            d['bandfits_energy_flux_err'] = np.where(significant,bandfits_energy_flux_err,np.nan)
+            d['bandfits_energy_flux_upper_limit'] = np.where(~significant,bandfits_energy_flux_upper_limit,np.nan)
+
+            d['bandfits_prefactor'] = np.where(significant,bandfits_prefactor,np.nan)
+            d['bandfits_prefactor_err'] = np.where(significant,bandfits_prefactor_err,np.nan)
+            
+            d['bandfits_index'] = np.where(significant,bandfits_index,np.nan)
+            d['bandfits_index_err'] = np.where(significant,bandfits_index_err,np.nan)
+        else:
+            array_from = lambda x: np.asarray([x]*len(bandfits_ts))
+
+            d['bandfits_flux'] = array_from(np.nan) 
+            d['bandfits_flux_err'] = array_from(np.nan) 
+            d['bandfits_flux_upper_limit'] = bandfits_flux_upper_limit
+
+            d['bandfits_energy_flux'] = array_from(np.nan) 
+            d['bandfits_energy_flux_err'] = array_from(np.nan) 
+            d['bandfits_energy_flux_upper_limit'] = bandfits_energy_flux_upper_limit
+
+            d['bandfits_prefactor'] = array_from(np.nan) 
+            d['bandfits_prefactor_err'] = array_from(np.nan) 
+            
+            d['bandfits_index'] = array_from(np.nan) 
+            d['bandfits_index_err'] = array_from(np.nan) 
 
         return d
 

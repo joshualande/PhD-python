@@ -31,24 +31,25 @@ def spatial_spectral_table(pwndata, pwnphase, fitdir, savedir, pwn_classificatio
     table = OrderedDefaultDict(list)
 
     psr_name='PSR'
-    classification_name = 'Classification'
+    classification_name = 'Type'
     phase_name='Off Peak'
     if table_type == 'confluence':
         ts_point_name='TS_point'
         ts_ext_name='TS_ext'
         ts_cutoff_name = 'TS_cutoff'
-        flux_name = 'F_(0.1-316)'
+        flux_name = 'G_(0.1-316)'
         index_name = 'Gamma'
         cutoff_name = 'E_cutoff'
     elif table_type == 'latex':
         ts_point_name=r'$\ts_\text{point}$'
         ts_ext_name=r'$\tsext$'
         ts_cutoff_name = r'$\ts_\text{cutoff}$'
-        flux_name = r'$F_{0.1-316}$'
+        flux_name = r'$G_{0.1-316}$'
         index_name = r'$\Gamma$'
         cutoff_name = r'$E_\text{cutoff}$'
 
     pwnlist = loader.get_pwnlist()
+    #pwnlist = pwnlist[10:20]
 
     for pwn in pwnlist:
         print pwn
@@ -74,20 +75,20 @@ def spatial_spectral_table(pwndata, pwnphase, fitdir, savedir, pwn_classificatio
 
             table[psr_name].append(format.pwn(pwn))
             table[phase_name].append(phase.pretty_format())
-            table[classification_name].append(r['source_class'])
+            table[classification_name].append(r['abbreviated_source_class'])
 
             table[ts_point_name].append(format.value(r['ts_point'],precision=1))
             table[ts_ext_name].append(format.value(r['ts_ext'],precision=1))
             table[ts_cutoff_name].append(format.value(r['ts_cutoff'],precision=1))
 
-            table[flux_name].append(format.error(r['flux']/1e-9,r['flux_err']/1e-9))
+            table[flux_name].append(format.error(r['energy_flux']/1e-12,r['energy_flux_err']/1e-12))
             if r['spectral_model'] in ['PowerLaw','PLSuperExpCutoff']:
                 table[index_name].append(format.error(r['index'],r['index_err']))
             else:
                 table[index_name].append(format.nodata)
 
             if r['spectral_model'] == 'PLSuperExpCutoff':
-                table[cutoff_name].append(format.error(r['cutoff'],r['cutoff_err']))
+                table[cutoff_name].append(format.error(r['cutoff'],r['cutoff_err'], precision=0))
             else:
                 table[cutoff_name].append(format.nodata)
 
@@ -96,14 +97,14 @@ def spatial_spectral_table(pwndata, pwnphase, fitdir, savedir, pwn_classificatio
     if table_type == 'confluence':
         writer.write_confluence(
                          units={
-                             flux_name:r'(10^-9 erg cm^-2 s^-1)',
+                             flux_name:r'(10^-12 erg cm^-2 s^-1)',
                              cutoff_name:r'(MeV)',
                          })
     elif table_type == 'latex':
         writer.write_latex(
                     preamble=r'\tabletypesize{\tiny}',
                     units={
-                        flux_name:r'($10^{-9}$\ erg\,cm$^{-2}$\,s$^{-1}$)',
+                        flux_name:r'($10^{-12}$\ erg\,cm$^{-2}$\,s$^{-1}$)',
                         cutoff_name:r'(MeV)',
                     },
                    )
