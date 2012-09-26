@@ -193,6 +193,8 @@ class GtlikeBandFitter(BandFitter):
                                          flux_units=self.flux_units,
                                          energy_units=self.energy_units,
                                          upper_limit_kwargs=self.upper_limit_kwargs,
+                                         include_prefactor=True,
+                                         prefactor_energy=e_middle,
                                          verbosity=self.verbosity)
             r['upper_limit'] = g.todict()
 
