@@ -12,7 +12,7 @@ from uw.utilities import keyword_options
 from lande.fermi.likelihood.fit import fit_prefactor 
 from lande.fermi.likelihood.save import get_full_energy_range, spectrum_to_dict
 
-from lande.fermi.spectra.pointlike import pointlike_sed_to_dict
+from lande.fermi.spectra.pointlike import PointlikeSED
 from lande.fermi.spectra.sed import SED
 
 from lande.utilities.tools import tolist
@@ -72,7 +72,8 @@ class ComprehensiveTest(object):
         if not self.quiet:
             print roi
 
-        self.sed_points = pointlike_sed_to_dict(roi.plot_sed(which=which))
+        sed = PointlikeSED(roi,name=which)
+        self.sed_points = sed.todict()
 
         # TODO, get SED points
 
