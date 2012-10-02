@@ -6,8 +6,6 @@ import atpy
 
 from skymaps import SkyDir
 
-from uw.pulsar.phase_range import PhaseRange
-
 from lande.utilities.tools import OrderedDefaultDict
 
 from . writer import TableWriter
@@ -15,18 +13,17 @@ from lande.fermi.pipeline.pwncat2.interp.classify import PWNClassifier,PWNManual
 from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
-def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
-
-    pwnphase = yaml.load(open(expandvars(pwnphase)))
+def auxiliary_table(pwndata, phase_shift, fitdir, filename, pwn_classification):
 
     loader = PWNResultsLoader(
         pwndata=pwndata,
-        fitdir=fitdir)
+        fitdir=fitdir,
+        phase_shift=phase_shift)
 
     classifier = PWNManualClassifier(loader=loader, pwn_classification=pwn_classification)
 
     pwnlist = loader.get_pwnlist()
-    pwnlist = pwnlist[10:20]
+    #pwnlist = pwnlist[10:20]
 
     npwn = len(pwnlist)
 
@@ -55,7 +52,6 @@ def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
 
 
     # Phase Stuff
-
     off_peak_min_name=add_float('Off_Peak_Min')
     off_peak_max_name=add_float('Off_Peak_Max')
     second_off_peak_min_name=add_float('Second_Off_Peak_Min')
@@ -74,6 +70,7 @@ def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
     energy_units = 'MeV'
     energy_flux_units = 'erg/cm^2/s'
     flux_units = 'ph/cm^2/s'
+    prefactor_units = 'ph/cm^2/s/erg'
 
     energy_flux_name = add_float('Energy_Flux', unit=energy_flux_units)
     energy_flux_err_name = add_float('Energy_Flux_Error', unit=energy_flux_units)
@@ -81,8 +78,8 @@ def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
     flux_name = add_float('Flux', unit=flux_units)
     flux_err_name = add_float('Flux_Error', unit=flux_units)
 
-    prefactor_name = add_float('Prefactor', unit='ph/cm^2/s/MeV')
-    prefactor_err_name = add_float('prefactor_Error', unit='ph/cm^2/s/MeV')
+    prefactor_name = add_float('Prefactor', unit=prefactor_units)
+    prefactor_err_name = add_float('prefactor_Error', unit=prefactor_units)
 
     normalization_name = add_float('Normalization')
     normalization_err_name = add_float('Normalization_Error')
@@ -142,8 +139,8 @@ def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
     bandfits_energy_flux_err_name = add_vector_float('Bandfits_energy_flux_Error', size=bandfits_size, unit=energy_flux_units)
     bandfits_energy_flux_upper_limit_name = add_vector_float('Bandfits_energy_flux_upper_limit', size=bandfits_size, unit=energy_flux_units)
 
-    bandfits_prefactor_name = add_vector_float('Bandfits_Prefactor', size=bandfits_size, unit='ph/cm^2/s/MeV')
-    bandfits_prefactor_err_name = add_vector_float('Bandfits_Prefactor_Error', size=bandfits_size, unit='ph/cm^2/s/MeV')
+    bandfits_prefactor_name = add_vector_float('Bandfits_Prefactor', size=bandfits_size, unit=prefactor_units)
+    bandfits_prefactor_err_name = add_vector_float('Bandfits_Prefactor_Error', size=bandfits_size, unit=prefactor_units)
     
     bandfits_index_name = add_vector_float('Bandfits_Index', size=bandfits_size)
     bandfits_index_err_name = add_vector_float('Bandfits_Index_Error', size=bandfits_size)
@@ -151,13 +148,11 @@ def auxiliary_table(pwndata, pwnphase, fitdir, filename, pwn_classification):
     for i,pwn in enumerate(pwnlist):
         print pwn
 
-        phase=PhaseRange(pwnphase[pwn]['phase'])
-
         r = classifier.get_results(pwn)
 
         if r is None: continue
 
-        phase=PhaseRange(pwnphase[pwn]['phase'])
+        phase=r['shifted_phase']
 
         table[psr_name][i]=pwn
 
