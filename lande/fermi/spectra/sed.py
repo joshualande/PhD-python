@@ -117,8 +117,6 @@ class SED(BaseFitter):
              spectral_error_kwargs=dict(),
             ):
 
-        edict = units.fromstring(self.results['Energy'])
-        file_energy_units = units.fromstring(edict['Units'])
         if axes is None:
             fig = P.figure(fignum,figsize)
             axes = SpectralAxes(fig=fig, 
@@ -127,17 +125,20 @@ class SED(BaseFitter):
                                 energy_units=self.energy_units)
             fig.add_axes(axes)
 
+            edict = units.fromstring(self.results['Energy'])
+            file_energy_units = units.fromstring(edict['Units'])
+
             if 'Lower' in edict and 'Upper' in edict:
                 axes.set_xlim_units(edict['Lower'][0]*file_energy_units, edict['Upper'][-1]*file_energy_units)
             else:
                 axes.set_xlim_units(edict['Energy'][0]*file_energy_units, edict['Energy'][-1]*file_energy_units)
 
-            self.plot_points(axes=axes, **data_kwargs)
+        self.plot_points(axes=axes, **data_kwargs)
 
-            if plot_spectral_fit:
-                self.plot_spectral_fit(axes=axes, **spectral_kwargs)
-            if plot_spectral_error:
-                self.plot_spectral_error(axes=axes, **spectral_error_kwargs)
+        if plot_spectral_fit:
+            self.plot_spectral_fit(axes=axes, **spectral_kwargs)
+        if plot_spectral_error:
+            self.plot_spectral_error(axes=axes, **spectral_error_kwargs)
 
         if title is not None: axes.set_title(title)
         if filename is not None: 
