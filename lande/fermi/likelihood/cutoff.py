@@ -62,11 +62,9 @@ class CutoffTester(BaseFitter):
             axes.set_xlim_units(energy['emin']*units.fromstring(energy['energy_units']), 
                                 energy['emax']*units.fromstring(energy['energy_units']))
 
-
-
         if sed_results is not None:
             sed = SED(sed_results)
-            sed.plot(axes=axes, plot_spectral_fit=False, plot_spectral_error=False, **sed_kwargs)
+            sed.plot_points(axes=axes, **sed_kwargs)
 
         sp = SpectrumPlotter(axes=axes)
         sp.plot(self.results['hypothesis_0']['spectrum'], 
