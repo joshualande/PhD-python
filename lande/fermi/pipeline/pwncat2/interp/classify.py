@@ -5,6 +5,8 @@ from os.path import expandvars
 import numpy as np
 import yaml
 
+from lande.pysed import units
+
 from . loader import PWNResultsLoader
 
 
@@ -85,6 +87,9 @@ class PWNClassifier(object):
 
         d = copy.copy(classifier)
 
+        d['raw_phase'] = results['raw_phase']
+        d['shifted_phase'] = results['shifted_phase']
+
         # likelihood stuff
 
         d['ts_point'] = max(point_gtlike['TS']['reoptimize'],0)
@@ -123,6 +128,8 @@ class PWNClassifier(object):
         d['cutoff'] = None
         d['cutoff_err'] = None
 
+        convert_prefactor = lambda x: units.convert(x, 'ph/cm^2/s/MeV', 'ph/cm^2/s/erg')
+
         if source_class != 'Upper_Limit':
 
             if spectral_model in ['PowerLaw','FileFunction']:
@@ -137,8 +144,8 @@ class PWNClassifier(object):
                 if spectral_model == 'PowerLaw':
 
                     # Note, prefactor is 
-                    d['prefactor'] = gtlike['spectrum']['Prefactor']
-                    d['prefactor_err'] = gtlike['spectrum']['Prefactor_err']
+                    d['prefactor'] = convert_prefactor(gtlike['spectrum']['Prefactor'])
+                    d['prefactor_err'] = convert_prefactor(gtlike['spectrum']['Prefactor_err'])
 
                     d['index'] = -1*gtlike['spectrum']['Index']
                     d['index_err'] = np.abs(gtlike['spectrum']['Index_err'])
@@ -161,8 +168,8 @@ class PWNClassifier(object):
                 assert h1['flux']['flux_units'] == 'ph/cm^2/s'
                 assert h1['flux']['eflux_units'] == 'erg/cm^2/s'
             
-                d['prefactor'] = h1['spectrum']['Prefactor']
-                d['prefactor_err'] = h1['spectrum']['Prefactor']
+                d['prefactor'] = convert_prefactor(h1['spectrum']['Prefactor'])
+                d['prefactor_err'] = convert_prefactor(h1['spectrum']['Prefactor'])
 
                 d['index'] = -1*h1['spectrum']['Index1']
                 d['index_err'] = np.abs(h1['spectrum']['Index1_err'])
@@ -271,8 +278,8 @@ class PWNClassifier(object):
         bandfits_energy_flux_err = [ i['flux']['eflux_err'] for i in bf['bands']]
         bandfits_energy_flux_upper_limit = [ i['upper_limit']['eflux'] for i in bf['bands']]
 
-        bandfits_prefactor = [ i['spectrum']['Prefactor'] for i in bf['bands']]
-        bandfits_prefactor_err = [ i['spectrum']['Prefactor_err'] for i in bf['bands']]
+        bandfits_prefactor = [ convert_prefactor(i['spectrum']['Prefactor']) for i in bf['bands']]
+        bandfits_prefactor_err = [ convert_prefactor(i['spectrum']['Prefactor_err']) for i in bf['bands']]
         
         bandfits_index = [ -1*i['spectrum']['Index'] for i in bf['bands']]
         bandfits_index_err = [ np.abs(i['spectrum']['Index_err']) for i in bf['bands']]

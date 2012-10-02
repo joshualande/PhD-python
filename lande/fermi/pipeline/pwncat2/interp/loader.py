@@ -1,6 +1,8 @@
 import yaml
 from os.path import expandvars, join, exists
 
+from uw.pulsar.phase_range import PhaseRange
+
 from lande.utilities.tools import merge_dict
 from lande.utilities.save import loaddict
 
@@ -11,9 +13,14 @@ class PWNResultsLoader(object):
 
     all_hypotheses = ['at_pulsar', 'point', 'extended']
 
-    def __init__(self, pwndata, fitdir, verbosity=True):
+    def __init__(self, pwndata, fitdir, phase_shift=None, verbosity=True):
         self.pwndata = expandvars(pwndata)
         self.fitdir = expandvars(fitdir)
+        if phase_shift is not None:
+            self.phase_shift = expandvars(phase_shift)
+        else:
+            self.phase_shift = None
+
         self.verbosity = verbosity
 
     def get_pwnlist(self):
@@ -71,7 +78,18 @@ class PWNResultsLoader(object):
                         else:
                             if require_all_exists:
                                 raise PWNResultsException("%s does not exist" % filename)
-            
+
+        
+        results['raw_phase'] = PhaseRange(results['phase'])
+
+        del results['phase'] # to avoid ambiguity
+
+        if self.phase_shift is not None:
+            from lande.utilities.load import import_module
+            ps=import_module(self.phase_shift)
+            shift = ps.master_list[pwn.replace('PSRJ','J')]['phaseShift']
+            results['shifted_phase'] = results['raw_phase'].offset(shift)
+
         return results
 
 
