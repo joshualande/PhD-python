@@ -385,7 +385,9 @@ def skydirdict(skydir):
         equ = [skydir.ra(),skydir.dec()]))
 
 def pointlike_ts_dict(roi, name):
-    return roi.TS(name,quick=False)
+    return dict(quick=roi.TS(name,quick=True),
+                noquick=roi.TS(name,quick=False)
+               )
 
 def pointlike_source_dict(roi, name, emin=None, emax=None, 
                           flux_units='erg', energy_units='MeV',
