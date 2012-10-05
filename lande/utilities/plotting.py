@@ -8,6 +8,7 @@ from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from matplotlib.patheffects import withStroke
 from mpl_toolkits.axes_grid.axes_grid import Grid, AxesGrid, ImageGrid
 import matplotlib.lines as mlines
+import matplotlib.transforms as mtransforms 
 
 
 from . arrays import nzip
@@ -44,13 +45,44 @@ def plot_ds9_contour(ax,contour,**kwargs):
             ra,dec=line.split()
             ras.append(float(ra)); decs.append(float(dec))
 
-def fix_axesgrid(grid):
-    """ Remove the ticks which overlap with nearby axes. """
-    if grid._direction != 'row': 
-        raise Exception("Not implemented")
 
-    if grid._refax is not None:
-        raise Exception("This function does not work for AxesGrids with share_all=True")
+def get_major_ticks_within_view_interval(axis): 
+    """ Function shamelessly taken from:
+            http://www.nabble.com/eliminating-the-top-tick-on-an-axis-to19446256.html#a19446256
+
+        but the return now is the locations, not the ticks
+        which seems to work better with AxesGrids.
+    """
+    interval = axis.get_view_interval() 
+
+    locs = [] 
+    for tick, loc in zip(axis.get_major_ticks(), 
+                         axis.get_major_locator()()): 
+        if mtransforms.interval_contains(interval, loc): 
+            locs.append(loc) 
+    return locs
+
+
+def fix_xaxesgrid(grid):
+    """ When you create an axesgrid which with no gap between the x and y plots,
+        there is always an overlaping tick. Remove the ticks which overlap with nearby axes. """
+    if grid._direction != 'row': raise Exception("Not implemented")
+    if grid._refax is not None: raise Exception("This function does not work for AxesGrids with share_all=True")
+
+    nrows,ncols=grid._nrows,grid._ncols
+
+    for row in range(nrows):
+        for col in range(ncols):
+            ax = grid[row*ncols + col]
+            if col != ncols-1 and row==nrows-1:
+                ticks=get_major_ticks_within_view_interval(ax.xaxis)
+                ax.set_xticks(ticks[:-1])
+
+def fix_yaxesgrid(grid):
+    """ When you create an axesgrid which with no gap between the x and y plots,
+        there is always an overlaping tick. Remove the ticks which overlap with nearby axes. """
+    if grid._direction != 'row': raise Exception("Not implemented")
+    if grid._refax is not None: raise Exception("This function does not work for AxesGrids with share_all=True")
 
     nrows,ncols=grid._nrows,grid._ncols
 
@@ -58,9 +90,12 @@ def fix_axesgrid(grid):
         for col in range(ncols):
             ax = grid[row*ncols + col]
             if row != 0 and col==0:
-                ax.set_yticks(ax.get_yticks()[0:-1])
-            if col != ncols-1 and row==nrows-1:
-                ax.set_xticks(ax.get_xticks()[0:-1])
+                ticks=get_major_ticks_within_view_interval(ax.yaxis)
+                ax.set_yticks(ticks[:-1])
+
+def fix_axesgrid(grid):
+    fix_xaxesgrid(grid)
+    fix_yaxesgrid(grid)
 
 
 def label_axes(plots, stroke=True, **kwargs):
