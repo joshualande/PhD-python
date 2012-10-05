@@ -1,7 +1,10 @@
 import collections
 
 import numpy as np
-from matplotlib.axes import Axes
+# not sure why, but works better than matplotlib.axes.Axes
+# when using mpl_toolkits.axes_grid.axes_grid.,Grid
+from mpl_toolkits.axisartist import HostAxes
+
 
 import pyLikelihood
 
@@ -17,10 +20,10 @@ from . load import dict_to_spectrum
 class SEDException(Exception): 
     pass
 
-class SpectralAxes(Axes):
-    def __init__(self, energy_units='MeV', flux_units='erg', *args, **kwargs):
-        self.energy_units = energy_units
-        self.flux_units = flux_units
+class SpectralAxes(HostAxes):
+    def __init__(self, *args, **kwargs):
+        self.energy_units = kwargs.pop('energy_units', 'MeV')
+        self.flux_units = kwargs.pop('flux_units', 'erg')
 
         self.energy_units_obj = units.fromstring(self.energy_units)
         self.flux_units_obj = units.fromstring(self.flux_units)

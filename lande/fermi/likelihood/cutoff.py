@@ -202,7 +202,7 @@ class PointlikeCutoffTester(CutoffTester):
                                         verbosity=self.verbosity)
 
 
-        d['TS_cutoff']=2*(d['hypothesis_1']['TS']-d['hypothesis_0']['TS'])
+        d['TS_cutoff']=2*(d['hypothesis_1']['TS']['noquick']-d['hypothesis_0']['TS']['noquick'])
 
         saved_state.restore()
 
