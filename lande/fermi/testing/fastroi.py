@@ -46,8 +46,8 @@ class FastROI(object):
         ('isotropic_bg',False, 'simulate on top of an isotropic background'),
         ('nearby_source',False, ''),
         ('conv_type',0),
-        ('point_sources',None),
-        ('diffuse_sources',None),
+        ('point_sources',[]),
+        ('diffuse_sources',[]),
         ('powerlaw_index',2),
     )
 
@@ -55,16 +55,14 @@ class FastROI(object):
     def __init__(self,**kwargs):
         keyword_options.process(self, kwargs)
 
-        if self.point_sources is None and self.diffuse_sources is None:
+        if self.point_sources == [] and self.diffuse_sources == []:
             self.point_sources, self.diffuse_sources = self.get_default_sources()
-        else:
-            if self.point_sources is None: self.point_sources=[]
 
         ltcube = join(self.tempdir,'ltcube.fits')
         ds = DataSpecification(
             ft1files = join(self.tempdir,'ft1.fits'),
             ft2files = join(self.tempdir,'ft2.fits'),
-            ltcube = ltcube,
+            ltcube = ltcube, 
             binfile = join(self.tempdir,'binfile.fits')
         )
 
@@ -117,8 +115,6 @@ class FastROI(object):
                 skydir = SkyDir(self.roi_dir.ra(),self.roi_dir.dec()+3)
             )
             point_sources.append(ps)
-
-        if diffuse_sources == []: diffuse_sources = None
 
         return point_sources, diffuse_sources
 
