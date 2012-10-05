@@ -5,7 +5,7 @@ from os.path import expandvars
 import pylab as P
 from matplotlib import rc
 
-from . tools import parse_strip_known_args
+from . argumentparsing import parse_strip_known_args
 
 def set_latex_defaults():
     rc('ps',usedistiller='xpdf')
