@@ -9,10 +9,11 @@ from uw.like.Models import PowerLaw
 from lande.utilities.tools import tolist
 from uw.utilities import keyword_options
 
-from lande.fermi.likelihood.save import name_to_spectral_dict, ts_dict, flux_dict, powerlaw_prefactor_dict, energy_dict
+from lande.fermi.likelihood.save import name_to_spectral_dict, ts_dict, flux_dict, powerlaw_prefactor_dict, energy_dict, get_background, get_sources
 from lande.fermi.likelihood.superstate import SuperState
 from lande.fermi.likelihood.models import build_gtlike_spectrum, build_pointlike_model
-from lande.fermi.likelihood.fit import paranoid_gtlike_fit
+from lande.fermi.likelihood.fit import paranoid_gtlike_fit, allow_fit_only_prefactor
+from lande.fermi.likelihood.modify import modify
 from lande.fermi.likelihood.limits import GtlikePowerLawUpperLimit
 from lande.fermi.likelihood.printing import summary
 
@@ -32,12 +33,9 @@ class GtlikeSED(SED):
         
         """
     defaults = SED.defaults + (
-        ('bin_edges',            None, 'if specified, calculate the SED in these bins.'),
-        ('freeze_background',    True, "don't refit background sources."),
-        ('reoptimize_ts',       False, """ reoptimize the background model in the null hypothesis
-                                           when calculating the TS. By default, don't do the 
-                                           reoptimization. Note that this flag
-                                           only makes sense when freeze_background=False"""),
+        ('bin_edges',            None, 'If specified, calculate the SED in these bins.'),
+        ('freeze_bg_diffuse',    True, "If True, freeze diffuse background sources during the fit. If False, freeze only their spectra."),
+        ('freeze_bg_sources',    True, "if True, freeze background sources during the fit. If False, freeze only their spectra."),
         ('ul_algorithm',   'bayesian', "choices = 'frequentist', 'bayesian'"),
         ('powerlaw_index',          2, "fixed spectral index to assume when computing SED."),
         ('min_ts',                  4,"minimum ts in which to quote a SED points instead of an upper limit."),
@@ -57,9 +55,6 @@ class GtlikeSED(SED):
 
         if self.ul_algorithm not in BaseGtlikeSED.ul_choices:
             raise Exception("Upper Limit Algorithm %s not in %s" % (self.ul_algorithm,str(BaseGtlikeSED.ul_choices)))
-
-        if self.reoptimize_ts and self.freeze_background:
-            raise Exception("The reoptimize_ts=True flag should only be set when freeze_background=False")
 
         if self.bin_edges is not None:
             if not BaseGtlikeSED.good_binning(like, self.bin_edges):
@@ -106,11 +101,21 @@ class GtlikeSED(SED):
         
         saved_state = SuperState(like)
 
-        if self.freeze_background:
-            if self.verbosity: print 'Freezeing all parameters'
-            # freeze all other sources
-            for i in range(len(like.model.params)):
-                like.freeze(i)
+        if self.verbosity: print 'Freezing background sources'
+        for name in get_background(like):
+                if self.freeze_bg_diffuse:
+                    if self.verbosity: print ' * Freezing diffuse source %s' % name
+                    modify(like, name, free=False)
+                else:
+                    if self.verbosity: print ' * Freezing spectral shape for diffuse soruce %s' % name
+                    modify(like, name, freeze_spectral_shape=True)
+        for name in get_sources(like):
+            if self.freeze_bg_sources:
+                if self.verbosity: print ' * Freezing bg source %s' % name
+                modify(like, name, free=False)
+            else:
+                if self.verbosity: print ' * Freezing spectral shape for bg soruce %s' % name
+                modify(like, name, freeze_spectral_shape=True)
 
         self.raw_results = []
         for i,(lower,upper) in enumerate(zip(self.lower,self.upper)):
@@ -136,7 +141,6 @@ class GtlikeSED(SED):
             model.freeze('index')
             spectrum = build_gtlike_spectrum(model)
 
-            spectrum = build_gtlike_spectrum(model)
             like.setSpectrum(name,spectrum)
             like.syncSrcParams(name)
 
