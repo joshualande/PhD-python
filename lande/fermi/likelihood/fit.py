@@ -13,6 +13,7 @@ from . superstate import SuperState
 from . save import logLikelihood
 from . tools import gtlike_or_pointlike
 from . printing import summary
+from . modify import modify
 
 class FitterException(Exception): pass
 
@@ -82,7 +83,7 @@ def paranoid_gtlike_fit(like, covar=True, niter=1, verbosity=False):
 def gtlike_allow_fit_only_prefactor(like, name):
     """ Freeze everything but norm of source with name
         in pyLikelihood object. """
-    gtlike_modify(like, name, free=False)
+    modify(like, name, free=False)
     par = like.normPar(name)
     par.setFree(True)
     like.syncSrcParams(name)
@@ -129,28 +130,6 @@ fit_only_source = pointlike_fit_only_source
 
 def allow_fit_only_prefactor(*args, **kwargs):
     return gtlike_or_pointlike(gtlike_allow_fit_only_prefactor, pointlike_allow_fit_only_prefactor, *args, **kwargs)
-
-def gtlike_modify(like, name, free=True):
-    """ Freeze a source in a gtlike ROI. 
-    
-        The method for modifying the ROI
-        follows the code in SuperState.py 
-        
-        I am not sure why the modificaiton
-        has to be done in this particular way. """
-    from pyLikelihood import StringVector
-
-    source = like.logLike.getSource(name)
-    spectrum = like[name].src.spectrum()
-
-    parNames = StringVector()
-    spectrum.getParamNames(parNames)
-    for parName in parNames:
-        index = like.par_index(name, parName)
-        par = like.params()[index]
-        par.setFree(free)
-
-    like.syncSrcParams(name)
 
 
 

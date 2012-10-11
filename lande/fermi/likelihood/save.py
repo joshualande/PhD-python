@@ -570,9 +570,11 @@ def gtlike_get_covariance_matrix(like, name):
 
         # create absolute covariance matrix:
         cov_matrix = scales_transpose * cov_matrix * scales
-    except Exception, ex:
-        print 'ERROR unable to obtain covariance matrix for source %s:' % name, ex
-        traceback.print_exc(file=sys.stdout)
+    except RuntimeError, ex:
+        if ex.message == 'Covariance matrix has not been computed.':
+            pass
+        else: 
+            raise ex
 
     return tolist(cov_matrix)
 

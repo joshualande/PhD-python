@@ -33,7 +33,8 @@ from roi_gtlike import Gtlike
 from lande.utilities.tools import tolist
 from lande.utilities.plotting import plot_points
 
-from . fit import paranoid_gtlike_fit, gtlike_modify
+from . fit import paranoid_gtlike_fit
+from . modify import modify
 from . save import flux_dict, diffuse_dict, get_background, get_sources, source_dict
 from . limits import GtlikeUpperLimit, PointlikeUpperLimit
 from . fit import allow_fit_only_prefactor
@@ -120,13 +121,13 @@ class VariabilityTester(BaseFitter):
 
 class CombinedVariabilityTester(VariabilityTester):
     """ Code to compute varability for for a pointlike ROI
-    using the method described in 2FGL:
+        using the method described in 2FGL:
 
-        arXiv:1108.1435v1
+            arXiv:1108.1435v1
 
-    A nice description of this method is:
+        A nice description of this method is:
 
-        https://confluence.slac.stanford.edu/display/SCIGRPS/How+to+-+Variability+test
+            https://confluence.slac.stanford.edu/display/SCIGRPS/How+to+-+Variability+test
     """
 
     f = 0.02
@@ -144,12 +145,15 @@ class CombinedVariabilityTester(VariabilityTester):
         ("refit_background",      True, """ Fit the background sources in each energy bin."""),
         ("refit_other_sources",   True, """ Fit other sources in each energy bin. """),
         ("use_pointlike_ltcube", False, """ Make the ltcubes with pointlike. """),
+        ("nbins",                 None, """ Specify the number of time bins (the time range is
+                                            taken from the ft1 file)"""),
+        ("tstarts",               None, """ Specify an array of start times. """),
+        ("tstops",                None, """ Specify an array of stop times. """),
     )
 
     @keyword_options.decorate(defaults)
-    def __init__(self, roi, name, nbins, *args, **kwargs):
+    def __init__(self, roi, name, *args, **kwargs):
         self.roi = roi
-        self.nbins = nbins
         keyword_options.process(self, kwargs)
 
         self.pointlike_fit_kwargs = dict(use_gradient=False)
@@ -180,16 +184,35 @@ class CombinedVariabilityTester(VariabilityTester):
     def _setup_time_bins(self):
         roi = self.roi
 
+        if self.nbins is None and (self.tstarts is None and self.tstops is None):
+            raise Exception("Must specify nbins or tstarts and tstops")
+        if self.nbins is not None and (self.tstarts is not None and self.tstops is not None):
+            raise Exception("Must not specify both nbins or tstarts and tstops")
+        if self.tstarts is None and self.tstops is not None or self.tstarts is not None and self.tstops is None:
+            raise Exception("Must specify both tsarts and tstops")
+
         # Divide into several time bins
         ft1files=roi.sa.pixeldata.ft1files
         self.earliest_time, self.latest_time = CombinedVariabilityTester.get_time_range(ft1files)
 
-        # round to nearest second, for simplicity
         self.time = dict()
-        self.time['bins'] = b = np.round(np.linspace(self.earliest_time, self.latest_time, self.nbins+1)).astype(int)
-        self.time['starts'] = b[:-1]
-        self.time['stops'] = b[1:]
+        if self.nbins is not None:
+            # round to nearest second, for simplicity
+            b = np.round(np.linspace(self.earliest_time, self.latest_time, self.nbins+1)).astype(int)
+            starts = b[:-1]
+            stops = b[1:]
+        elif self.tstarts is not None and self.tstops is not None:
+            assert len(self.tstarts) == len(self.tstops)
+            self.nbins = len(self.tstarts)
+            starts = self.tstarts
+            stops = self.tstops
 
+        self.time['starts']  = np.asarray(starts, dtype=int)
+        self.time['stops'] = np.asarray(stops, dtype=int)
+
+        if self.verbosity:
+            print 'variability time starts:',self.time['starts']
+            print 'variability time stops:',self.time['stops']
 
     def all_time_fit(self):
         if self.verbosity: print 'First, computing best all-time parameters'
@@ -308,11 +331,11 @@ class CombinedVariabilityTester(VariabilityTester):
 
         if not self.refit_background:
             for source in get_background(like):
-                gtlike_modify(like, source, free=False)
+                modify(like, source, free=False)
 
         if not self.refit_other_sources:
             for source in get_sources(like):
-                gtlike_modify(like,source, free=False)
+                modify(like,source, free=False)
 
         if self.verbosity: print 'Performing gtlike spectral analyis with source of interest frozen'
 
@@ -322,7 +345,7 @@ class CombinedVariabilityTester(VariabilityTester):
                 print summary(like)
 
         # Freeze source of interest
-        gtlike_modify(like, name, free=False)
+        modify(like, name, free=False)
 
         p('Before')
         paranoid_gtlike_fit(like, verbosity=self.verbosity)
