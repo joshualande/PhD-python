@@ -94,28 +94,28 @@ class GtlikeSED(SED):
         # Freeze all sources except one to make sed of.
         all_sources = like.sourceNames()
 
-        if name not in all_sources:
-            raise Exception("Cannot find source %s in list of sources" % name)
+        if other_name not in all_sources:
+            raise Exception("Cannot find source %s in list of sources" % other_name)
 
         # make copy of parameter values + free parameters
         
         saved_state = SuperState(like)
 
         if self.verbosity: print 'Freezing background sources'
-        for name in get_background(like):
+        for other_name in get_background(like):
                 if self.freeze_bg_diffuse:
-                    if self.verbosity: print ' * Freezing diffuse source %s' % name
-                    modify(like, name, free=False)
+                    if self.verbosity: print ' * Freezing diffuse source %s' % other_name
+                    modify(like, other_name, free=False)
                 else:
-                    if self.verbosity: print ' * Freezing spectral shape for diffuse soruce %s' % name
-                    modify(like, name, freeze_spectral_shape=True)
-        for name in get_sources(like):
+                    if self.verbosity: print ' * Freezing spectral shape for diffuse source %s' % other_name
+                    modify(like, other_name, freeze_spectral_shape=True)
+        for other_name in get_sources(like):
             if self.freeze_bg_sources:
-                if self.verbosity: print ' * Freezing bg source %s' % name
-                modify(like, name, free=False)
+                if self.verbosity: print ' * Freezing bg source %s' % other_name
+                modify(like, other_name, free=False)
             else:
-                if self.verbosity: print ' * Freezing spectral shape for bg soruce %s' % name
-                modify(like, name, freeze_spectral_shape=True)
+                if self.verbosity: print ' * Freezing spectral shape for bg source %s' % other_name
+                modify(like, other_name, freeze_spectral_shape=True)
 
         self.raw_results = []
         for i,(lower,upper) in enumerate(zip(self.lower,self.upper)):
