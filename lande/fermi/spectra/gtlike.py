@@ -94,8 +94,8 @@ class GtlikeSED(SED):
         # Freeze all sources except one to make sed of.
         all_sources = like.sourceNames()
 
-        if other_name not in all_sources:
-            raise Exception("Cannot find source %s in list of sources" % other_name)
+        if name not in all_sources:
+            raise Exception("Cannot find source %s in list of sources" % name)
 
         # make copy of parameter values + free parameters
         
