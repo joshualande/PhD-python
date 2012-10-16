@@ -19,6 +19,7 @@ class PWNResultsLoader(object):
         if phase_shift is not None:
             self.phase_shift = expandvars(phase_shift)
         else:
+            print 'WARNING: PHASE SHIFT IS NONE'
             self.phase_shift = None
 
         self.verbosity = verbosity
@@ -43,7 +44,9 @@ class PWNResultsLoader(object):
         filename = join(self.fitdir,pwn,'results_%s_general.yaml' % pwn)
         if verbosity or (verbosity is None and self.verbosity):
             print 'Getting results for %s' % pwn
-        if not exists(filename): return None
+
+        if not exists(filename): 
+            raise PWNResultsException("%s does not exist" % filename)
 
         results = loaddict(filename)
         for hypothesis in self.all_hypotheses:

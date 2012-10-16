@@ -236,11 +236,40 @@ class Pipeline(object):
         name = self.name
         roi = self.reload_roi(hypothesis)
 
+        modify = import_module(self.modify)
+        good_interval = modify.get_variability_time_cuts(name)
+
+        nbins=36
+
+        if good_interval is not None:
+            ft1files=roi.sa.pixeldata.ft1files
+            earliest_time, latest_time = CombinedVariabilityTester.get_time_range(ft1files)
+            bins = b = np.round(np.linspace(earliest_time, latest_time, nbins+1)).astype(int)
+            starts  = b[:-1]
+            stops = b[1:]
+
+            print 'Initial binning:'
+            print ' * starts=',starts
+            print ' * stops=',stops
+
+            starts,stops = zip(*[(start,stop) \
+                                for (start,stop) in zip(starts,stops) \
+                                if good_interval(start,stop)])
+
+            print 'Initial binning:'
+            print ' * starts=',starts
+            print ' * stops=',stops
+
+            kwargs=dict(tstarts=starts, tstops=stops)
+        else:
+            kwargs=dict(nbins=nbins)
+
+
         frozen  = freeze_far_away(roi, roi.get_source(name).skydir, self.max_free)
-        v = CombinedVariabilityTester(roi,name, nbins=36, 
+        v = CombinedVariabilityTester(roi,name, 
                                       use_pointlike_ltcube=True, refit_background=True, 
                                       refit_other_sources=True,
-                                      verbosity=4)
+                                      verbosity=4, **kwargs)
         unfreeze_far_away(roi, frozen)
 
         results = v.todict()

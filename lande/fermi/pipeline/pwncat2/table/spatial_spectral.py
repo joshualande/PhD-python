@@ -9,11 +9,13 @@ from lande.utilities.tools import OrderedDefaultDict
 
 from . writer import TableWriter
 from . format import PWNFormatter
-from lande.fermi.pipeline.pwncat2.interp.classify import PWNManualClassifier
+from lande.fermi.pipeline.pwncat2.interp.classify import PWNManualClassifier, PWNClassifierException
 from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
-def spatial_spectral_table(pwndata, phase_shift, fitdir, savedir, pwn_classification, filebase, table_type):
+def spatial_spectral_table(pwndata, 
+                           #phase_shift, 
+                           fitdir, savedir, pwn_classification, filebase, table_type):
     assert table_type in ['latex', 'confluence']
 
     format=PWNFormatter(table_type=table_type, precision=2)
@@ -21,7 +23,8 @@ def spatial_spectral_table(pwndata, phase_shift, fitdir, savedir, pwn_classifica
     loader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir,
-        phase_shift=phase_shift)
+        #phase_shift=phase_shift
+        )
 
     classifier = PWNManualClassifier(loader=loader, pwn_classification=pwn_classification)
 
@@ -51,24 +54,14 @@ def spatial_spectral_table(pwndata, phase_shift, fitdir, savedir, pwn_classifica
     for pwn in pwnlist:
         print pwn
 
-        r = classifier.get_results(pwn)
+        try:
+            r = classifier.get_results(pwn)
 
-        if r is None:
-            print 'Skipping %s' % pwn
-            table[psr_name].append(format.pwn(pwn))
-            table[phase_name].append('None')
-            table[classification_name].append('None')
-            table[ts_point_name].append('None')
-            table[ts_ext_name].append('None')
-            table[ts_cutoff_name].append('None')
-            table[flux_name].append('None')
-            table[index_name].append('None')
-            table[cutoff_name].append('None')
-        else:
             if r['source_class'] == 'Upper_Limit': 
                 continue
 
-            phase=r['shifted_phase']
+            #phase=r['shifted_phase']
+            phase=r['raw_phase']
 
             table[psr_name].append(format.pwn(pwn))
             table[phase_name].append(phase.pretty_format(formatter=lambda x:'%.2f' % x))
@@ -89,6 +82,18 @@ def spatial_spectral_table(pwndata, phase_shift, fitdir, savedir, pwn_classifica
             else:
                 table[cutoff_name].append(format.nodata)
 
+        except PWNClassifierException, ex:
+            print 'Skipping %s: %s' % (pwn,ex)
+            table[psr_name].append(format.pwn(pwn))
+            table[phase_name].append('None')
+            table[classification_name].append('None')
+            table[ts_point_name].append('None')
+            table[ts_ext_name].append('None')
+            table[ts_cutoff_name].append('None')
+            table[flux_name].append('None')
+            table[index_name].append('None')
+            table[cutoff_name].append('None')
+
                 
     writer=TableWriter(table, savedir, filebase)
     if table_type == 'confluence':
@@ -101,7 +106,7 @@ def spatial_spectral_table(pwndata, phase_shift, fitdir, savedir, pwn_classifica
         writer.write_latex(
                     preamble=r'\tabletypesize{\tiny}',
                     units={
-                        flux_name:r'($10^{-9}$\ ph\,cm$^{-2}$\,s$^{-1}$)',
+                        flux_name:r'($10^{-9}\,\fluxunits$)',
                         cutoff_name:r'(GeV)',
                     },
                    )

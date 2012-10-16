@@ -9,16 +9,19 @@ from skymaps import SkyDir
 from lande.utilities.tools import OrderedDefaultDict
 
 from . writer import TableWriter
-from lande.fermi.pipeline.pwncat2.interp.classify import PWNClassifier,PWNManualClassifier
+from lande.fermi.pipeline.pwncat2.interp.classify import PWNClassifier,PWNManualClassifier, PWNClassifierException
 from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
-def auxiliary_table(pwndata, phase_shift, fitdir, filename, pwn_classification):
+def auxiliary_table(pwndata, 
+                    #phase_shift, 
+                    fitdir, filename, pwn_classification):
 
     loader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir,
-        phase_shift=phase_shift)
+        #phase_shift=phase_shift
+        )
 
     classifier = PWNManualClassifier(loader=loader, pwn_classification=pwn_classification)
 
@@ -72,14 +75,14 @@ def auxiliary_table(pwndata, phase_shift, fitdir, filename, pwn_classification):
     flux_units = 'ph/cm^2/s'
     prefactor_units = 'ph/cm^2/s/erg'
 
-    energy_flux_name = add_float('Energy_Flux', unit=energy_flux_units)
-    energy_flux_err_name = add_float('Energy_Flux_Error', unit=energy_flux_units)
+    energy_flux_name = add_float('EFlux', unit=energy_flux_units)
+    energy_flux_err_name = add_float('EFlux_Error', unit=energy_flux_units)
 
     flux_name = add_float('Flux', unit=flux_units)
     flux_err_name = add_float('Flux_Error', unit=flux_units)
 
     prefactor_name = add_float('Prefactor', unit=prefactor_units)
-    prefactor_err_name = add_float('prefactor_Error', unit=prefactor_units)
+    prefactor_err_name = add_float('Prefactor_Error', unit=prefactor_units)
 
     normalization_name = add_float('Normalization')
     normalization_err_name = add_float('Normalization_Error')
@@ -87,8 +90,8 @@ def auxiliary_table(pwndata, phase_shift, fitdir, filename, pwn_classification):
 
     scale_name = add_float('Scale', unit=energy_units)
 
-    index_name = add_float('Gamma')
-    index_err_name = add_float('Gamma_Error')
+    index_name = add_float('Index')
+    index_err_name = add_float('Index_Error')
 
     cutoff_name = add_float('Energy_Cutoff', unit=energy_units)
     cutoff_err_name = add_float('Energy_Cutoff_Error', unit=energy_units)
@@ -109,11 +112,11 @@ def auxiliary_table(pwndata, phase_shift, fitdir, filename, pwn_classification):
     extension_name = add_float('Extension', unit='deg')
     extension_err_name = add_float('Extension_Error', unit='deg')
 
-    powerlaw_flux_upper_limit_name = add_float('PowerLaw_Flux_Upper_Limit')
-    powerlaw_energy_flux_upper_limit_name =add_float('PowerLaw_Energy_Flux_Upper_Limit')
+    powerlaw_flux_upper_limit_name = add_float('PowerLaw_Flux_UL')
+    powerlaw_energy_flux_upper_limit_name =add_float('PowerLaw_EFlux_UL')
 
-    cutoff_flux_upper_limit_name = add_float('Cutoff_Flux_Upper_Limit')
-    cutoff_energy_flux_upper_limit_name =add_float('Cutoff_Energy_Flux_Upper_Limit')
+    cutoff_flux_upper_limit_name = add_float('Cutoff_Flux_UL')
+    cutoff_energy_flux_upper_limit_name =add_float('Cutoff_EFlux_UL')
 
     sed_size=14
     sed_ts_name = add_vector_float('SED_TS', size=sed_size)
@@ -123,36 +126,39 @@ def auxiliary_table(pwndata, phase_shift, fitdir, filename, pwn_classification):
     sed_prefactor_name = add_vector_float('SED_Prefactor', size=sed_size, unit='ph/cm^2/s/MeV')
     sed_prefactor_lower_err_name = add_vector_float('SED_Prefactor_Lower_Error', size=sed_size, unit='ph/cm^2/s/erg')
     sed_prefactor_upper_err_name = add_vector_float('SED_Prefactor_Upper_Error', size=sed_size, unit='ph/cm^2/s/erg')
-    sed_prefactor_upper_limit_name = add_vector_float('SED_Prefactor_Upper_Limit', size=sed_size, unit='ph/cm^2/s/erg')
+    sed_prefactor_upper_limit_name = add_vector_float('SED_Prefactor_UL', size=sed_size, unit='ph/cm^2/s/erg')
 
     bandfits_size = 3
-    bandfits_ts_name = add_vector_float('Bandfits_TS', size=bandfits_size)
-    bandfits_lower_energy_name = add_vector_float('Bandfits_Lower_Energy', size=bandfits_size, unit=energy_units)
-    bandfits_upper_energy_name = add_vector_float('Bandfits_Upper_Energy', size=bandfits_size, unit=energy_units)
-    bandfits_middle_energy_name = add_vector_float('Bandfits_Middle_Energy', size=bandfits_size, unit=energy_units)
+    bandfits_ts_name = add_vector_float('Band_TS', size=bandfits_size)
+    bandfits_lower_energy_name = add_vector_float('Band_Lower_Energy', size=bandfits_size, unit=energy_units)
+    bandfits_upper_energy_name = add_vector_float('Band_Upper_Energy', size=bandfits_size, unit=energy_units)
+    bandfits_middle_energy_name = add_vector_float('Band_Middle_Energy', size=bandfits_size, unit=energy_units)
 
-    bandfits_flux_name = add_vector_float('Bandfits_Flux', size=bandfits_size, unit=flux_units)
-    bandfits_flux_err_name = add_vector_float('Bandfits_Flux_Error', size=bandfits_size, unit=flux_units)
-    bandfits_flux_upper_limit_name = add_vector_float('Bandfits_Flux_Upper_Limit', size=bandfits_size, unit=flux_units)
+    bandfits_flux_name = add_vector_float('Band_Flux', size=bandfits_size, unit=flux_units)
+    bandfits_flux_err_name = add_vector_float('Band_Flux_Error', size=bandfits_size, unit=flux_units)
+    bandfits_flux_upper_limit_name = add_vector_float('Band_Flux_UL', size=bandfits_size, unit=flux_units)
 
-    bandfits_energy_flux_name = add_vector_float('Bandfits_energy_flux', size=bandfits_size, unit=energy_flux_units)
-    bandfits_energy_flux_err_name = add_vector_float('Bandfits_energy_flux_Error', size=bandfits_size, unit=energy_flux_units)
-    bandfits_energy_flux_upper_limit_name = add_vector_float('Bandfits_energy_flux_upper_limit', size=bandfits_size, unit=energy_flux_units)
+    bandfits_energy_flux_name = add_vector_float('Band_EFlux', size=bandfits_size, unit=energy_flux_units)
+    bandfits_energy_flux_err_name = add_vector_float('Band_EFlux_Error', size=bandfits_size, unit=energy_flux_units)
+    bandfits_energy_flux_upper_limit_name = add_vector_float('Band_EFlux_UL', size=bandfits_size, unit=energy_flux_units)
 
-    bandfits_prefactor_name = add_vector_float('Bandfits_Prefactor', size=bandfits_size, unit=prefactor_units)
-    bandfits_prefactor_err_name = add_vector_float('Bandfits_Prefactor_Error', size=bandfits_size, unit=prefactor_units)
+    bandfits_prefactor_name = add_vector_float('Band_Prefactor', size=bandfits_size, unit=prefactor_units)
+    bandfits_prefactor_err_name = add_vector_float('Band_Prefactor_Error', size=bandfits_size, unit=prefactor_units)
     
-    bandfits_index_name = add_vector_float('Bandfits_Index', size=bandfits_size)
-    bandfits_index_err_name = add_vector_float('Bandfits_Index_Error', size=bandfits_size)
+    bandfits_index_name = add_vector_float('Band_Index', size=bandfits_size)
+    bandfits_index_err_name = add_vector_float('Band_Index_Error', size=bandfits_size)
 
     for i,pwn in enumerate(pwnlist):
         print pwn
 
-        r = classifier.get_results(pwn)
+        try:
+            r = classifier.get_results(pwn)
+        except PWNClassifierException:
+            print 'Skipping %s' % pwn
+            continue
 
-        if r is None: continue
-
-        phase=r['shifted_phase']
+        #phase=r['shifted_phase']
+        phase=r['raw_phase']
 
         table[psr_name][i]=pwn
 
@@ -218,21 +224,18 @@ def auxiliary_table(pwndata, phase_shift, fitdir, filename, pwn_classification):
         table[glon_name][i] = r['glon']
         table[glat_name][i] = r['glat']
 
-        if spatial_model in [ 'Point', 'Extended' ]:
-            table[poserr_name][i] = r['poserr']
+        table[poserr_name][i] = r['poserr']
 
-        if spatial_model == 'Extended':
-            table[extension_name][i] = r['extension']
-            table[extension_err_name][i] = r['extension_err']
+        table[extension_name][i] = r['extension']
+        table[extension_err_name][i] = r['extension_err']
 
-        if source_class == 'Upper_Limit':
-            # Add powerlaw upper limit
-            table[powerlaw_flux_upper_limit_name][i] = r['powerlaw_flux_upper_limit']
-            table[powerlaw_energy_flux_upper_limit_name][i] = r['powerlaw_energy_flux_upper_limit']
+        # Add powerlaw upper limit
+        table[powerlaw_flux_upper_limit_name][i] = r['powerlaw_flux_upper_limit']
+        table[powerlaw_energy_flux_upper_limit_name][i] = r['powerlaw_energy_flux_upper_limit']
 
-            # Add cutoff upper limit
-            table[cutoff_flux_upper_limit_name][i] = r['cutoff_flux_upper_limit']
-            table[cutoff_energy_flux_upper_limit_name][i] = r['cutoff_energy_flux_upper_limit']
+        # Add cutoff upper limit
+        table[cutoff_flux_upper_limit_name][i] = r['cutoff_flux_upper_limit']
+        table[cutoff_energy_flux_upper_limit_name][i] = r['cutoff_energy_flux_upper_limit']
 
         # Add SED results
 

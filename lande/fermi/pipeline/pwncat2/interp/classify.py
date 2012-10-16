@@ -1,14 +1,21 @@
 """ Code to clasify regions. """
 import copy
 from os.path import expandvars
+import math
 
 import numpy as np
 import yaml
 
 from lande.pysed import units
 
-from . loader import PWNResultsLoader
+from . loader import PWNResultsLoader, PWNResultsException
 
+
+isnan = lambda x: isinstance(x,float) and math.isnan(x)
+equal = lambda x,y: (x==y) or (isnan(x) and isnan(y))
+
+class PWNClassifierException(Exception):
+    pass
 
 def compare_classifications(pwndata,fitdir,pwn_classification):
 
@@ -20,27 +27,28 @@ def compare_classifications(pwndata,fitdir,pwn_classification):
     pwnlist = loader.get_pwnlist()
 
     for pwn in pwnlist:
-        manual_results = manual.get_classification(pwn)
+        try:
+            manual_results = manual.get_classification(pwn)
 
-        if manual_results['spatial_model'] is None or \
-               manual_results['spectral_model'] is None or \
-               manual_results['source_class'] is None:
+            try:
+                auto_results = auto.get_classification(pwn)
+
+
+                if equal(auto_results['spatial_model'],manual_results['spatial_model']) and \
+                   equal(auto_results['spectral_model'],manual_results['spectral_model']) and \
+                   auto_results['source_class'] == manual_results['source_class']:
+                    print '%s - classifications agree' % pwn
+                else:
+                    print '%s - classifications do not agree' % pwn
+                    print '                    %20s %20s' % ('automatic','manual')
+                    print '  - spectral model: %20s %20s' % (auto_results['spectral_model'],manual_results['spectral_model'])
+                    print '  - spatial model:  %20s %20s' % (auto_results['spatial_model'],manual_results['spatial_model'])
+                    print '  - source class:   %20s %20s' % (auto_results['source_class'],manual_results['source_class'])
+            except PWNClassifierException:
+                print "%s - no automatic classification" % pwn
+
+        except PWNClassifierException:
             print "%s - no manual classification" % pwn
-        elif not loader.all_exists(pwn, get_variability=False):
-            print "%s - results don't exist" % pwn
-        else:
-            auto_results = auto.get_classification(pwn)
-
-            if auto_results['spatial_model'] == manual_results['spatial_model'] and \
-                    auto_results['spectral_model'] == manual_results['spectral_model'] and \
-                    auto_results['source_class'] == manual_results['source_class']:
-                print '%s - classifications agree' % pwn
-            else:
-                print '%s - classifications do not agree' % pwn
-                print '                    %20s %20s' % ('automatic','manual')
-                print '  - spectral model: %20s %20s' % (auto_results['spectral_model'],manual_results['spectral_model'])
-                print '  - spatial model:  %20s %20s' % (auto_results['spatial_model'],manual_results['spatial_model'])
-                print '  - source class:   %20s %20s' % (auto_results['source_class'],manual_results['source_class'])
 
 
 class PWNClassifier(object):
@@ -48,8 +56,8 @@ class PWNClassifier(object):
     abbreviated_source_class_mapper = dict(
         Pulsar='M', # Emission "Magnetospheric"
         PWN='W', # From Pulsar "Wind"
-        Confused='C',
-        Upper_Limit='U')
+        Confused='U',
+        Upper_Limit='L')
 
     allowed_source_class = ['Pulsar', 'PWN', 'Confused', 'Upper_Limit']
     allowed_spatial_models = ['At_Pulsar','Point','Extended']
@@ -67,9 +75,9 @@ class PWNClassifier(object):
             print '%s has not been classified yet, skipping' % pwn
             return None
 
-        assert spatial_model in PWNClassifier.allowed_spatial_models
-        assert spectral_model in PWNClassifier.allowed_spectral_models
         assert source_class in PWNClassifier.allowed_source_class
+        assert source_class == 'Upper_Limit' or spatial_model in PWNClassifier.allowed_spatial_models
+        assert source_class == 'Upper_Limit' or spectral_model in PWNClassifier.allowed_spectral_models 
 
         results = self.loader.get_results(pwn, require_all_exists=True, get_variability=False)
 
@@ -80,15 +88,21 @@ class PWNClassifier(object):
         point_gtlike = results['point']['gtlike']
         extended_gtlike = results['extended']['gtlike']
 
-        gtlike = results[spatial_model.lower()]['gtlike']
-        pointlike = results[spatial_model.lower()]['pointlike']
+        if isnan(spatial_model):
+            gtlike = results['at_pulsar']['gtlike']
+            pointlike = results['at_pulsar']['pointlike']
+        else:
+            gtlike = results[spatial_model.lower()]['gtlike']
+            pointlike = results[spatial_model.lower()]['pointlike']
 
-        point_cutoff=results['point']['gtlike']['test_cutoff']
+        at_pulsar_cutoff=results['at_pulsar']['gtlike']['test_cutoff']
 
         d = copy.copy(classifier)
 
         d['raw_phase'] = results['raw_phase']
-        d['shifted_phase'] = results['shifted_phase']
+
+        if results.has_key('shifted_phase'):
+            d['shifted_phase'] = results['shifted_phase']
 
         # likelihood stuff
 
@@ -98,7 +112,7 @@ class PWNClassifier(object):
 
         if source_class in ['Confused', 'Pulsar', 'PWN']:
             d['ts_ext'] = max(extended_gtlike['TS']['reoptimize']-point_gtlike['TS']['reoptimize'],0)
-            d['ts_cutoff'] = max(point_cutoff['TS_cutoff'],0)
+            d['ts_cutoff'] = max(at_pulsar_cutoff['TS_cutoff'],0)
         elif source_class == 'Upper_Limit':
             pass
         else:
@@ -141,6 +155,8 @@ class PWNClassifier(object):
                 d['energy_flux_err'] = gtlike['flux']['eflux_err']
                 assert gtlike['flux']['eflux_units'] == 'erg/cm^2/s'
 
+                d['spectrum'] = gtlike['spectrum']
+
                 if spectral_model == 'PowerLaw':
 
                     # Note, prefactor is 
@@ -159,6 +175,9 @@ class PWNClassifier(object):
 
             elif spectral_model == 'PLSuperExpCutoff':
                 h1 = gtlike['test_cutoff']['hypothesis_1']
+
+                d['spectrum'] = h1['spectrum']
+
                 d['flux'] = h1['flux']['flux']
                 d['flux_err'] = h1['flux']['flux_err']
 
@@ -190,6 +209,8 @@ class PWNClassifier(object):
         d['glon'] = pointlike['position']['gal'][0]
         d['glat'] = pointlike['position']['gal'][0]
 
+        d['poserr'] = None
+
         if spatial_model in [ 'Point', 'Extended' ]: 
 
             ellipse = pointlike['spatial_model']['ellipse']
@@ -199,6 +220,8 @@ class PWNClassifier(object):
                 print 'WARNING: localization failed for %s' % pwn
                 d['poserr'] = None
 
+        d['extension'] = None
+        d['extension_err'] = None
         if spatial_model == 'Extended':
             d['extension'] = pointlike['spatial_model']['Sigma']
             d['extension_err'] = pointlike['spatial_model']['Sigma_err']
@@ -239,6 +262,8 @@ class PWNClassifier(object):
 
         assert sed['Energy']['Units'] == 'MeV'
         assert sed['dNdE']['Units'] == 'ph/cm^2/s/erg'
+
+        d['sed_4bpd'] = sed
 
         # Note, when overall source is not significant, do not include upper limits
         d['sed_ts'] = sed_ts
@@ -330,7 +355,11 @@ class PWNAutomaticClassifier(PWNClassifier):
         self.loader = loader
 
     def get_classification(self, pwn):
-        results = self.loader.get_results(pwn, require_all_exists=True, get_variability=False)
+
+        try:
+            results = self.loader.get_results(pwn, require_all_exists=True, get_variability=False)
+        except PWNResultsException:
+            raise PWNClassifierException("No results for %s" % pwn)
 
         point_gtlike = results['point']['gtlike']
         extended_gtlike = results['extended']['gtlike']
@@ -347,24 +376,27 @@ class PWNAutomaticClassifier(PWNClassifier):
         except:
             ts_cutoff = None
 
-        if ts_point > 25:
+        if ts_point >= 25:
 
-            if ts_cutoff > 16:
+            if ts_cutoff >= 9:
                 source_class = 'Pulsar'
+                spatial_model = 'At_Pulsar'
                 spectral_model = 'PLSuperExpCutoff'
             else:
-                source_class = 'Confused'
-                spectral_model = spectral_name
+                if ts_ext >= 16:
+                    spatial_model = 'Extended'
+                    source_class = 'Confused'
+                    spectral_model = spectral_name
 
-            if ts_ext > 16:
-                spatial_model = 'Extended'
-            else:
-                spatial_model = 'Point'
+                else:
+                    spatial_model = 'Point'
+                    source_class = 'Confused'
+                    spectral_model = spectral_name
 
         else:
             source_class = 'Upper_Limit'
-            spatial_model = 'At_Pulsar'
-            spectral_model = spectral_name
+            spatial_model = float('nan')
+            spectral_model = float('nan')
 
         return dict(source_class=source_class, 
                     spatial_model=spatial_model,
@@ -389,7 +421,10 @@ class PWNManualClassifier(PWNClassifier):
         self.pwn_classifications = yaml.load(open(expandvars(pwn_classification)))
 
     def get_classification(self, pwn):
-        return self.pwn_classifications[pwn]
+        if pwn in self.pwn_classifications:
+            return self.pwn_classifications[pwn]
+        else:
+            raise PWNClassifierException("No classification for %s" % pwn)
 
     @staticmethod
     def get_manual_classify(pwndata, fitdir):

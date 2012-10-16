@@ -52,11 +52,13 @@ class TableFormatter(object):
             if has_at_pulsar:
                 pt_at_pulsar=results['at_pulsar']['pointlike']
                 ts_at_pulsar=pt_at_pulsar['TS']
+                if isinstance(ts_at_pulsar,dict): ts_at_pulsar=ts_at_pulsar['noquick']
                 table['TS_at_pulsar_ptlike'][i] = bold('%.1f' % ts_at_pulsar, ts_at_pulsar>25)
 
             if has_point:
                 pt_point=results['point']['pointlike']
                 ts_point = pt_point['TS']
+                if isinstance(ts_point,dict): ts_point=ts_point['noquick']
 
                 ts_loc = ts_point - ts_at_pulsar
                 table['TS_loc_ptlike'][i] = bold('%.1f' % (ts_loc), ts_point>25)
@@ -67,6 +69,7 @@ class TableFormatter(object):
             if has_extended:
                 pt_extended=results['extended']['pointlike']
                 ts_gauss = pt_extended['TS']
+                if isinstance(ts_gauss,dict): ts_gauss=ts_gauss['noquick']
                 ts_ext = ts_gauss - ts_point
 
                 table['TS_ext_ptlike'][i] = bold('%.1f' % ts_ext, ts_point > 25 and ts_ext > 16)
@@ -181,7 +184,8 @@ class WebsiteBuilder(object):
         index_t2t.append('[Analysis Folder %s/%s]\n' % (self.relpath,pwn))
         index_t2t.append('[log (pointlike) %s/%s/log_run_%s.txt]\n' % (self.relpath,pwn,pwn))
 
-        index_t2t.append('[results (pointlike) %s/%s/results_%s_pointlike.yaml]\n' % (self.relpath,pwn,pwn))
+        index_t2t.append('pointlike results: [(at_pulsar) %s/%s/results_%s_pointlike_at_pulsar.yaml] [(point) %s/%s/results_%s_pointlike_point.yaml] [(extended) %s/%s/results_%s_pointlike_extended.yaml] \n' % (self.relpath,pwn,pwn,self.relpath,pwn,pwn,self.relpath,pwn,pwn))
+        index_t2t.append('gtlike results: [(at_pulsar) %s/%s/results_%s_gtlike_at_pulsar.yaml] [(point) %s/%s/results_%s_gtlike_point.yaml] [(extended) %s/%s/results_%s_gtlike_extended.yaml] \n' % (self.relpath,pwn,pwn,self.relpath,pwn,pwn,self.relpath,pwn,pwn))
 
         get_plot_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/plots/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
         get_sed_table = lambda *args: index_t2t.append('|| ' + ' | '.join(['[%s/%s/seds/%s]' % (self.relpath,pwn,i) for i in args]) + ' |\n\n')
