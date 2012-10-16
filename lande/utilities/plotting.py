@@ -158,11 +158,14 @@ def plot_points(x, y, xlo, xhi,
         else:
             y_upper_err = y_upper_err.copy()
 
-        # plot data points
-        y[~s] = y_ul[~s]
-        y_lower_err[~s]  = ul_fraction*y_ul[~s]
-        y_upper_err[~s]  = np.zeros(sum(~s), dtype=float)
+        if sum(~s)>0:
+            # If there are upper limits, replace data points in arrays
+            # with upper limits.
+            y[~s] = y_ul[~s]
+            y_lower_err[~s]  = ul_fraction*y_ul[~s]
+            y_upper_err[~s]  = np.zeros(sum(~s), dtype=float)
 
+        # plot data points
         axes.errorbar(x, y,
                       xerr=[dx_lo, dx_hi], yerr=[y_lower_err, y_upper_err],
                       capsize=0,
