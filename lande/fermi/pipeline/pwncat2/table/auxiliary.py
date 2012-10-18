@@ -119,20 +119,23 @@ def auxiliary_table(pwndata,
     cutoff_energy_flux_upper_limit_name =add_float('Cutoff_EFlux_UL')
 
     sed_size=14
-    sed_ts_name = add_vector_float('SED_TS', size=sed_size)
     sed_lower_energy_name = add_vector_float('SED_Lower_Energy', size=sed_size, unit=energy_units)
     sed_upper_energy_name = add_vector_float('SED_Upper_Energy', size=sed_size, unit=energy_units)
     sed_middle_energy_name = add_vector_float('SED_Middle_Energy', size=sed_size, unit=energy_units)
+
+    sed_ts_name = add_vector_float('SED_TS', size=sed_size)
+
     sed_prefactor_name = add_vector_float('SED_Prefactor', size=sed_size, unit='ph/cm^2/s/MeV')
     sed_prefactor_lower_err_name = add_vector_float('SED_Prefactor_Lower_Error', size=sed_size, unit='ph/cm^2/s/erg')
     sed_prefactor_upper_err_name = add_vector_float('SED_Prefactor_Upper_Error', size=sed_size, unit='ph/cm^2/s/erg')
     sed_prefactor_upper_limit_name = add_vector_float('SED_Prefactor_UL', size=sed_size, unit='ph/cm^2/s/erg')
 
     bandfits_size = 3
-    bandfits_ts_name = add_vector_float('Band_TS', size=bandfits_size)
     bandfits_lower_energy_name = add_vector_float('Band_Lower_Energy', size=bandfits_size, unit=energy_units)
     bandfits_upper_energy_name = add_vector_float('Band_Upper_Energy', size=bandfits_size, unit=energy_units)
     bandfits_middle_energy_name = add_vector_float('Band_Middle_Energy', size=bandfits_size, unit=energy_units)
+
+    bandfits_ts_name = add_vector_float('Band_TS', size=bandfits_size)
 
     bandfits_flux_name = add_vector_float('Band_Flux', size=bandfits_size, unit=flux_units)
     bandfits_flux_err_name = add_vector_float('Band_Flux_Error', size=bandfits_size, unit=flux_units)
@@ -239,11 +242,12 @@ def auxiliary_table(pwndata,
 
         # Add SED results
 
-        table[sed_ts_name][i] = r['sed_ts'] 
 
         table[sed_lower_energy_name] = r['sed_lower_energy'] 
         table[sed_upper_energy_name] = r['sed_upper_energy'] 
         table[sed_middle_energy_name] = r['sed_middle_energy'] 
+
+        table[sed_ts_name][i] = r['sed_ts'] 
 
         table[sed_prefactor_name][i] = r['sed_prefactor'] 
         table[sed_prefactor_lower_err_name][i] = r['sed_prefactor_lower_err'] 
