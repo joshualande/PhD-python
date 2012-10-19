@@ -43,6 +43,7 @@ class GtlikeSED(SED):
         ('always_upper_limit',  False, """ Always compute an upper limit. Default is only when source is not significant. """),
         ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
         ('fit_range', 1e4, 'The range over which to allow the SED point to vary (compared to the input spectral model.'),
+        ('save_hesse_errors', False, 'Save out the approximate HESSE error'),
     )
 
 
@@ -160,7 +161,7 @@ class GtlikeSED(SED):
             d['energy'] = energy_dict(emin=lower, emax=upper, energy_units=self.energy_units)
             d['flux'] = flux_dict(like, name, emin=lower,emax=upper, flux_units=self.flux_units, 
                                  errors=True, include_prefactor=True, prefactor_energy=e)
-            d['prefactor'] = powerlaw_prefactor_dict(like, name, errors=False, minos_errors=True,
+            d['prefactor'] = powerlaw_prefactor_dict(like, name, errors=self.save_hesse_errors, minos_errors=True,
                                                      flux_units=self.flux_units)
             d['TS'] = ts_dict(like, name, verbosity=self.verbosity)
 
@@ -216,4 +217,7 @@ class GtlikeSED(SED):
         self.results['Significant']=get('TS','reoptimize')>self.min_ts
 
         self.results = tolist(self.results)
+
+        if self.save_hesse_errors:
+            self.results['dNdE']['HESS_Average_Error'] = get('prefactor', 'prefactor_err')
 
