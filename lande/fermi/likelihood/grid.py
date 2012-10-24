@@ -2,10 +2,75 @@ import numpy as np
 import pylab as P
 
 from uw.utilities import keyword_options
+from uw.utilities.parmap import LimitMapper
 from uw.like.roi_state import PointlikeState
 
 from . basefit import BaseFitter
 from . save import source_dict
+
+
+class FitLimited(BaseFitter):
+
+    defaults = BaseFitter.defaults + (
+        ('energy_units', 'MeV', 'default units to plot energy flux (y axis) in.'),
+        ('flux_units',  'erg', 'default units to plot energy (x axis) in'),
+        ('keep_best', True, "keep the best fit"),
+        ('fit_kwargs', dict(use_gradient=False), 'kwargs past into roi.fit'),
+    )
+
+    @keyword_options.decorate(defaults)
+    def __init__(self, roi, name, param_name, param_min, param_max, **kwargs):
+
+        self.roi = roi
+        self.name = name
+        self.param_name = param_name
+        self.param_min = param_min
+        self.param_max = param_max
+
+        keyword_options.process(self, kwargs)
+
+        self._calculate()
+
+    def _calculate(self):
+
+        self.results=dict()
+
+        self.init_state = PointlikeState(self.roi)
+
+        model = self.roi.get_model(self.name)
+        init_mapper = model.get_mapper(self.param_name)
+        param_val = model[self.param_name]
+
+        assert param_val >= self.param_min and param_val <= self.param_max
+
+        if isinstance(init_mapper,LimitMapper):
+            assert init_mapper.min <= self.param_min and init_mapper.max >= self.param_max
+
+
+        model.set_mapper(self.param_name,LimitMapper(self.param_min, self.param_max, scale=param_val))
+
+        self.roi.modify(which=self.name, model=model)
+
+        if self.verbosity:
+            print 'Before fit'
+            self.roi.print_summary()
+
+        self.results['fit_before']=source_dict(self.roi, self.name, energy_units=self.energy_units, flux_units=self.flux_units)
+
+        self.roi.fit(**self.fit_kwargs)
+
+        if self.verbosity:
+            print 'After fit'
+            self.roi.print_summary()
+
+        self.results['fit_after']=source_dict(self.roi, self.name, energy_units=self.energy_units, flux_units=self.flux_units)
+
+        if self.keep_best:
+            model = self.roi.get_model(self.name)
+            model.set_mapper(self.param_name,init_mapper)
+        else:
+            self.init_state.restore(just_spectra=True)
+
 
 class SpectralGrid(BaseFitter):
     """ Perform a grid over parameters. """
