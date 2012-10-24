@@ -9,7 +9,7 @@ from . basefit import BaseFitter
 from . save import source_dict
 
 
-class FitLimited(BaseFitter):
+class SpectralFitLimited(BaseFitter):
 
     defaults = BaseFitter.defaults + (
         ('energy_units', 'MeV', 'default units to plot energy flux (y axis) in.'),
