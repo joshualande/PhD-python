@@ -125,7 +125,7 @@ class SED(BaseFitter):
                                 energy_units=self.energy_units)
             fig.add_axes(axes)
 
-            edict = units.fromstring(self.results['Energy'])
+            edict = self.results['Energy']
             file_energy_units = units.fromstring(edict['Units'])
 
             if 'Lower' in edict and 'Upper' in edict:
