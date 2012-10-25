@@ -55,8 +55,8 @@ class SED(BaseFitter):
         data_kwargs.update(kwargs)
 
 
-        edict = units.fromstring(self.results['Energy'])
-        fdict = units.fromstring(self.results['dNdE'])
+        edict = self.results['Energy']
+        fdict = self.results['dNdE']
 
         file_energy_units = units.fromstring(edict['Units'])
         file_flux_units = units.fromstring(fdict['Units'])
