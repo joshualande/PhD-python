@@ -1,9 +1,17 @@
 from os.path import expandvars
 
+import numpy as np
+import pyfits
+
+from lande.pysed import units
+
 class PulsarCatalogLoader(object):
     def __init__(self,bigfile_filename,off_peak_auxiliary_filename):
         self.bigfile_fits = pyfits.open(expandvars(bigfile_filename))['PULSARS_BIGFILE']
         self.off_peak_fits = pyfits.open(expandvars(off_peak_auxiliary_filename))['OFF_PEAK']
+
+    def get_bigfile_psrlist(self):
+        return np.char.strip(self.bigfile_fits.data['PSRJ'])
 
     def get_off_peak_classification(self, psr):
 
@@ -12,17 +20,13 @@ class PulsarCatalogLoader(object):
         return classification
 
     def get_off_peak_psrlist(self):
-        return np.char.strip(self.off_peak_fits.data['PSR']).tolist()
+        return np.char.strip(self.off_peak_fits.data['PSR'])
 
     def _get_off_peak(self,psr):
         return self.off_peak_fits.data[self.off_peak_fits.data['PSR'] == psr][0]
 
     def _get_bigfile(self,psr):
-        return self.bigfile_fits.data[self.bigfile_fits.data['PSRJ'] == self.name_mapper(psr)][0]
-
-    def name_mapper(self,psr):
-        """ Convert from off-peak pulsar naming convention to BigFile naming convention. """
-        return psr.replace('PSRJ','J')
+        return self.bigfile_fits.data[self.bigfile_fits.data['PSRJ'] == psr][0]
 
     def get_edot(self, psr):
         """ Return edot in units of erg/s """
@@ -39,6 +43,18 @@ class PulsarCatalogLoader(object):
         eflux_ul = off_peak['PowerLaw_EFlux_UL']
 
         return eflux, eflux_error, eflux_ul
+
+    def get_age(self, psr):
+        bigfile = self._get_bigfile(psr)
+        return bigfile['Age']
+
+    def get_distance(self, psr):
+        bigfile = self._get_bigfile(psr)
+
+        d1 = bigfile['DPSR_1']
+        d2 = bigfile['DPSR_2']
+        assert np.isnan(d2) # no 2nd estimate when upper limit
+        return d1
 
     def get_luminosity(self, psr):
         """ Returns luminsoity in units of erg/s """

@@ -163,7 +163,7 @@ def auxiliary_table(pwndata,
         #phase=r['shifted_phase']
         phase=r['raw_phase']
 
-        table[psr_name][i]=pwn
+        table[psr_name][i]=pwn.replace('PSRJ','J')
 
         source_class = r['source_class']
         table[classification_name][i] = source_class

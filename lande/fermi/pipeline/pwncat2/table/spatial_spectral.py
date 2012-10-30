@@ -32,7 +32,7 @@ def spatial_spectral_table(pwndata,
 
     psr_name='PSR'
     classification_name = 'Type'
-    phase_name='Off Peak'
+    #phase_name='Off Peak'
     if table_type == 'confluence':
         ts_point_name='TS_point'
         ts_ext_name='TS_ext'
@@ -64,7 +64,7 @@ def spatial_spectral_table(pwndata,
             phase=r['raw_phase']
 
             table[psr_name].append(format.pwn(pwn))
-            table[phase_name].append(phase.pretty_format(formatter=lambda x:'%.2f' % x))
+            #table[phase_name].append(phase.pretty_format(formatter=lambda x:'%.2f' % x))
             table[classification_name].append(r['abbreviated_source_class'])
 
             table[ts_point_name].append(format.value(r['ts_point'],precision=1))
@@ -85,7 +85,7 @@ def spatial_spectral_table(pwndata,
         except PWNClassifierException, ex:
             print 'Skipping %s: %s' % (pwn,ex)
             table[psr_name].append(format.pwn(pwn))
-            table[phase_name].append('None')
+            #table[phase_name].append('None')
             table[classification_name].append('None')
             table[ts_point_name].append('None')
             table[ts_ext_name].append('None')
