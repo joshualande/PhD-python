@@ -10,22 +10,33 @@ class RadioPSRROIBuilder(object):
     def __init__(self, radiopsr_loader):
         self.radiopsr_loader = radiopsr_loader
 
-    def build_roi(self, name):
+    def build_roi(self, name, fast):
+
+
+        if fast:
+            roi_size=5
+            binsperdec = 2
+            max_free=2
+            free_radius=2
+        else:
+            roi_size = 10
+            binsperdec = 4
+            max_free=5
+            free_radius=5
 
         catalog = Catalog2FGL('$FERMI/catalogs/gll_psc_v05.fit', 
                               latextdir='$FERMI/extended_archives/gll_psc_v05_templates',
                               prune_radius=0,
-                              max_free=5,
-                              free_radius=5,
+                              max_free=max_free,
+                              free_radius=free_radius,
                               limit_parameters=True)
 
         ft1 = self.radiopsr_loader.get_ft1(name)
         ft2 = self.radiopsr_loader.get_ft2(name)
         ltcube = self.radiopsr_loader.get_ltcube(name)
-        binfile = self.radiopsr_loader.get_binfile(name)
+        binfile = self.radiopsr_loader.get_binfile(name, binsperdec)
 
         roi_dir = self.radiopsr_loader.get_skydir(name)
-        roi_size = 10
 
         ds = DataSpecification(
             ft1files = ft1,
@@ -34,7 +45,7 @@ class RadioPSRROIBuilder(object):
             binfile  = binfile)
 
         sa = SpectralAnalysis(ds,
-                              binsperdec = 4,
+                              binsperdec = binsperdec,
                               emin       = 100,
                               emax       = 1000000,
                               irf        = "P7SOURCE_V6",

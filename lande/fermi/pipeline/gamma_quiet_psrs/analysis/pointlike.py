@@ -8,13 +8,13 @@ from lande.fermi.likelihood.fit import fit_prefactor, fit_only_source
 from lande.fermi.likelihood.save import source_dict, get_full_energy_range
 from lande.fermi.likelihood.limits import PointlikePowerLawUpperLimit
 
-from lande.fermi.likelihood.localize import GridLocalize, paranoid_localize,MinuitLocalizer
+from lande.fermi.likelihood.localize import paranoid_localize
 from lande.fermi.spectra.pointlike import PointlikeSED
-from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
 def pointlike_analysis(roi, name, hypothesis, dirdict,
                        localize=False,
                        fit_extension=False, 
+                       upper_limit=False,
                       ):
     print 'Performing Pointlike analysis for %s' % hypothesis
 
@@ -55,8 +55,9 @@ def pointlike_analysis(roi, name, hypothesis, dirdict,
 
     p = source_dict(roi, name)
 
-    pul = PointlikePowerLawUpperLimit(roi, name, cl=.95, verbosity=4)
-    p['powerlaw_upper_limit']=pul.todict()
+    if upper_limit:
+        pul = PointlikePowerLawUpperLimit(roi, name, cl=.95, verbosity=4)
+        p['powerlaw_upper_limit']=pul.todict()
 
     roi.toXML(filename="%s/srcmodel_pointlike_%s_%s.xml"%(dirdict['data'], hypothesis, name))
  

@@ -39,7 +39,7 @@ class RadioPSRLoader(object):
     def get_ltcube(self,psr):
         return "/afs/slac/g/glast/groups/catalog/P7_V4_SOURCE/ltcube_24m_pass7.4_source_z100_t90_cl0.fits"
 
-    def get_binfile(self,psr):
-        return '/nfs/slac/g/ki/ki03/lande/fermi/radiopsrs/lat_data/temp/binned.fits'
+    def get_binfile(self,psr, binsperdec):
+        return '/nfs/slac/g/ki/ki03/lande/fermi/gamma_quiet_psrs/lat_data/temp/binned_%sbpd.fits' % binsperdec
 
 

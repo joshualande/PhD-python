@@ -30,10 +30,13 @@ from lande.fermi.likelihood.variability import CombinedVariabilityTester
 from lande.fermi.likelihood.load import pointlike_dict_to_spectrum
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 
-from lande.fermi.pipeline.radiopsrs.data.loader import RadioPSRLoader
+from lande.fermi.pipeline.gamma_quiet_psrs.data.loader import RadioPSRLoader
 
 from . setup import RadioPSRROIBuilder
 from . pointlike import pointlike_analysis
+from . plots import smooth_plots
+from . tsmaps import tsmap_plots
+from . gtlike import gtlike_analysis
 
 class Pipeline(object):
 
@@ -44,6 +47,8 @@ class Pipeline(object):
         parser.add_argument("--radiopsr-data", required=True)
         parser.add_argument("--bigfile", required=True)
         parser.add_argument("--name", required=True, help="Name of the pulsar")
+        parser.add_argument("--fast", default=False, action='store_true')
+        parser.add_argument("--cachedata", default=False, action='store_true')
         args=parser.parse_args()
         return argparse_to_kwargs(args)
 
@@ -68,14 +73,14 @@ class Pipeline(object):
         name=self.name
 
         rb = RadioPSRROIBuilder(radiopsr_loader=self.radiopsr_loader)
-        roi = rb.build_roi(name=name)
+        roi = rb.build_roi(name=name, fast=self.fast)
 
         results = self.input_kwargs
 
         savedict(results,'results_%s_general.yaml' % name)
 
         hypothesis = 'at_pulsar'
-        results=pointlike_analysis(roi, name, hypothesis=hypothesis, dirdict=self.dirdict)
+        results=pointlike_analysis(roi, name, hypothesis=hypothesis, dirdict=self.dirdict, upper_limit=True)
         savedict(results,'results_%s_pointlike_%s.yaml' % (name,hypothesis))
 
         hypothesis = 'point'
@@ -84,11 +89,31 @@ class Pipeline(object):
 
         hypothesis = 'extended'
         roi.modify(which=name, spatial_model=Gaussian(sigma=0.1), keep_old_center=True)
-
         results=pointlike_analysis(roi, name, hypothesis=hypothesis, fit_extension=True, dirdict=self.dirdict)
         savedict(results,'results_%s_pointlike_%s.yaml' % (name,hypothesis))
 
     def reload_roi(self,hypothesis, *args, **kwargs):
-        roi = load('roi_%s_%s.dat' % (hypothesis,name), *args, **kwargs)
+        roi = load('roi_%s_%s.dat' % (hypothesis,self.name), *args, **kwargs)
         roi.print_summary(galactic=True, maxdist=10)
         return roi
+
+    def gtlike_followup(self, hypothesis):
+
+        roi = self.reload_roi(hypothesis)
+
+        results=gtlike_analysis(self, roi, self.name, hypothesis, self.dirdict, upper_limit=hypothesis=='at_pulsar')
+
+        savedict(results,'results_%s_gtlike_%s.yaml' % (self.name,hypothesis))
+
+    def plots_followup(self, hypothesis):
+
+        roi = self.reload_roi(hypothesis)
+        smooth_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=5)
+        smooth_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=10)
+
+    def tsmaps_followup(self, hypothesis):
+
+        roi = self.reload_roi(hypothesis)
+        tsmap_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=5)
+        tsmap_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=10)
+
