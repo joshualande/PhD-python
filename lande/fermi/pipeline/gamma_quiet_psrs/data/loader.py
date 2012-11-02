@@ -1,4 +1,4 @@
-from os.path import expandvars
+from os.path import expandvars, join
 
 import numpy as np
 import pyfits
@@ -30,16 +30,14 @@ class RadioPSRLoader(object):
 
 
     def get_ft1(self,psr):
-        from glob import glob
-        return glob("/afs/slac/g/glast/groups/catalog/P7_V4_SOURCE/pass7.3_pre_source_merit_*_pass7.4_source_z100_t90_cl0.fits")
+        return self.radiopsr_data[psr]['ft1']
 
     def get_ft2(self,psr):
-        return "/afs/slac/g/glast/groups/catalog/P7_V4_SOURCE/ft2_2years.fits"
+        return self.radiopsr_data[psr]['ft2']
 
     def get_ltcube(self,psr):
-        return "/afs/slac/g/glast/groups/catalog/P7_V4_SOURCE/ltcube_24m_pass7.4_source_z100_t90_cl0.fits"
+        return self.radiopsr_data[psr]['ltcube']
 
     def get_binfile(self,psr, binsperdec):
-        return '/nfs/slac/g/ki/ki03/lande/fermi/gamma_quiet_psrs/lat_data/temp/binned_%sbpd.fits' % binsperdec
-
+        return join(self.radiopsr_data[psr]['binfiledir'], 'binned_%sbpd.fits' % binsperdec)
 

@@ -42,13 +42,14 @@ class Pipeline(object):
 
     @staticmethod
     def get_kwargs():
-
         parser = ArgumentParser()
         parser.add_argument("--radiopsr-data", required=True)
         parser.add_argument("--bigfile", required=True)
         parser.add_argument("--name", required=True, help="Name of the pulsar")
         parser.add_argument("--fast", default=False, action='store_true')
         parser.add_argument("--cachedata", default=False, action='store_true')
+        parser.add_argument("--no-point", default=False, action='store_true')
+        parser.add_argument("--no-extended", default=False, action='store_true')
         args=parser.parse_args()
         return argparse_to_kwargs(args)
 
@@ -69,7 +70,6 @@ class Pipeline(object):
         self.radiopsr_loader = RadioPSRLoader(self.radiopsr_data, self.bigfile)
 
     def main(self):
-
         name=self.name
 
         rb = RadioPSRROIBuilder(radiopsr_loader=self.radiopsr_loader)
@@ -80,17 +80,19 @@ class Pipeline(object):
         savedict(results,'results_%s_general.yaml' % name)
 
         hypothesis = 'at_pulsar'
-        results=pointlike_analysis(roi, name, hypothesis=hypothesis, dirdict=self.dirdict, upper_limit=True)
+        results=pointlike_analysis(self, roi, name, hypothesis=hypothesis, upper_limit=True)
         savedict(results,'results_%s_pointlike_%s.yaml' % (name,hypothesis))
 
-        hypothesis = 'point'
-        results=pointlike_analysis(roi, name, hypothesis=hypothesis, localize=True, dirdict=self.dirdict)
-        savedict(results,'results_%s_pointlike_%s.yaml' % (name,hypothesis))
+        if not self.no_point:
+            hypothesis = 'point'
+            results=pointlike_analysis(self, roi, name, hypothesis=hypothesis, localize=True)
+            savedict(results,'results_%s_pointlike_%s.yaml' % (name,hypothesis))
 
-        hypothesis = 'extended'
-        roi.modify(which=name, spatial_model=Gaussian(sigma=0.1), keep_old_center=True)
-        results=pointlike_analysis(roi, name, hypothesis=hypothesis, fit_extension=True, dirdict=self.dirdict)
-        savedict(results,'results_%s_pointlike_%s.yaml' % (name,hypothesis))
+        if not self.no_extended:
+            hypothesis = 'extended'
+            roi.modify(which=name, spatial_model=Gaussian(sigma=0.1), keep_old_center=True)
+            results=pointlike_analysis(self, roi, name, hypothesis=hypothesis, fit_extension=True)
+            savedict(results,'results_%s_pointlike_%s.yaml' % (name,hypothesis))
 
     def reload_roi(self,hypothesis, *args, **kwargs):
         roi = load('roi_%s_%s.dat' % (hypothesis,self.name), *args, **kwargs)
@@ -98,22 +100,24 @@ class Pipeline(object):
         return roi
 
     def gtlike_followup(self, hypothesis):
-
         roi = self.reload_roi(hypothesis)
-
-        results=gtlike_analysis(self, roi, self.name, hypothesis, self.dirdict, upper_limit=hypothesis=='at_pulsar')
-
+        results=gtlike_analysis(self, roi, self.name, hypothesis, upper_limit=hypothesis=='at_pulsar')
         savedict(results,'results_%s_gtlike_%s.yaml' % (self.name,hypothesis))
 
     def plots_followup(self, hypothesis):
-
         roi = self.reload_roi(hypothesis)
-        smooth_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=5)
-        smooth_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=10)
+        smooth_plots(self, roi, self.name, hypothesis, size=5)
+        smooth_plots(self, roi, self.name, hypothesis, size=10)
 
     def tsmaps_followup(self, hypothesis):
-
         roi = self.reload_roi(hypothesis)
-        tsmap_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=5)
-        tsmap_plots(roi, self.name, hypothesis, dirdict=self.dirdict, size=10)
+        tsmap_plots(self, roi, self.name, hypothesis, size=5)
+        tsmap_plots(self, roi, self.name, hypothesis, size=10)
 
+    def irfs_systematics_followup(self, hypothesis):
+        # use bracketing irfs
+        pass
+
+    def alterante_diffuse_systematics_followup(self, hypothesis):
+        # use bracketing irfs
+        pass

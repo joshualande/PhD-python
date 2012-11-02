@@ -1,6 +1,6 @@
 from lande.fermi.data.plotting import ROITSMapBandPlotter
 
-def tsmap_plots(roi, name, hypothesis, dirdict, size, tsmap_pixelsize=0.1):
+def tsmap_plots(pipeline, roi, name, hypothesis, size, tsmap_pixelsize=0.1):
     """ TS maps """
 
     extra='%s_%s_%sdeg' % (hypothesis,name,size)
@@ -9,8 +9,8 @@ def tsmap_plots(roi, name, hypothesis, dirdict, size, tsmap_pixelsize=0.1):
 
     def _plot(filename,title):
         print 'Making Band %s TS Map (size=%s, pixelsize=%s)' % (title,size,tsmap_pixelsize)
-        roi.plot_tsmap(filename='%s/tsmap_%s_%s.png' % (dirdict['plots'],filename,extra), 
-                       fitsfile='%s/tsmap_%s_%s.fits' % (dirdict['plots'],filename,extra),
+        roi.plot_tsmap(filename='%s/tsmap_%s_%s.png' % (pipeline.dirdict['plots'],filename,extra), 
+                       fitsfile='%s/tsmap_%s_%s.fits' % (pipeline.dirdict['plots'],filename,extra),
                        title='%s TS Map for %s (%s)' % (title,name,hypothesis),
                        **tsmap_kwargs)
 
@@ -18,7 +18,7 @@ def tsmap_plots(roi, name, hypothesis, dirdict, size, tsmap_pixelsize=0.1):
         ROITSMapBandPlotter(roi,  
                             title='Band %s TS Map for %s (%s)' % (title,name,hypothesis),
                             bin_edges=[1e3,1e4,10**5.5],
-                            **tsmap_kwargs).show(filename='%s/band_tsmap_%s_%s.png' % (dirdict['plots'],filename,extra))
+                            **tsmap_kwargs).show(filename='%s/band_tsmap_%s_%s.png' % (pipeline.dirdict['plots'],filename,extra))
 
     # reisidual ts map
     _plot('residual','Residual')

@@ -12,10 +12,10 @@ from lande.fermi.likelihood.limits import GtlikePowerLawUpperLimit
 from lande.fermi.likelihood.printing import summary
 from lande.fermi.spectra.gtlike import GtlikeSED
 
-def gtlike_analysis(self, roi, name, hypothesis, dirdict, upper_limit):
+def gtlike_analysis(pipeline, roi, name, hypothesis, upper_limit):
     print 'Performing Gtlike crosscheck for %s' % hypothesis
 
-    gtlike=Gtlike(roi, savedir='savedir' if self.cachedata else Noen)
+    gtlike=Gtlike(roi, savedir='savedir' if pipeline.cachedata else None)
     like=gtlike.like
 
     print 'About to fit gtlike ROI'
@@ -27,7 +27,7 @@ def gtlike_analysis(self, roi, name, hypothesis, dirdict, upper_limit):
     print 'Done fiting gtlike ROI'
     print summary(like, maxdist=10)
 
-    like.writeXml("%s/srcmodel_gtlike_%s_%s.xml"%(dirdict['data'], hypothesis, name))
+    like.writeXml("%s/srcmodel_gtlike_%s_%s.xml"%(pipeline.dirdict['data'], hypothesis, name))
 
     r=source_dict(like, name)
 
@@ -43,11 +43,11 @@ def gtlike_analysis(self, roi, name, hypothesis, dirdict, upper_limit):
                         verbosity=4, 
                         upper_limit_kwargs=upper_limit_kwargs,
                         **kwargs)
-        s.plot('%s/sed_gtlike_%s_%s.png' % (dirdict['seds'],kind,name)) 
-        s.save('%s/sed_gtlike_%s_%s.yaml' % (dirdict['seds'],kind,name))
+        s.plot('%s/sed_gtlike_%s_%s.png' % (pipeline.dirdict['seds'],kind,name)) 
+        s.save('%s/sed_gtlike_%s_%s.yaml' % (pipeline.dirdict['seds'],kind,name))
 
     sed('2bpd_%s' % hypothesis,bin_edges=np.logspace(3,5.5,6))
-    if not self.fast:
+    if not pipeline.fast:
         sed('4bpd_%s' % hypothesis,bin_edges=np.logspace(3,5.5,11))
 
     return r

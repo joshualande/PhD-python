@@ -11,7 +11,7 @@ from lande.fermi.likelihood.limits import PointlikePowerLawUpperLimit
 from lande.fermi.likelihood.localize import paranoid_localize
 from lande.fermi.spectra.pointlike import PointlikeSED
 
-def pointlike_analysis(roi, name, hypothesis, dirdict,
+def pointlike_analysis(pipeline, roi, name, hypothesis, 
                        localize=False,
                        fit_extension=False, 
                        upper_limit=False,
@@ -48,8 +48,8 @@ def pointlike_analysis(roi, name, hypothesis, dirdict,
 
     print 'Making pointlike SED for hypothesis %s' % hypothesis
     sed = PointlikeSED(roi, name, verbosity=4)
-    sed.save('%s/sed_pointlike_4bpd_%s_%s.yaml' % (dirdict['seds'],hypothesis,name))
-    sed.plot('%s/sed_pointlike_4bpd_%s_%s.png' % (dirdict['seds'],hypothesis,name)) 
+    sed.save('%s/sed_pointlike_4bpd_%s_%s.yaml' % (pipeline.dirdict['seds'],hypothesis,name))
+    sed.plot('%s/sed_pointlike_4bpd_%s_%s.png' % (pipeline.dirdict['seds'],hypothesis,name)) 
 
     print_summary()
 
@@ -59,7 +59,7 @@ def pointlike_analysis(roi, name, hypothesis, dirdict,
         pul = PointlikePowerLawUpperLimit(roi, name, cl=.95, verbosity=4)
         p['powerlaw_upper_limit']=pul.todict()
 
-    roi.toXML(filename="%s/srcmodel_pointlike_%s_%s.xml"%(dirdict['data'], hypothesis, name))
+    roi.toXML(filename="%s/srcmodel_pointlike_%s_%s.xml"%(pipeline.dirdict['data'], hypothesis, name))
  
     roi.save('roi_%s_%s.dat' % (hypothesis,name))
 

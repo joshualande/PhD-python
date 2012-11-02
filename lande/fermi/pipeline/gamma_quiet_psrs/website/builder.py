@@ -1,7 +1,9 @@
 
 class WebsiteBuilder(object):
 
-    def __init__(self):
+    def __init__(self,
+                 analysisdir,
+                ):
         pass
 
     def build_main_website(self):
