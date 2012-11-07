@@ -7,15 +7,18 @@ def t2t(lines,filename,flags='--style color.css --css-sugar'):
 
     # b
     if isinstance(lines,list) and isinstance(filename,str):
-        pass
+        website='\n'.join(lines)
     elif isinstance(lines,str) and isinstance(filename,list):
         lines,filename=filename,lines
+        website='\n'.join(lines)
+    elif isinstance(lines,str) and isinstance(filename,str):
+        website=lines
     else:
-        raise Excpetion("...")
+        raise Exception("...")
 
 
     file=open(filename,'w')
-    file.write('\n'.join(lines))
+    file.write(website)
     file.close()
 
     os.system('txt2tags --target html %s %s' % (flags,filename))
