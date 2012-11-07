@@ -45,63 +45,78 @@ class JobBuilder(object):
 
         print 'Putting jobs in %s' % self.savedir
 
-    def build(self):
+    @staticmethod
+    def fmt(x):
+        if isinstance(x,str):
+            return x
+        elif isinstance(x,bool):
+            return str(x)
+        else:
+            return '%g' % x
 
-        ext=splitext(self.code)[-1]
+    def build_args(self,perm):
+        perm = flatten(perm)
+        args = []
+        for k,v in zip(self.keys,perm):
+            if v is True:
+                args.append('\\\n    --%s' % JobBuilder.fmt(k))
+            elif v is False:
+                pass # no flag
+            else:
+                args.append('\\\n    --%s=%s' % (JobBuilder.fmt(k),JobBuilder.fmt(v)))
+        args = ' '.join(args)
+        return args
+
+    def build_subdir(self,perm):
+
+        num = flatten([len(v) if not islist(k) else [len(v)]*len(k) for k,v in self.params.items()])
+
+        perm = flatten(perm)
+        no_multiples = not np.any([n>1 for n in num])
+        if no_multiples:
+            base = '.'
+        else:
+            if self.short_folder_names:
+                base = '_'.join(self.fmt(v) for k,n,v in zip(self.keys,num,perm) if n>1)
+            else:
+                base = self.front + '_' + '_'.join('%s_%s' % (self.fmt(k),self.fmt(v)) for k,n,v in zip(self.keys,num,perm) if n>1)
+        subdir = join(self.savedir, base)
+
+        if not exists(subdir): makedirs(subdir)
+        return subdir
+
+    @staticmethod
+    def get_program(code):
+        ext=splitext(code)[-1]
         if ext == '.py':
             program='python'
         elif ext == '.sh':
             program='sh'
         else:
             raise Exception("...")
+        return program
+
+    def prepare_params(self):
 
         for k,v in self.params.items():
             if not isinstance(v,list) and not isinstance(v,tuple):
                 self.params[k] = [v]
 
-        keys = flatten(self.params.keys())
-        if len(duplicates(keys)) > 0:
-            raise Exception("Duplicate keys for params: %s" % (', '.join(duplicates(keys))))
-        values = self.params.values()
-        num = flatten([len(v) if not islist(k) else [len(v)]*len(k) for k,v in self.params.items()])
+        self.keys = flatten(self.params.keys())
+        if len(duplicates(self.keys)) > 0:
+            raise Exception("Duplicate keys for params: %s" % (', '.join(duplicates(self.keys))))
+        self.values = self.params.values()
 
-        no_multiples = not np.any([n>1 for n in num])
+    def build(self):
+        self.prepare_params()
 
-        for perm in product(*values):
-            perm = flatten(perm)
-
-            def f(x):
-                if isinstance(x,str):
-                    return x
-                elif isinstance(x,bool):
-                    return str(x)
-                else:
-                    return '%g' % x
-
-            if no_multiples:
-                base = '.'
-            else:
-                if self.short_folder_names:
-                    base = '_'.join(f(v) for k,n,v in zip(keys,num,perm) if n>1)
-                else:
-                    base = self.front + '_' + '_'.join('%s_%s' % (f(k),f(v)) for k,n,v in zip(keys,num,perm) if n>1)
-
-            args = []
-            for k,v in zip(keys,perm):
-                if v is True:
-                    args.append('\\\n    --%s' % f(k))
-                elif v is False:
-                    pass # no flag
-                else:
-                    args.append('\\\n    --%s=%s' % (f(k),f(v)))
-            args = ' '.join(args)
-
-            subdir = join(self.savedir, base)
-            if not exists(subdir): makedirs(subdir)
+        for perm in product(*self.values):
+            subdir = self.build_subdir(perm)
+            args = self.build_args(perm)
 
             if self.num == None:
-
                 run = join(subdir,'run.sh')
+                program = self.get_program(self.code)
                 open(run,'w').write("%s %s %s %s" % (program, self.code, args, self.extra))
 
             else:
@@ -115,15 +130,13 @@ class JobBuilder(object):
                     if not exists(jobdir): makedirs(jobdir)
 
                     run = join(jobdir,'run.sh')
+                    program = self.get_program(self.code)
                     open(run,'w').write("%s %s %g %s %s" % (program, self.code, i, args, self.extra))
 
         submit_all = join(self.savedir,'submit_all.sh')
                                       
-        if no_multiples or self.num in [1,None]:
-            run='*/run.sh'
-        else:
-            run='*/*/run.sh'
-        open(submit_all,'w').write("submit_all %s $@" % run)
+        open(submit_all,'w').write("find . -iname run.sh | xargs submit_all $@")
+
 
 class JobMerger(object):
 

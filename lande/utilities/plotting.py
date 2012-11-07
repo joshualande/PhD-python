@@ -1,5 +1,6 @@
 from os.path import expandvars
 from collections import Iterable
+import copy
 
 import numpy as np
 
@@ -174,6 +175,11 @@ def plot_points(x, y, xlo, xhi,
         # and upper limits
         if sum(~s)>0:
             if 'label' in plot_kwargs: plot_kwargs.pop('label')
+
+            # remove marker kwargs from upper limit
+            #plot_kwargs = {k:v for k,v in plot_kwargs.items() if 'marker' not in k}
+            if 'marker' in plot_kwargs:
+                plot_kwargs.pop('marker')
 
             # plot the upper limit down arrow markers
             axes.plot(x[~s], (1-ul_fraction)*y_ul[~s],
