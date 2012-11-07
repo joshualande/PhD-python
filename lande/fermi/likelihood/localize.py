@@ -14,7 +14,7 @@ from uw.utilities import rotations
 from . fit import fit_prefactor
 from . tools import galstr
 from . save import logLikelihood,skydirdict,ts_dict
-from . base import BaseFitter
+from . basefit import BaseFitter
 
 
 def paranoid_localize(roi, name, verbosity=True):

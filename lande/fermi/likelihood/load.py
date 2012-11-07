@@ -4,6 +4,7 @@ import pyLikelihood
 
 from uw.like.Models import FileFunction
 import uw.like.Models
+from uw.darkmatter.spectral import DMFitFunction
 
 _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 
@@ -11,6 +12,8 @@ _funcFactory = pyLikelihood.SourceFactory_funcFactory()
 def pointlike_dict_to_spectrum(d):
     if d['name'] == 'FileFunction':
         model = FileFunction(file=d['file'])
+    elif d['name'] == 'DMFitFunction':
+        model = DMFitFunction()
     else:
         model = uw.like.Models.__dict__[d['name']]()
     for k,v in d.items(): 

@@ -35,10 +35,12 @@ class UpperLimit(BaseFitter):
     )
 
     def plot(self, filename=None, axes=None, title=None,
-             fignum=None, figsize=(4,4),
-             spectral_kwargs=dict(color='red',zorder=1.9),
-            ):
+             fignum=None, figsize=(4,4), **kwargs):
         """ Plot the upper limit. """
+
+        spectral_kwargs=dict(color='red',zorder=1.9)
+        spectral_kwargs.update(kwargs)
+
         file_energy_units = units.fromstring(self.results['energy_units'])
         emin = self.results['emin']*file_energy_units
         emax = self.results['emax']*file_energy_units

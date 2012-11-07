@@ -82,3 +82,7 @@ def get_sreekumar(diff_factor=1, free=(True, False)):
         diffuse_model=IsotropicConstant(),
         scaling_model=model)
 
+def merge_diffuse(diffuse_sources):
+    """ merge diffuse files into one file. """
+
+    assert False
