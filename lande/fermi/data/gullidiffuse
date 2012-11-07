@@ -8,8 +8,9 @@ from os.path import basename, join as j, exists
 from uw.like.pointspec_helpers import get_diffuse_source
 from uw.like.Models import PowerLaw, Constant
 
-from lande.fermi.likelihood.counts import model_counts,observed_counts
+from lande.fermi.likelihood.counts import model_counts, observed_counts
 from lande.fermi.likelihood.save import get_background
+from lande.fermi.likelihood.diffuse import merge_diffuse
 
 def get_multiple_diffuse(dist, halo, TS, version,
                          diffdir="/afs/slac/g/glast/groups/diffuse/SNRCatalog",
@@ -68,22 +69,47 @@ def get_multiple_diffuse(dist, halo, TS, version,
     return diffuse
 
 
-def delete_insignificant_diffuse(roi, allowed_fraction=0.01, quiet=False):
-    """ Delete insignificant components of the galactic diffuse
-        model following the algorithm proposed by Jean Ballet:
+def get_insignificant_diffuse(roi, allowed_fraction=0.01, quiet=False):
+    insignificant_list = []
 
-            https://confluence.slac.stanford.edu/display/SCIGRPS/gtlike+with+many+diffuse+components
-    """
     oc=observed_counts(roi)
     for source in get_background(roi):
         mc=model_counts(roi,source)
         fraction=float(mc)/oc
-        if not quiet:
-            print 'Source %s predicts %s%% of total counts' % (source,fraction),
+        if not quiet: print 'Source %s predicts %s%% of total counts' % (source,fraction),
         if fraction < allowed_fraction:
-            print '... delete source.'
-            roi.del_source(source)
+            insignificant_list.append(source)
         else:
-            print '... keep source.'
+            if not quiet: print '... keep source.'
+    return insignificant_list
 
 
+def delete_insignificant_diffuse(roi, *args, **kwargs):
+    insignificant = get_insignificant_diffuse(roi, *args, **kwargs)
+    for source in insignificant:
+        roi.del_source(source)
+
+def freeze_insignificant_diffuse(roi, *args, **kwargs):
+    """ Freeze insignificant components of the galactic diffuse
+        model following the algorithm proposed by Jean Ballet:
+
+            https://confluence.slac.stanford.edu/display/SCIGRPS/gtlike+with+many+diffuse+components
+    """
+    insignificant = get_insignificant_diffuse(roi, *args, **kwargs)
+    for source in insignificant:
+        roi.modify(which=source, free=False)
+
+def merge_insignificant_diffuse(roi, *args, **kwargs):
+    insignificant = get_insignificant_diffuse(roi, *args, **kwargs)
+
+    if len(insignificant) == 0:
+        # nothing to merge
+        pass
+    if len(insignificant) == 1:
+        # only one source, no need to merge it
+        pass
+    else:
+        for source in insignificant:
+            roi.del_source(source)
+        merged = merge_diffuse(insignificant)
+        roi.add_source(merged)
