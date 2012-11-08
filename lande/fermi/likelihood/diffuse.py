@@ -132,7 +132,7 @@ def is_significant(roi, name, allowed_fraction, verbosity=False):
     mc=model_counts(roi,name)
     fraction=float(mc)/oc
     if verbosity: 
-        print ' .. Source %s predicts %s%% of total counts' % (name,fraction)
+        print ' .. Source %s predicts %0.2f%% of total counts' % (name,fraction)
     if fraction < allowed_fraction:
         return False
     else:
