@@ -49,7 +49,7 @@ def get_gulli_diffuse(dist, halo, TS, version, event_class,
         if not exists(filename): raise Exception("File %s does not exist." % filename)
 
         gmodel = PowerLaw(norm=1, index=0) if fit_index else Constant()
-        ds = get_diffuse_source('MapCubeFunction',filename,gmodel,None,name=basename(filename))
+        ds = get_diffuse_source('MapCubeFunction',filename,gmodel,None,name=component)
         ds.smodel.free[:]=free
         return ds
 
