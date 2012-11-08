@@ -2,11 +2,16 @@ import numpy as np
 import re
 from os.path import basename
 
-from skymaps import IsotropicConstant
+import pyfits
 
-from uw.like.Models import PowerLaw, FileFunction
+from skymaps import IsotropicConstant, DiffuseFunction
+
+from uw.like.Models import PowerLaw, FileFunction, Constant
 from uw.like.roi_diffuse import DiffuseSource
 from uw.like.pointspec_helpers import get_diffuse_source
+from uw.like.roi_monte_carlo import MCModelBuilder
+
+from lande.fermi.likelihood.counts import model_counts, observed_counts
 
 class ApproximateIsotropic(DiffuseSource):
 
@@ -82,7 +87,78 @@ def get_sreekumar(diff_factor=1, free=(True, False)):
         diffuse_model=IsotropicConstant(),
         scaling_model=model)
 
-def merge_diffuse(diffuse_sources):
+
+def merge_diffuse(diffuse_sources, scaling_model=None, mergefile=None, verbosity=False):
     """ merge diffuse files into one file. """
 
-    assert False
+    for i in diffuse_sources:
+        assert MCModelBuilder.isone(i.smodel)
+        assert isinstance(i.dmodel[0], DiffuseFunction)
+
+
+    merged_name = 'merged(%s)' % (','.join([i.name for i in diffuse_sources]))
+
+    if scaling_model is None:
+        scaling_model = Constant()
+
+    filenames = [ds.dmodel[0].name() for ds in diffuse_sources]
+    if verbosity:
+        print 'Merging files:'
+        for file in filenames:
+            print ' .. ',file
+
+    if mergefile is None:
+        mergefile = 'merged.fits'
+
+    pf = [pyfits.open(i) for i in filenames]
+
+    first = pf.pop(0)
+    for i in pf:
+        assert first['PRIMARY'].header == i['PRIMARY'].header
+        first['PRIMARY'].data += i['PRIMARY'].data
+    first.writeto(mergefile, clobber=True)
+
+    merged_dmodel=DiffuseFunction(mergefile)
+
+    new_source = DiffuseSource(
+        name=merged_name,
+        scaling_model=scaling_model,
+        diffuse_model=merged_dmodel)
+    return new_source
+
+
+def is_significant(roi, name, allowed_fraction, verbosity=False):
+    oc=observed_counts(roi)
+    mc=model_counts(roi,name)
+    fraction=float(mc)/oc
+    if verbosity: 
+        print ' .. Source %s predicts %s%% of total counts' % (name,fraction)
+    if fraction < allowed_fraction:
+        return False
+    else:
+        return True
+
+def get_insignificant_diffuse(roi, allowed_fraction, verbosity=False):
+    insignificant_list = []
+    for source in get_background(roi):
+        if is_significant(roi, source, allowed_fraction, verbosity):
+            if verbosity: print '... keep source.'
+        else:
+            insignificant_list.append(source)
+    return insignificant_list
+
+
+def delete_insignificant_diffuse(roi, *args, **kwargs):
+    insignificant = get_insignificant_diffuse(roi, *args, **kwargs)
+    for source in insignificant:
+        roi.del_source(source)
+
+def freeze_insignificant_diffuse(roi, *args, **kwargs):
+    """ Freeze insignificant components of the galactic diffuse
+        model following the algorithm proposed by Jean Ballet:
+
+            https://confluence.slac.stanford.edu/display/SCIGRPS/gtlike+with+many+diffuse+components
+    """
+    insignificant = get_insignificant_diffuse(roi, *args, **kwargs)
+    for source in insignificant:
+        roi.modify(which=source, free=False)
