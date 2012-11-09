@@ -81,7 +81,7 @@ class GulliDiffuseSetup(object):
                     print ' .. Deleting (and then merging) %s' % source.name
                     roi.del_source(source.name)
 
-            merged = merge_diffuse(insignificant, mergefile=mergefile, verbosity=self.verbosity)
+            merged = merge_diffuse(insignificant, mergefile=self.mergefile, verbosity=self.verbosity)
             if self.verbosity:
                 print 'Adding merged Galactic diffuse source %s to ROI:' % (merged.name)
             roi.add_source(merged)
