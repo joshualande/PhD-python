@@ -16,7 +16,7 @@ from uw.like.Models import PowerLaw
 from uw.like.roi_monte_carlo import SpectralAnalysisMC
 from uw.utilities import keyword_options
 
-from lande.fermi.likelihood.diffuse import get_sreekumar
+from lande.fermi.diffuse.background import get_sreekumar
 from lande.fermi.data.livetime import fix_pointlike_ltcube
 
 class FastROI(object):
