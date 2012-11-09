@@ -11,6 +11,8 @@ from uw.utilities import keyword_options
  
 from uw.like.mapplots import ROITSMapPlotter, ROISmoothedSources, ROISmoothedSource, ROISignificance
 from uw.like.roi_state import PointlikeState
+from uw.like.roi_plotting import tight_layout
+
 
 class ROIBandPlotter(object):
 
@@ -75,7 +77,7 @@ class ROIBandPlotter(object):
         if self.title is not None:
             fig.suptitle(self.title)
 
-        fig.tight_layout()
+        tight_layout(fig)
         if filename is not None: P.savefig(filename)
 
 class ROITSMapBandPlotter(ROIBandPlotter):
