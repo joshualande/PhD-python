@@ -115,7 +115,7 @@ class SpectralGrid(BaseFitter):
             name=name,
             param_name=param_name,
             param_vals=self.param_vals,
-                            grid=[])
+            grid=[])
 
         if self.verbosity:
             print 'Performing grid over parameter %s for source %s' % (name, param_name)
@@ -136,7 +136,7 @@ class SpectralGrid(BaseFitter):
             model[param_name]=p
             model.set_free(param_name,False)
 
-            roi.modify(which=name, model=model)
+            roi.modify(which=name, model=model, keep_old_flux=False)
 
             if self.verbosity:
                 roi.print_summary()
@@ -160,7 +160,7 @@ class SpectralGrid(BaseFitter):
             self.best_state.restore(just_spectra=True)
             model = roi.get_model(which=name)
             model.set_free(param_name,old_free)
-            roi.modify(which=name, model=model)
+            roi.modify(which=name, model=model, keep_old_flux=False)
         else:
             self.init_state.restore(just_spectra=True)
 
