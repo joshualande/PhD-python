@@ -4,7 +4,7 @@ from skymaps import DiffuseFunction
 
 from uw.utilities import keyword_options
 
-from lande.fermi.data.gullidiffuse import get_gulli_diffuse
+from lande.fermi.diffuse.gulli import get_gulli_diffuse
 from lande.fermi.likelihood.diffuse import is_significant, merge_diffuse
 from lande.fermi.likelihood.save import get_background
 
