@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import pyfits as pf
 
@@ -35,7 +37,7 @@ def expand_fits(pf,factor,hdu=0):
         in ds9 and blink them for a while to convince
         yourself the function worked.
     """
-    pf = pf.copy()
+    pf = copy.deepcopy(pf)
 
     pf[hdu].header = expand_fits_header(pf[hdu].header)
     pf[hdu].data=expand_fits_data(pf[hdu].data)
