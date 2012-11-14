@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 from matplotlib.patheffects import withStroke
-from mpl_toolkits.axes_grid.axes_grid import Grid, AxesGrid, ImageGrid
+from mpl_toolkits.axes_grid1.axes_grid import Grid, AxesGrid, ImageGrid
 import matplotlib.lines as mlines
 import matplotlib.transforms as mtransforms 
 
