@@ -32,7 +32,9 @@ def build_gtlike_spectrum(model):
             >>> spectrum = build_gtlike_spectrum(pointlike_model)
             Traceback (most recent call last):
                 ...
-            Exception: Unable to build gtlike model. Parameter Norm must have limits (current mapper = <class 'uw.utilities.parmap.LogMapper'>).
+            Exception: Unable to build gtlike model. Parameter Norm must have limits (mapper=<class 'uw.utilities.parmap.LogMapper'>).
+
+
 
         Set Norm params:
 
@@ -194,8 +196,8 @@ def build_pointlike_model(spectrum):
             [-10.0, 20.0]
             >>> model.getp('index')
             3.0
-            >>> model.error('index')
-            0.25
+            >>> np.allclose(model.error('index'),0.25)
+            True
             >>> model.get_free('index')
             False
 
