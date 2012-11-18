@@ -423,11 +423,11 @@ def pointlike_source_dict(roi, name, emin=None, emax=None,
     if add_diffuse_dict:
         d['diffuse'] = diffuse_dict(roi)
 
-    d['spatial_model'] = spatial_dict(source, roi, errors=errors)
+    d['spatial_model'] = spatial_model_to_dict(source, roi, errors=errors)
 
     return tolist(d)
 
-def spatial_dict(source, roi, errors=True):
+def spatial_model_to_dict(source, roi, errors=True):
     f = dict()
     if isinstance(source,ExtendedSource):
         # Extended Source parameters
@@ -438,6 +438,7 @@ def spatial_dict(source, roi, errors=True):
                 f[param + '_err']=spatial_model.error(param)
         f['r68'] = spatial_model.r68()
         f['r99'] = spatial_model.r99()
+        f['name'] = spatial_model.name
 
     if hasattr(source,'localization'):
         f['ellipse'] = source.localization
