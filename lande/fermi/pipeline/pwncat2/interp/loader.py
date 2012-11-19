@@ -88,9 +88,16 @@ class PWNResultsLoader(object):
         del results['phase'] # to avoid ambiguity
 
         if self.phase_shift is not None:
-            from lande.utilities.load import import_module
-            ps=import_module(self.phase_shift)
-            shift = ps.master_list[pwn.replace('PSRJ','J')]['phaseShift']
+            import pickle
+            ps=pickle.load(open(self.phase_shift))
+            shift = float(ps[pwn.replace('PSRJ','J')]['shift'])
+            """ Convention taken from private correspondence with Matthew Kerr:
+                    me: ok
+                        so i am trying to implement phase shifts in my analysis
+                        did you decide the right way to do it
+                    Matthew: it seems to be +
+                    me: so correct_phase = phase_in_file + shift
+                    Matthew: yes """
             results['shifted_phase'] = results['raw_phase'].offset(shift)
 
         return results
