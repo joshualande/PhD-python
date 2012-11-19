@@ -14,19 +14,18 @@ from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
 
 def auxiliary_table(pwndata, 
-                    #phase_shift, 
+                    phase_shift, 
                     fitdir, filename, pwn_classification):
 
     loader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir,
-        #phase_shift=phase_shift
+        phase_shift=phase_shift
         )
 
     classifier = PWNManualClassifier(loader=loader, pwn_classification=pwn_classification)
 
     pwnlist = loader.get_pwnlist()
-    #pwnlist = pwnlist[10:20]
 
     npwn = len(pwnlist)
 
@@ -130,27 +129,6 @@ def auxiliary_table(pwndata,
     sed_prefactor_upper_err_name = add_vector_float('SED_Prefactor_Upper_Error', size=sed_size, unit='ph/cm^2/s/erg')
     sed_prefactor_upper_limit_name = add_vector_float('SED_Prefactor_UL', size=sed_size, unit='ph/cm^2/s/erg')
 
-    bandfits_size = 3
-    bandfits_lower_energy_name = add_vector_float('Band_Lower_Energy', size=bandfits_size, unit=energy_units)
-    bandfits_upper_energy_name = add_vector_float('Band_Upper_Energy', size=bandfits_size, unit=energy_units)
-    bandfits_middle_energy_name = add_vector_float('Band_Middle_Energy', size=bandfits_size, unit=energy_units)
-
-    bandfits_ts_name = add_vector_float('Band_TS', size=bandfits_size)
-
-    bandfits_flux_name = add_vector_float('Band_Flux', size=bandfits_size, unit=flux_units)
-    bandfits_flux_err_name = add_vector_float('Band_Flux_Error', size=bandfits_size, unit=flux_units)
-    bandfits_flux_upper_limit_name = add_vector_float('Band_Flux_UL', size=bandfits_size, unit=flux_units)
-
-    bandfits_energy_flux_name = add_vector_float('Band_EFlux', size=bandfits_size, unit=energy_flux_units)
-    bandfits_energy_flux_err_name = add_vector_float('Band_EFlux_Error', size=bandfits_size, unit=energy_flux_units)
-    bandfits_energy_flux_upper_limit_name = add_vector_float('Band_EFlux_UL', size=bandfits_size, unit=energy_flux_units)
-
-    bandfits_prefactor_name = add_vector_float('Band_Prefactor', size=bandfits_size, unit=prefactor_units)
-    bandfits_prefactor_err_name = add_vector_float('Band_Prefactor_Error', size=bandfits_size, unit=prefactor_units)
-    
-    bandfits_index_name = add_vector_float('Band_Index', size=bandfits_size)
-    bandfits_index_err_name = add_vector_float('Band_Index_Error', size=bandfits_size)
-
     for i,pwn in enumerate(pwnlist):
         print pwn
 
@@ -160,8 +138,7 @@ def auxiliary_table(pwndata,
             print 'Skipping %s' % pwn
             continue
 
-        #phase=r['shifted_phase']
-        phase=r['raw_phase']
+        phase=r['shifted_phase']
 
         table[psr_name][i]=pwn.replace('PSRJ','J')
 
@@ -253,28 +230,6 @@ def auxiliary_table(pwndata,
         table[sed_prefactor_lower_err_name][i] = r['sed_prefactor_lower_err'] 
         table[sed_prefactor_upper_err_name][i] = r['sed_prefactor_upper_err'] 
         table[sed_prefactor_upper_limit_name][i] = r['sed_prefactor_upper_limit'] 
-
-        # Add bandfit results
-        # ...
-        table[bandfits_ts_name] = r['bandfits_ts']
-
-        table[bandfits_lower_energy_name] = r['bandfits_lower_energy']
-        table[bandfits_upper_energy_name] = r['bandfits_upper_energy']
-        table[bandfits_middle_energy_name] = r['bandfits_middle_energy']
-
-        table[bandfits_flux_name] = r['bandfits_flux']
-        table[bandfits_flux_err_name] = r['bandfits_flux_err']
-        table[bandfits_flux_upper_limit_name] = r['bandfits_flux_upper_limit']
-
-        table[bandfits_energy_flux_name] = r['bandfits_energy_flux']
-        table[bandfits_energy_flux_err_name] = r['bandfits_energy_flux_err']
-        table[bandfits_energy_flux_upper_limit_name] = r['bandfits_energy_flux_upper_limit']
-
-        table[bandfits_prefactor_name] = r['bandfits_prefactor']
-        table[bandfits_prefactor_err_name] = r['bandfits_prefactor_err']
-        
-        table[bandfits_index_name] = r['bandfits_index']
-        table[bandfits_index_err_name] = r['bandfits_index_err']
 
     table.write(expandvars(filename), overwrite=True)
         

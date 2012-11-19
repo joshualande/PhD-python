@@ -12,10 +12,12 @@ from . format import PWNFormatter
 from lande.fermi.pipeline.pwncat2.interp.classify import PWNManualClassifier, PWNClassifierException
 from lande.fermi.pipeline.pwncat2.interp.loader import PWNResultsLoader
 
+from lande.fermi.pipeline.pwncat2.interp.bigfile import PulsarCatalogLoader
 
 def spatial_spectral_table(pwndata, 
-                           #phase_shift, 
-                           fitdir, savedir, pwn_classification, filebase, table_type):
+                           phase_shift, 
+                           fitdir, savedir, pwn_classification, filebase, table_type,
+                           bigfile_filename):
     assert table_type in ['latex', 'confluence']
 
     format=PWNFormatter(table_type=table_type, precision=2)
@@ -23,7 +25,7 @@ def spatial_spectral_table(pwndata,
     loader = PWNResultsLoader(
         pwndata=pwndata,
         fitdir=fitdir,
-        #phase_shift=phase_shift
+        phase_shift=phase_shift
         )
 
     classifier = PWNManualClassifier(loader=loader, pwn_classification=pwn_classification)
@@ -32,7 +34,6 @@ def spatial_spectral_table(pwndata,
 
     psr_name='PSR'
     classification_name = 'Type'
-    #phase_name='Off Peak'
     if table_type == 'confluence':
         ts_point_name='TS_point'
         ts_ext_name='TS_ext'
@@ -51,7 +52,18 @@ def spatial_spectral_table(pwndata,
     pwnlist = loader.get_pwnlist()
     #pwnlist = pwnlist[10:20]
 
-    for pwn in pwnlist:
+    pcl = PulsarCatalogLoader(bigfile_filename=bigfile_filename)
+
+    young = [ psr for psr in pwnlist if 'm' not in pcl.get_pulsar_classification(psr.replace('PSRJ','J'))]
+    msps = [ psr for psr in pwnlist if 'm' in pcl.get_pulsar_classification(psr.replace('PSRJ','J'))]
+    print 'young',young
+    print 'msps',msps
+
+    sorted_pwnlist = young + msps
+
+    first_msp_index = None
+
+    for pwn in sorted_pwnlist:
         print pwn
 
         try:
@@ -60,11 +72,10 @@ def spatial_spectral_table(pwndata,
             if r['source_class'] == 'Upper_Limit': 
                 continue
 
-            #phase=r['shifted_phase']
-            phase=r['raw_phase']
+            if first_msp_index is None and pwn in msps:
+                first_msp_index = len(table[psr_name])
 
             table[psr_name].append(format.pwn(pwn))
-            #table[phase_name].append(phase.pretty_format(formatter=lambda x:'%.2f' % x))
             table[classification_name].append(r['abbreviated_source_class'])
 
             table[ts_point_name].append(format.value(r['ts_point'],precision=1))
@@ -85,7 +96,6 @@ def spatial_spectral_table(pwndata,
         except PWNClassifierException, ex:
             print 'Skipping %s: %s' % (pwn,ex)
             table[psr_name].append(format.pwn(pwn))
-            #table[phase_name].append('None')
             table[classification_name].append('None')
             table[ts_point_name].append('None')
             table[ts_ext_name].append('None')
@@ -94,7 +104,9 @@ def spatial_spectral_table(pwndata,
             table[index_name].append('None')
             table[cutoff_name].append('None')
 
-                
+    table[psr_name][0] = '\multicolumn{8}{c}{Young Pulsars} \\\\\n\hline\n' + table[psr_name][0]
+    table[psr_name][first_msp_index] = '\cutinhead{Millisecond Pulsars}\n' + table[psr_name][first_msp_index]
+               
     writer=TableWriter(table, savedir, filebase)
     if table_type == 'confluence':
         writer.write_confluence(

@@ -33,6 +33,8 @@ class TableWriter(object):
 
         open('%s.tex' % self.filebase,'w').write(t)
 
+        ncols = len(self.table.keys())
+
         open('temp.tex','w').write(dedent(r"""
             \documentclass{aastex}
             \usepackage{amsmath}
@@ -42,9 +44,10 @@ class TableWriter(object):
             \begin{document}
             %s
             %s
+            \tablecolumns{%s}
             \input{%s}
             %s
-            \end{document}""" % (header,preamble,self.filebase,footer)))
+            \end{document}""" % (header,preamble,ncols,self.filebase,footer)))
 
         os.system('pdflatex temp.tex')
         shutil.move('temp.pdf','%s.pdf' % self.filebase)
