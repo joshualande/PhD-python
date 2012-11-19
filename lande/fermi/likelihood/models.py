@@ -265,15 +265,20 @@ def build_pointlike_model(spectrum):
 
             if pointlike_name in model.param_names:
                 model.set_mapper(pointlike_name, LinearMapper)
-                model.set_limits_gtlike(
-                    pointlike_name,
-                    lower=param.getBounds()[0]*param.getScale(),
-                    upper=param.getBounds()[1]*param.getScale(),
-                    scale=param.getScale())
-                model.set_error(
-                    pointlike_name,
-                    abs(param.error()*param.getScale()))
-                model.set_free(pointlike_name, param.isFree())
+
+                if param.getBounds()[0] < -3.4e+38 and param.getBounds()[1] > 3.4e+38:
+                    # No effective bound on parameters
+                    pass
+                else:
+                    model.set_limits_gtlike(
+                        pointlike_name,
+                        lower=param.getBounds()[0]*param.getScale(),
+                        upper=param.getBounds()[1]*param.getScale(),
+                        scale=param.getScale())
+                    model.set_error(
+                        pointlike_name,
+                        abs(param.error()*param.getScale()))
+                    model.set_free(pointlike_name, param.isFree())
     return model
 
 
