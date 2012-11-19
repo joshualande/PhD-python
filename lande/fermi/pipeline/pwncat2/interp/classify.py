@@ -361,9 +361,10 @@ class PWNAutomaticClassifier(PWNClassifier):
         except PWNResultsException:
             raise PWNClassifierException("No results for %s" % pwn)
 
+        at_pulsar_gtlike = results['at_pulsar']['gtlike']
         point_gtlike = results['point']['gtlike']
         extended_gtlike = results['extended']['gtlike']
-        cutoff=point_gtlike['test_cutoff']
+        cutoff=at_pulsar_gtlike['test_cutoff']
 
         ts_point = max(point_gtlike['TS']['reoptimize'],0)
         ts_ext = max(extended_gtlike['TS']['reoptimize']-point_gtlike['TS']['reoptimize'],0)
