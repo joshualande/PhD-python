@@ -6,9 +6,16 @@ import pyfits
 from lande.pysed import units
 
 class PulsarCatalogLoader(object):
-    def __init__(self,bigfile_filename,off_peak_auxiliary_filename):
+    def __init__(self,bigfile_filename,off_peak_auxiliary_filename=None):
         self.bigfile_fits = pyfits.open(expandvars(bigfile_filename))['PULSARS_BIGFILE']
-        self.off_peak_fits = pyfits.open(expandvars(off_peak_auxiliary_filename))['OFF_PEAK']
+
+        if off_peak_auxiliary_filename is not None:
+            self.off_peak_fits = pyfits.open(expandvars(off_peak_auxiliary_filename))['OFF_PEAK']
+
+    def get_pulsar_classification(self, psr):
+        bigfile = self._get_bigfile(psr)
+        code=bigfile['PSR_Code']
+        return code
 
     def get_bigfile_psrlist(self):
         return np.char.strip(self.bigfile_fits.data['PSRJ'])
@@ -20,9 +27,11 @@ class PulsarCatalogLoader(object):
         return classification
 
     def get_off_peak_psrlist(self):
+        assert self.off_peak_fits is not None
         return np.char.strip(self.off_peak_fits.data['PSR'])
 
     def _get_off_peak(self,psr):
+        assert self.off_peak_fits is not None
         return self.off_peak_fits.data[self.off_peak_fits.data['PSR'] == psr][0]
 
     def _get_bigfile(self,psr):
