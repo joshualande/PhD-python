@@ -2,13 +2,20 @@ import pylab as P
 import numpy as np
 
 from . data import get_phases, get_phases_and_times
+from lande.utilities.plotting import histpoints
 from uw.pulsar.phase_range import PhaseRange
 
 def plot_phaseogram(ft1, nbins=100, filename=None, title=None, phase_range=None, 
                     data_kwargs=dict(),
-                    phase_range_kwargs=dict(), repeat_phase=False, axes=None, **kwargs):
+                    phase_range_kwargs=dict(), repeat_phase=False, axes=None, 
+                    offset=None,
+                    **kwargs):
     """ Simple code to plot a phaseogram. """
     phases = get_phases(ft1, **kwargs)
+
+    if offset is not None:
+        phases += offset
+        phases = phases % 1
 
     if axes is None:
 
@@ -17,9 +24,7 @@ def plot_phaseogram(ft1, nbins=100, filename=None, title=None, phase_range=None,
 
     bins = np.linspace(0,1,nbins+1)
 
-    counts,bins=np.histogram(phases,bins=bins)
-    x = np.asarray(zip(bins[:-1],bins[1:])).flatten()
-    y = np.asarray(zip(counts,counts)).flatten()
+    x, y = histpoints(phases, bins=bins)
 
     if repeat_phase:
         x,y = np.append(x, x+1), np.append(y, y)
@@ -41,11 +46,15 @@ def plot_phaseogram(ft1, nbins=100, filename=None, title=None, phase_range=None,
     axes.grid=True
 
     if phase_range is not None:
+        phase_range = PhaseRange(phase_range)
+        if offset is not None:
+            phase_range = phase_range.offset(offset)
+
         kwargs=dict(alpha=0.25, color='blue')
         kwargs.update(phase_range_kwargs)
-        PhaseRange(phase_range).axvspan(axes=axes, 
-                                        phase_offsets=[0,1] if repeat_phase else 0,
-                                        **kwargs)
+        phase_range.axvspan(axes=axes, 
+                            phase_offsets=[0,1] if repeat_phase else 0,
+                            **kwargs)
 
     if filename is not None:
         P.savefig(filename)

@@ -233,17 +233,46 @@ class OffPeakBB(object):
 
         self.blocks = dict(xx = self.periodic_blocks.xx, yy = self.periodic_blocks.yy)
 
+def rotate_blocks(xx,yy,offset):
+    """ rotate the bayesian blocks xx, yy. """
 
-def plot_phaseogram_blocks(ft1, blocks=None, blocks_kwargs=dict(), repeat_phase=False, **kwargs):
+    assert np.all((xx>=0)&(xx<=1))
+
+    assert offset > -1 and offset < 1
+
+    # pad out repeating blocks on either side
+    xx = np.concatenate((xx-1, xx, xx+1))
+    yy = np.concatenate((yy, yy, yy))
+
+    # now offset blocks
+    xx = xx + offset
+
+    # find & remove blocks outside of allowed range
+    last_lower = np.where(xx<=0)[0][-1]
+    first_upper = np.where(xx>=1)[0][0]
+    xx, yy = xx[last_lower:first_upper+1], yy[last_lower:first_upper+1]
+
+    # now, trunkate the blocks which expand too far out.
+    xx[0] = 0
+    xx[-1] = 1
+
+    return xx, yy
+
+def plot_phaseogram_blocks(ft1, blocks=None, blocks_kwargs=dict(), repeat_phase=False, offset=None, **kwargs):
 
     # plot bins
-    axes, bins = plot_phaseogram(ft1, repeat_phase=repeat_phase, **kwargs)
+    axes, bins = plot_phaseogram(ft1, repeat_phase=repeat_phase, offset=offset, **kwargs)
     binsz = bins[1]-bins[0]
 
     if blocks is not None:
         # plot blocks
         xx=np.asarray(blocks['xx'])
         yy=np.asarray(blocks['yy'])
+
+        if offset is not None:
+            xx, yy = rotate_blocks(xx,yy,offset)
+
+
         if repeat_phase: xx, yy = np.append(xx, xx+1), np.append(yy, yy)
 
         k=dict(color='blue')
