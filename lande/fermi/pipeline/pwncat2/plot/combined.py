@@ -45,8 +45,8 @@ class CombinedSpectralPlotter(object):
             self.powerlaw_limit = self.results[self.hypothesis][self.code]['powerlaw_upper_limit']
             self.cutoff_limit = self.results[self.hypothesis][self.code]['cutoff_upper_limit']
 
-        if self.code == 'gtlike':
-            self.bandfits = self.results[self.hypothesis][self.code]['bandfits']
+        #if self.code == 'gtlike':
+        #    self.bandfits = self.results[self.hypothesis][self.code]['bandfits']
 
     def plot(self, filename=None, axes=None,
             fignum=None, figsize=(5.5,4.5),
@@ -71,7 +71,7 @@ class CombinedSpectralPlotter(object):
         if self.hypothesis == 'at_pulsar':
             # plot power-law limits
             ul=UpperLimit(self.powerlaw_limit)
-            ul.plot(axes=axes, spectral_kwargs=dict(color='orange', zorder=1.9))
+            ul.plot(axes=axes, color='orange', zorder=1.9)
 
         axes.autoscale(False)
 
@@ -87,13 +87,13 @@ class CombinedSpectralPlotter(object):
 
         if self.hypothesis == 'at_pulsar':
             ul=UpperLimit(self.cutoff_limit)
-            ul.plot(axes=axes, spectral_kwargs=dict(color='purple', zorder=1.9))
+            ul.plot(axes=axes, color='purple', zorder=1.9)
 
-        if self.code == 'gtlike':
-            bf = BandFitter(self.bandfits)
-            bf.plot(axes=axes, 
-                    spectral_kwargs=dict(color='green',zorder=1.9), 
-                    spectral_error_kwargs=dict(color='green', alpha=0.25))
+        #if self.code == 'gtlike':
+        #    bf = BandFitter(self.bandfits)
+        #    bf.plot(axes=axes, 
+        #            spectral_kwargs=dict(color='green',zorder=1.9), 
+        #            spectral_error_kwargs=dict(color='green', alpha=0.25))
 
         if filename is not None:
             P.savefig(expandvars(filename))
