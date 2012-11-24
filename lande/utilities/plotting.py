@@ -14,7 +14,7 @@ import matplotlib.transforms as mtransforms
 
 from . arrays import nzip
 
-def histpoints(data, bins):
+def histpoints(data, bins, *args, **kwargs):
     """ Create a series of x,y, points which will draw a histogram.
         Useful because the points can be directly plotted with
         the plot function. This is similar to the matplotlib hist
@@ -28,8 +28,10 @@ def histpoints(data, bins):
             >>> np.all(y == [0, 2, 2, 1, 1, 0])
             True
     """
-    binned_data, bins = np.histogram(data, bins=bins)
+    binned_data, bins = np.histogram(data, bins=bins, *args, **kwargs)
+    return binned_data_and_bins_to_x_y(binned_data,bins)
 
+def binned_data_and_bins_to_x_y(binned_data,bins):
     x = nzip(bins, bins)
     y = np.concatenate(([0], nzip(binned_data, binned_data), [0]))
     return x,y
