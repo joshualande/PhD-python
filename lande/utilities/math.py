@@ -1,3 +1,4 @@
+import numpy as np
 
 def overlaps(x1,x2, y1,y2):
     """Given two numeric ranges, returns a flag True or False
@@ -43,6 +44,17 @@ def overlaps(x1,x2, y1,y2):
     # y1 <= y2 < x1 <= x2
     assert x1<x2 and y1<y2
     return not (x2 < y1 or y2 < x1)
+
+
+def log_binomial(n,m):
+    """ Log of the binomial coefficient (n choose m).
+
+        Implementation taken from 
+            http://grocid.net/2012/07/02/quick-and-dirty-way-to-calculate-large-binomial-coefficients-in-python/
+    """
+    log_fac = lambda n: np.sum(np.log(np.arange(2,n+1)))
+    return log_fac(n)-log_fac(m)-log_fac(n-m)
+
 
 if __name__ == "__main__":
     import doctest
