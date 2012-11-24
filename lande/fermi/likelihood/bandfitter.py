@@ -69,7 +69,7 @@ class BandFitter(BaseFitter):
                 sp.plot_error(spectrum, emin=emin, emax=emax, **pass_spectral_error_kwargs)
             else:
                 ul = UpperLimit(r['upper_limit'])
-                ul.plot(axes=axes, spectral_kwargs=pass_spectral_kwargs)
+                ul.plot(axes=axes, **pass_spectral_kwargs)
                 
 
         if title is not None: axes.set_title(title)
