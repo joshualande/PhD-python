@@ -79,7 +79,7 @@ class PWNClassifier(object):
         assert source_class == 'Upper_Limit' or spatial_model in PWNClassifier.allowed_spatial_models
         assert source_class == 'Upper_Limit' or spectral_model in PWNClassifier.allowed_spectral_models 
 
-        results = self.loader.get_results(pwn, require_all_exists=True, get_variability=False)
+        results = self.loader.get_results(pwn, require_all_exists=True, get_variability=True)
 
         if results is None:
             print 'Results for %s is not done yet, skipping' % pwn
@@ -118,7 +118,14 @@ class PWNClassifier(object):
         else:
             raise Exception("...")
 
-        d['ts_var'] = None
+        if spatial_model == 'Extended':
+            # note, does not make sense to use extended spatial model for variability
+            d['ts_var'] = results['point']['variability']['TS_var']['gtlike']
+        elif isinstance(spatial_model,float) and np.isnan(spatial_model):
+            # upper limit
+            d['ts_var'] = results['at_pulsar']['variability']['TS_var']['gtlike']
+        else:
+            d['ts_var'] = results[spatial_model.lower()]['variability']['TS_var']['gtlike']
 
         # spectral stuff
 
@@ -284,67 +291,6 @@ class PWNClassifier(object):
             d['sed_prefactor_upper_limit'] = sed_prefactor_upper_limit
         else:
             raise Exception("...")
-
-
-        # add in bandfits
-
-        bf = gtlike['bandfits']
-
-        bandfits_ts = np.asarray([ i['TS']['reoptimize'] for i in bf['bands']])
-        bandfits_lower_energy = np.asarray([ i['energy']['emin'] for i in bf['bands']])
-        bandfits_upper_energy = np.asarray([ i['energy']['emax'] for i in bf['bands']])
-        bandfits_middle_energy = np.asarray([ i['energy']['emiddle'] for i in bf['bands']])
-
-        bandfits_flux = [ i['flux']['flux'] for i in bf['bands']]
-        bandfits_flux_err = [ i['flux']['flux_err'] for i in bf['bands']]
-        bandfits_flux_upper_limit = [ i['upper_limit']['flux'] for i in bf['bands']]
-
-        bandfits_energy_flux = [ i['flux']['eflux'] for i in bf['bands']]
-        bandfits_energy_flux_err = [ i['flux']['eflux_err'] for i in bf['bands']]
-        bandfits_energy_flux_upper_limit = [ i['upper_limit']['eflux'] for i in bf['bands']]
-
-        bandfits_prefactor = [ convert_prefactor(i['spectrum']['Prefactor']) for i in bf['bands']]
-        bandfits_prefactor_err = [ convert_prefactor(i['spectrum']['Prefactor_err']) for i in bf['bands']]
-        
-        bandfits_index = [ -1*i['spectrum']['Index'] for i in bf['bands']]
-        bandfits_index_err = [ np.abs(i['spectrum']['Index_err']) for i in bf['bands']]
-
-        d['bandfits_ts'] = bandfits_ts
-        d['bandfits_lower_energy'] = bandfits_lower_energy
-        d['bandfits_upper_energy'] = bandfits_upper_energy
-        d['bandfits_middle_energy'] = bandfits_middle_energy
-
-        if source_class in ['Confused', 'Pulsar', 'PWN']:
-            significant = (bandfits_ts >= 25)
-            d['bandfits_flux'] = np.where(significant,bandfits_flux,np.nan)
-            d['bandfits_flux_err'] = np.where(significant,bandfits_flux_err,np.nan)
-            d['bandfits_flux_upper_limit'] = np.where(~significant,bandfits_flux_upper_limit,np.nan)
-
-            d['bandfits_energy_flux'] = np.where(significant,bandfits_energy_flux,np.nan)
-            d['bandfits_energy_flux_err'] = np.where(significant,bandfits_energy_flux_err,np.nan)
-            d['bandfits_energy_flux_upper_limit'] = np.where(~significant,bandfits_energy_flux_upper_limit,np.nan)
-
-            d['bandfits_prefactor'] = np.where(significant,bandfits_prefactor,np.nan)
-            d['bandfits_prefactor_err'] = np.where(significant,bandfits_prefactor_err,np.nan)
-            
-            d['bandfits_index'] = np.where(significant,bandfits_index,np.nan)
-            d['bandfits_index_err'] = np.where(significant,bandfits_index_err,np.nan)
-        else:
-            array_from = lambda x: np.asarray([x]*len(bandfits_ts))
-
-            d['bandfits_flux'] = array_from(np.nan) 
-            d['bandfits_flux_err'] = array_from(np.nan) 
-            d['bandfits_flux_upper_limit'] = bandfits_flux_upper_limit
-
-            d['bandfits_energy_flux'] = array_from(np.nan) 
-            d['bandfits_energy_flux_err'] = array_from(np.nan) 
-            d['bandfits_energy_flux_upper_limit'] = bandfits_energy_flux_upper_limit
-
-            d['bandfits_prefactor'] = array_from(np.nan) 
-            d['bandfits_prefactor_err'] = array_from(np.nan) 
-            
-            d['bandfits_index'] = array_from(np.nan) 
-            d['bandfits_index_err'] = array_from(np.nan) 
 
         return d
 

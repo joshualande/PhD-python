@@ -63,6 +63,7 @@ def auxiliary_table(pwndata,
     ts_point_name=add_float('TS_point')
     ts_ext_name=add_float('TS_ext')
     ts_cutoff_name=add_float('TS_cutoff')
+    ts_var_name=add_float('TS_var')
 
     # Spectral Stuff
 
@@ -168,6 +169,8 @@ def auxiliary_table(pwndata,
         if source_class in ['Confused', 'Pulsar', 'PWN']:
             table[ts_ext_name][i]=r['ts_ext']
             table[ts_cutoff_name][i]=r['ts_cutoff']
+
+        table[ts_var_name][i]=r['ts_var']
 
         # spectral stuff
 
