@@ -75,7 +75,7 @@ class PulsarCatalogLoader(object):
         d1 = bigfile['DPSR_1']
         d2 = bigfile['DPSR_2']
 
-        luminosity, luminosity_lower_error, luminosity_upper_error, luminosity_ul, luminosity_significant = None, None, None, None, None
+        luminosity, luminosity_error_statistical, luminosity_lower_error_systematic, luminosity_upper_error_systematic, luminosity_ul, luminosity_significant = None, None, None, None, None, None
 
         classification = self.get_off_peak_classification(psr)
 
@@ -105,23 +105,57 @@ class PulsarCatalogLoader(object):
                 d1_lower_error,d1_upper_error=eval(bigfile['e_DPSR_1_stat'])
 
                 if classification == 'Upper_Limit':
-                    luminosity_ul = eflux_ul*4*np.pi*(dist + d1_upper_error) * convert
+                    luminosity_ul = eflux_ul*4*np.pi*(dist + d1_upper_error)**2 * convert
                     luminosity_significant = False
                 else:
                     
                     luminosity = eflux*4*np.pi*dist**2 * convert
-                    luminosity_lower_error = luminosity_upper_error = np.sqrt(
-                        ((eflux_error)*4*np.pi*dist**2)**2 + 
-                        (eflux*4*np.pi*2*dist*d1_lower_error)**2
-                    ) * convert
-                    luminosity_upper_error = luminosity_upper_error = np.sqrt(
-                        ((eflux_error)*4*np.pi*dist**2)**2 + 
-                        (eflux*4*np.pi*2*dist*d1_upper_error)**2
-                    ) * convert
+                    luminosity_error_statistical = eflux_error*4*np.pi*dist**2 * convert
+
+                    #josh_method=False;xian_method=True
+                    josh_method=True;xian_method=False
+
+                    if josh_method:
+                        print 'USING josh_method'
+                    if xian_method:
+                        print 'USING xian_method'
+
+                    assert (josh_method and not xian_method) or (xian_method and not josh_method)
+
+                    if josh_method:
+                        luminosity_lower_error_systematic = luminosity - eflux*4*np.pi*(dist-d1_lower_error)**2 * convert
+                        luminosity_upper_error_systematic = eflux*4*np.pi*(dist+d1_upper_error)**2 * convert - luminosity
+
+                    if xian_method:
+                        lum = lambda _f, _d: _f*4*np.pi*_d**2*convert
+
+                        def xians_method(dist_err, npts=1000):
+                            d_samples = np.random.normal(dist,dist_err,npts)
+                            all_luminosities=lum(eflux,d_samples)
+                            luminosity_error = np.std(all_luminosities)
+                            return luminosity_error
+
+                        luminosity_lower_error_systematic = xians_method(d1_lower_error)
+                        luminosity_upper_error_systematic = xians_method(d1_upper_error)
+                        if luminosity_lower_error_systematic > luminosity:
+                            print 'Hitting weird edge case for psr=%s' % psr
+                            luminosity_lower_error_systematic = 0.9*luminosity
 
                     luminosity_significant = True
+
+                    if psr in [ 'J0205+6449','J0534+2200']:
+                        print psr
+                        print ' * -> eflux',eflux
+                        print ' * -> eflux_error',eflux_error,eflux_error/eflux
+                        print ' * -> dist',dist
+                        print ' * -> d1_lower_error',d1_lower_error,d1_lower_error/dist
+                        print ' * -> d1_upper_error',d1_upper_error,d1_upper_error/dist
+                        print ' * -> luminosity',luminosity
+                        print ' * -> luminosity_error_statistical',luminosity_error_statistical,luminosity_error_statistical/luminosity
+                        print ' * -> luminosity_lower_error_systematic',luminosity_lower_error_systematic,luminosity_lower_error_systematic/luminosity
+                        print ' * -> luminosity_upper_error_systematic',luminosity_upper_error_systematic,luminosity_upper_error_systematic/luminosity
             else:
                 raise Exception('two distances. Not sure what to do')
 
 
-        return luminosity, luminosity_lower_error, luminosity_upper_error, luminosity_ul, luminosity_significant
+        return luminosity, luminosity_error_statistical, luminosity_lower_error_systematic, luminosity_upper_error_systematic, luminosity_ul, luminosity_significant

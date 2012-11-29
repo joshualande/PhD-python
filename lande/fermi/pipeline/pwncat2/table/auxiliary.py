@@ -49,7 +49,7 @@ def auxiliary_table(pwndata,
     maxwidth=max([len(i) for i in pwnlist])
     psr_name=add_string('PSR', maxwidth)
 
-    len_class = max(map(len,PWNClassifier.allowed_source_class))
+    len_class = max(map(len,PWNClassifier.abbreviated_source_class_mapper.values()))
     classification_name=add_string('Classification', len_class)
 
 
@@ -144,7 +144,7 @@ def auxiliary_table(pwndata,
         table[psr_name][i]=pwn.replace('PSRJ','J')
 
         source_class = r['source_class']
-        table[classification_name][i] = source_class
+        table[classification_name][i] = r['abbreviated_source_class']
 
         assert source_class in PWNClassifier.allowed_source_class
 

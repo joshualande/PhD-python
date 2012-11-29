@@ -55,11 +55,21 @@ class PWNClassifier(object):
 
     abbreviated_source_class_mapper = dict(
         Pulsar='M', # Emission "Magnetospheric"
+        Pulsar_Confused='M*',
         PWN='W', # From Pulsar "Wind"
         Confused='U',
         Upper_Limit='L')
 
-    allowed_source_class = ['Pulsar', 'PWN', 'Confused', 'Upper_Limit']
+    """
+    expanded_source_class_mapper = dict(
+        Pulsar='Magnetospheric', # Emission "Magnetospheric"
+        Pulsar_Confused='Magnetospheric*',
+        PWN='PWN', # From Pulsar "Wind"
+        Confused='Unidentified',
+        Upper_Limit='Upper_Limit')
+    """
+
+    allowed_source_class = ['Pulsar', 'Pulsar_Confused', 'PWN', 'Confused', 'Upper_Limit']
     allowed_spatial_models = ['At_Pulsar','Point','Extended']
     allowed_spectral_models = ['FileFunction','PowerLaw','PLSuperExpCutoff']
 
@@ -88,7 +98,7 @@ class PWNClassifier(object):
         point_gtlike = results['point']['gtlike']
         extended_gtlike = results['extended']['gtlike']
 
-        if isnan(spatial_model):
+        if isnan(spatial_model): # upper limits
             gtlike = results['at_pulsar']['gtlike']
             pointlike = results['at_pulsar']['pointlike']
         else:
@@ -110,7 +120,7 @@ class PWNClassifier(object):
 
         d['abbreviated_source_class'] = self.abbreviated_source_class_mapper[source_class]
 
-        if source_class in ['Confused', 'Pulsar', 'PWN']:
+        if source_class in ['Confused', 'Pulsar', 'Pulsar_Confused', 'PWN']:
             d['ts_ext'] = max(extended_gtlike['TS']['reoptimize']-point_gtlike['TS']['reoptimize'],0)
             d['ts_cutoff'] = max(at_pulsar_cutoff['TS_cutoff'],0)
         elif source_class == 'Upper_Limit':
@@ -239,7 +249,7 @@ class PWNClassifier(object):
         d['cutoff_flux_upper_limit'] = None
         d['cutoff_energy_flux_upper_limit'] = None
 
-        if source_class in ['Confused', 'Pulsar', 'PWN']:
+        if source_class in ['Confused', 'Pulsar', 'Pulsar_Confused', 'PWN']:
             pass
         elif source_class == 'Upper_Limit':
             d['powerlaw_flux_upper_limit'] = gtlike['powerlaw_upper_limit']['flux']
@@ -277,7 +287,7 @@ class PWNClassifier(object):
         d['sed_lower_energy'] = sed_lower_energy
         d['sed_upper_energy'] = sed_upper_energy
         d['sed_middle_energy'] = sed_middle_energy
-        if source_class in ['Confused', 'Pulsar', 'PWN']:
+        if source_class in ['Confused', 'Pulsar', 'Pulsar_Confused', 'PWN']:
             significant = (sed_ts >= 4)
             d['sed_prefactor'] = np.where(significant, sed_prefactor, np.nan)
             d['sed_prefactor_lower_err'] = np.where(significant, sed_prefactor_lower_err, np.nan)
@@ -326,9 +336,12 @@ class PWNAutomaticClassifier(PWNClassifier):
         if ts_point >= 25:
 
             if ts_cutoff >= 9:
-                source_class = 'Pulsar'
                 spatial_model = 'At_Pulsar'
                 spectral_model = 'PLSuperExpCutoff'
+                if ts_ext >= 16:
+                    source_class = 'Pulsar_Confused'
+                else:
+                    source_class = 'Pulsar'
             else:
                 if ts_ext >= 16:
                     spatial_model = 'Extended'
