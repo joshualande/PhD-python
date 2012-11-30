@@ -133,7 +133,7 @@ def plot_points(x, y, xlo, xhi,
 
         if no x errors, set xlo=xhi=None. 
         """
-        plot_kwargs = dict(linestyle='none')
+        plot_kwargs = dict(linestyle='none', capsize=0)
         plot_kwargs.update(kwargs)
 
         if isinstance(significant,bool):
@@ -171,17 +171,15 @@ def plot_points(x, y, xlo, xhi,
         # plot data points
         axes.errorbar(x, y,
                       xerr=[dx_lo, dx_hi], yerr=[y_lower_err, y_upper_err],
-                      capsize=0,
                       **plot_kwargs)
 
         # and upper limits
         if sum(~s)>0:
             if 'label' in plot_kwargs: plot_kwargs.pop('label')
 
-            # remove marker kwargs from upper limit
-            #plot_kwargs = {k:v for k,v in plot_kwargs.items() if 'marker' not in k}
-            if 'marker' in plot_kwargs:
-                plot_kwargs.pop('marker')
+            for k in ['capsize', 'elinewidth', 'marker']:
+                if k in plot_kwargs:
+                    plot_kwargs.pop(k)
 
             # plot the upper limit down arrow markers
             axes.plot(x[~s], (1-ul_fraction)*y_ul[~s],
