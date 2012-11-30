@@ -87,14 +87,16 @@ class PulsarCatalogLoader(object):
 
             dist_ul = float(d1[1:])
 
-            if classification == 'Upper_Limit':
+            if classification == 'L':
                 print 'distance UL + flux UL'
                 luminosity_ul = eflux_ul*4*np.pi*dist_ul**2 * convert
                 luminosity_significant = False
-            else:
+            elif classification in ['W','U','M','M*']:
                 print 'distance UL + flux detection'
                 luminosity_ul = (eflux + eflux_error)*4*np.pi*dist_ul**2 * convert
                 luminosity_significant = False
+            else:
+                raise Exception("...")
 
         else:
             if np.isnan(d2):
@@ -104,11 +106,10 @@ class PulsarCatalogLoader(object):
                 dist = float(d1)
                 d1_lower_error,d1_upper_error=eval(bigfile['e_DPSR_1_stat'])
 
-                if classification == 'Upper_Limit':
+                if classification == 'L':
                     luminosity_ul = eflux_ul*4*np.pi*(dist + d1_upper_error)**2 * convert
                     luminosity_significant = False
-                else:
-                    
+                elif classification in ['W','U','M','M*']:
                     luminosity = eflux*4*np.pi*dist**2 * convert
                     luminosity_error_statistical = eflux_error*4*np.pi*dist**2 * convert
 
@@ -154,6 +155,8 @@ class PulsarCatalogLoader(object):
                         print ' * -> luminosity_error_statistical',luminosity_error_statistical,luminosity_error_statistical/luminosity
                         print ' * -> luminosity_lower_error_systematic',luminosity_lower_error_systematic,luminosity_lower_error_systematic/luminosity
                         print ' * -> luminosity_upper_error_systematic',luminosity_upper_error_systematic,luminosity_upper_error_systematic/luminosity
+                else:
+                    raise Exception("...")
             else:
                 raise Exception('two distances. Not sure what to do')
 
