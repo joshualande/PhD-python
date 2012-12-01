@@ -6,6 +6,7 @@ from lande.fermi.likelihood.roi_gtlike import Gtlike
 import traceback
 import sys
 import os
+from os.path import join
 import numpy as np
 
 import yaml
@@ -33,7 +34,7 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
     print 'Performing Gtlike crosscheck for %s' % hypothesis
 
     frozen  = freeze_far_away(roi, roi.get_source(name).skydir, max_free)
-    gtlike=Gtlike(roi)
+    gtlike=Gtlike(roi, extended_dir_name=datadir)
     unfreeze_far_away(roi, frozen)
 
     global like
@@ -55,7 +56,8 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
     print 'Done fiting gtlike ROI'
     print summary(like, maxdist=10)
 
-    like.writeXml("%s/srcmodel_gtlike_%s_%s.xml"%(datadir, hypothesis, name))
+    spectrum_name = like.logLike.getSource(name).spectrum().genericName()
+    like.writeXml("%s/srcmodel_gtlike_%s_%s_%s.xml"%(datadir, hypothesis, spectrum_name, name))
 
     r=source_dict(like, name)
 
@@ -65,11 +67,13 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
     if upper_limit:
         pul = GtlikePowerLawUpperLimit(like, name, emin=emin, emax=emax, cl=.95,
                                        upper_limit_kwargs=upper_limit_kwargs,
-                                       verbosity=4)
+                                       verbosity=4,
+                                       xml_name=join("%s/srcmodel_gtlike_%s_%s_%s.xml" % (datadir, hypothesis, 'PowerLaw_Upper_Limit', name)))
         r['powerlaw_upper_limit'] = pul.todict()
         cul = GtlikeCutoffUpperLimit(like, name, Index=1.7, Cutoff=3e3, b=1, cl=.95,
                                      upper_limit_kwargs=upper_limit_kwargs,
-                                     verbosity=4)
+                                     verbosity=4,
+                                     xml_name=join("%s/srcmodel_gtlike_%s_%s_%s.xml" % (datadir, hypothesis, 'PLSuperExpCutoff_Upper_Limit', name)))
         r['cutoff_upper_limit'] = cul.todict()
 
     if all_energy(emin,emax):
@@ -111,7 +115,8 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
 
     if cutoff:
         try:
-            tc = GtlikeCutoffTester(like,name, cutoff_model=cutoff_model, verbosity=4)
+            tc = GtlikeCutoffTester(like,name, cutoff_model=cutoff_model, verbosity=4,
+                                    cutoff_xml_name=join("%s/srcmodel_gtlike_%s_%s_%s.xml" % (datadir, hypothesis, 'PLSuperExpCutoff', name)))
             r['test_cutoff']=tc.todict()
             tc.plot(sed_results='%s/sed_gtlike_2bpd_%s_%s.yaml' % (seddir,hypothesis,name),
                     filename='%s/test_cutoff_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
