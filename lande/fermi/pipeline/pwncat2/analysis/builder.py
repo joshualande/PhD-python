@@ -5,16 +5,17 @@ from itertools import product
 from lande.utilities.jobtools import JobBuilder
 
 class PipelineBuilder(JobBuilder):
-    def build_followup(self, code, hypotheses, followups):
+    def build_followup(self, code, hypotheses, followups, followup_filenames=None, extra=''):
+        if followup_filenames is None: followup_filenames = followups
         for perm in product(*self.values):
             subdir = self.build_subdir(perm)
             args = self.build_args(perm)
 
             for hypothesis in hypotheses:
-                for followup in followups:
+                for followup,followup_filename in zip(followups,followup_filenames):
                     pwn = basename(subdir)
-                    run = join(subdir,'followup_%s_%s_%s.sh' % (pwn,followup,hypothesis))
-                    open(run,'w').write("python %s %s --hypothesis=%s --followup=%s" % (code,args,hypothesis,followup))
+                    run = join(subdir,'followup_%s_%s_%s.sh' % (pwn,followup_filename,hypothesis))
+                    open(run,'w').write("python %s %s %s --hypothesis=%s --followup=%s" % (code,args,extra,hypothesis,followup))
 
             followup_all = join(self.savedir,'followup_all.sh')
             open(followup_all,'w').write(dedent("""
