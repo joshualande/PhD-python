@@ -32,7 +32,9 @@ def merge_diffuse(diffuse_sources, scaling_model=None, mergefile=None, verbosity
 
     first = pf.pop(0)
     for i in pf:
-        assert first['PRIMARY'].header == i['PRIMARY'].header
+        assert first['PRIMARY'].data.shape == i['PRIMARY'].data.shape
+        if first['PRIMARY'].header != i['PRIMARY'].header:
+            print 'WARNING: HEADER FILES DISAGREE. PERFORMING MERGE ANYWAY'
         first['PRIMARY'].data += i['PRIMARY'].data
     first.writeto(mergefile, clobber=True)
 
