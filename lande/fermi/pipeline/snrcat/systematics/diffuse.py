@@ -17,6 +17,8 @@ class GulliDiffuseSetup(object):
         ('verbosity', False, 'Make lots of noise'),
         ('fraction', 0.03, 'Fraction to compare model to observed counts'),
         ('mergefile', None, 'name of merged file'),
+        ('short_name', False, 'does not use the plus in the name of the merged source'),
+        ('compress', False,  'creates a .gz file for save space'),
     )
 
     @keyword_options.decorate(defaults)
@@ -82,7 +84,7 @@ class GulliDiffuseSetup(object):
                     print ' .. Deleting (and then merging) %s' % source.name
                     roi.del_source(source.name)
 
-            merged = merge_diffuse(insignificant, mergefile=self.mergefile, verbosity=self.verbosity)
+            merged = merge_diffuse(insignificant, mergefile=self.mergefile, verbosity=self.verbosity, short_name=self.short_name , compress=self.compress)
             if self.verbosity:
                 print 'Adding merged Galactic diffuse source %s to ROI:' % (merged.name)
             roi.add_source(merged)
