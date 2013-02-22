@@ -36,3 +36,34 @@ def freeze_insignificant_diffuse(roi, *args, **kwargs):
     for source in insignificant:
         roi.modify(which=source, free=False)
 
+def get_most_significant_diffuse(roi, allowed_fraction,max_n_models=1, verbosity=False):
+    from lande.fermi.likelihood.save import get_background
+    
+    significant_list = []
+                
+    for name in get_background(roi):
+        oc=observed_counts(roi)
+        mc=model_counts(roi,name)
+        fraction=float(mc)/oc
+        if verbosity:
+            print ' .. Source %s predicts %0.2f%% of total counts' % (name,fraction)
+                    
+        if fraction > allowed_fraction:
+
+            significant_list.append((name,)+(fraction,))
+            
+            if verbosity: print 'keeping it.'
+        else:
+            if verbosity: print 'discarding it.'
+            
+    sorted_list=sorted(significant_list, key=lambda frac: frac[1], reverse= True)
+    cut_list=[]
+    for i in sorted_list[:max_n_models]:
+        cut_list.append(i[0])
+        
+    if verbosity:
+        print significant_list
+        print sorted_list
+        print cut_list
+    return cut_list
+                                
