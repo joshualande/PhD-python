@@ -110,6 +110,7 @@ class SED(BaseFitter):
 
     def plot(self, filename=None, axes=None, title=None,
              fignum=None, figsize=(4,4),
+             rect=(0.22,0.15,0.75,0.8),
              plot_spectral_fit=True,
              plot_spectral_error=True,
              data_kwargs=dict(),
@@ -120,7 +121,7 @@ class SED(BaseFitter):
         if axes is None:
             fig = P.figure(fignum,figsize)
             axes = SpectralAxes(fig=fig, 
-                                rect=(0.22,0.15,0.75,0.8),
+                                rect=rect,
                                 flux_units=self.flux_units,
                                 energy_units=self.energy_units)
             fig.add_axes(axes)
