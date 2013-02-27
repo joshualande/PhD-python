@@ -38,14 +38,14 @@ def spatial_spectral_table(pwndata,
         ts_point_name='TS_point'
         ts_ext_name='TS_ext'
         ts_cutoff_name = 'TS_cutoff'
-        flux_name = 'Flux'
+        eflux_name = 'Energy Flux'
         index_name = 'Gamma'
         cutoff_name = 'E_cutoff'
     elif table_type == 'latex':
         ts_point_name=r'$\tspoint$'
         ts_ext_name=r'$\tsext$'
         ts_cutoff_name = r'$\tscutoff$'
-        flux_name = r'Flux'
+        eflux_name = r'Energy Flux'
         index_name = r'$\Gamma$'
         cutoff_name = r'$\Ecutoff$'
 
@@ -82,7 +82,7 @@ def spatial_spectral_table(pwndata,
             table[ts_ext_name].append(format.value(r['ts_ext'],precision=1))
             table[ts_cutoff_name].append(format.value(r['ts_cutoff'],precision=1))
 
-            table[flux_name].append(format.error(r['flux']/1e-9,r['flux_err']/1e-9))
+            table[eflux_name].append(format.error(r['energy_flux']/1e-11,r['energy_flux_err']/1e-11))
             if r['spectral_model'] in ['PowerLaw','PLSuperExpCutoff']:
                 table[index_name].append(format.error(r['index'],r['index_err']))
             else:
@@ -100,7 +100,7 @@ def spatial_spectral_table(pwndata,
             table[ts_point_name].append('None')
             table[ts_ext_name].append('None')
             table[ts_cutoff_name].append('None')
-            table[flux_name].append('None')
+            table[eflux_name].append('None')
             table[index_name].append('None')
             table[cutoff_name].append('None')
 
@@ -111,14 +111,14 @@ def spatial_spectral_table(pwndata,
     if table_type == 'confluence':
         writer.write_confluence(
                          units={
-                             flux_name:r'(10^-9 ph cm^-2 s^-1)',
+                             eflux_name:r'(10^-11 erg cm^-2 s^-1)',
                              cutoff_name:r'(GeV)',
                          })
     elif table_type == 'latex':
         writer.write_latex(
                     preamble=r'\tabletypesize{\tiny}',
                     units={
-                        flux_name:r'($10^{-9}\,\fluxunits$)',
+                        eflux_name:r'($10^{-11}\,\efluxunits$)',
                         cutoff_name:r'(GeV)',
                     },
                    )

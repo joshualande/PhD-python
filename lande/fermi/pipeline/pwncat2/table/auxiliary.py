@@ -33,12 +33,22 @@ def auxiliary_table(pwndata,
 
 
     def add_float(name, **kwargs):
-        table.add_empty_column(name, np.float, shape=npwn, **kwargs)
+        table.add_empty_column(name, np.dtype('float32'), shape=npwn, **kwargs)
+        table[name][:]=np.nan
+        return name
+
+    def add_int(name, **kwargs):
+        table.add_empty_column(name, np.dtype('int32'), shape=npwn, **kwargs)
         table[name][:]=np.nan
         return name
 
     def add_vector_float(name, size, *args, **kwargs):
-        table.add_empty_column(name, np.float, shape=(npwn, size), **kwargs)
+        table.add_empty_column(name, np.dtype('float32'), shape=(npwn, size), **kwargs)
+        table[name][:]=np.nan
+        return name
+
+    def add_vector_int(name, size, *args, **kwargs):
+        table.add_empty_column(name, np.dtype('int32'), shape=(npwn, size), **kwargs)
         table[name][:]=np.nan
         return name
 
@@ -50,85 +60,86 @@ def auxiliary_table(pwndata,
     psr_name=add_string('PSR', maxwidth)
 
     len_class = max(map(len,PWNClassifier.abbreviated_source_class_mapper.values()))
-    classification_name=add_string('Classification', len_class)
+    classification_name=add_string('Classification_OP', len_class)
 
 
     # Phase Stuff
-    off_peak_min_name=add_float('Off_Peak_Min')
-    off_peak_max_name=add_float('Off_Peak_Max')
-    second_off_peak_min_name=add_float('Second_Off_Peak_Min')
-    second_off_peak_max_name=add_float('Second_Off_Peak_Max')
+    off_peak_min_name=add_float('Min_Phase_OP')
+    off_peak_max_name=add_float('Max_Phase_OP')
+    second_off_peak_min_name=add_float('Min_2_Phase_OP')
+    second_off_peak_max_name=add_float('Max_2_Phase_OP')
 
     # Significance stuff
-    ts_point_name=add_float('TS_point')
-    ts_ext_name=add_float('TS_ext')
-    ts_cutoff_name=add_float('TS_cutoff')
-    ts_var_name=add_float('TS_var')
+    ts_point_name=add_int('TS_point_OP')
+    ts_ext_name=add_int('TS_ext_OP')
+    ts_cutoff_name=add_int('TS_cutoff_OP')
+    ts_var_name=add_int('TS_var_OP')
 
     # Spectral Stuff
 
     len_spectral = max(map(len,PWNClassifier.allowed_spectral_models))
-    spectral_model_name=add_string('Spectral_Model', len_spectral)
+    spectral_model_name=add_string('Spectral_Model_OP', len_spectral)
 
     energy_units = 'MeV'
     energy_flux_units = 'erg/cm^2/s'
     flux_units = 'ph/cm^2/s'
     prefactor_units = 'ph/cm^2/s/erg'
 
-    energy_flux_name = add_float('EFlux', unit=energy_flux_units)
-    energy_flux_err_name = add_float('EFlux_Error', unit=energy_flux_units)
+    flux_name = add_float('Flux_OP', unit=flux_units)
+    flux_err_name = add_float('Unc_Flux_OP', unit=flux_units)
 
-    flux_name = add_float('Flux', unit=flux_units)
-    flux_err_name = add_float('Flux_Error', unit=flux_units)
-
-    prefactor_name = add_float('Prefactor', unit=prefactor_units)
-    prefactor_err_name = add_float('Prefactor_Error', unit=prefactor_units)
-
-    normalization_name = add_float('Normalization')
-    normalization_err_name = add_float('Normalization_Error')
+    energy_flux_name = add_float('EFlux_OP', unit=energy_flux_units)
+    energy_flux_err_name = add_float('Unc_EFlux_OP', unit=energy_flux_units)
 
 
-    scale_name = add_float('Scale', unit=energy_units)
+    prefactor_name = add_float('Prefactor_OP', unit=prefactor_units)
+    prefactor_err_name = add_float('Unc_Prefactor_OP', unit=prefactor_units)
 
-    index_name = add_float('Index')
-    index_err_name = add_float('Index_Error')
+    normalization_name = add_float('Normalization_OP')
+    normalization_err_name = add_float('Unc_Normalization_OP')
 
-    cutoff_name = add_float('Energy_Cutoff', unit=energy_units)
-    cutoff_err_name = add_float('Energy_Cutoff_Error', unit=energy_units)
+
+    scale_name = add_float('Scale_OP', unit=energy_units)
+
+    index_name = add_float('Index_OP')
+    index_err_name = add_float('Unc_Index_OP')
+
+    cutoff_name = add_float('Energy_Cutoff_OP', unit=energy_units)
+    cutoff_err_name = add_float('Unc_Energy_Cutoff_OP', unit=energy_units)
 
     # Spatial Stuff
 
     len_spatial = max(map(len,PWNClassifier.allowed_spatial_models))
-    spatial_model_name=add_string('Spatial_Model',len_spatial)
+    spatial_model_name=add_string('Spatial_Model_OP',len_spatial)
 
-    ra_name = add_float('RA_J2000', unit='deg')
-    dec_name = add_float('DEC_J2000', unit='deg')
+    ra_name = add_float('RAJ2000_OP', unit='deg')
+    dec_name = add_float('DECJ2000_OP', unit='deg')
 
-    glon_name = add_float('GLON', unit='deg')
-    glat_name = add_float('GLAT', unit='deg')
+    glon_name = add_float('GLON_OP', unit='deg')
+    glat_name = add_float('GLAT_OP', unit='deg')
 
-    poserr_name = add_float('Position_Error', unit='deg')
+    poserr_name = add_float('Unc_Position_OP', unit='deg')
 
-    extension_name = add_float('Extension', unit='deg')
-    extension_err_name = add_float('Extension_Error', unit='deg')
+    extension_name = add_float('Extension_OP', unit='deg')
+    extension_err_name = add_float('Unc_Extension_OP', unit='deg')
 
-    powerlaw_flux_upper_limit_name = add_float('PowerLaw_Flux_UL')
-    powerlaw_energy_flux_upper_limit_name =add_float('PowerLaw_EFlux_UL')
+    powerlaw_flux_upper_limit_name = add_float('PowerLaw_Flux_UL_OP')
+    powerlaw_energy_flux_upper_limit_name =add_float('PowerLaw_EFlux_UL_OP')
 
-    cutoff_flux_upper_limit_name = add_float('Cutoff_Flux_UL')
-    cutoff_energy_flux_upper_limit_name =add_float('Cutoff_EFlux_UL')
+    cutoff_flux_upper_limit_name = add_float('Cutoff_Flux_UL_OP')
+    cutoff_energy_flux_upper_limit_name =add_float('Cutoff_EFlux_UL_OP')
 
     sed_size=14
-    sed_lower_energy_name = add_vector_float('SED_Lower_Energy', size=sed_size, unit=energy_units)
-    sed_upper_energy_name = add_vector_float('SED_Upper_Energy', size=sed_size, unit=energy_units)
-    sed_middle_energy_name = add_vector_float('SED_Middle_Energy', size=sed_size, unit=energy_units)
+    sed_lower_energy_name = add_vector_float('SED_Lower_Energy_OP', size=sed_size, unit=energy_units)
+    sed_upper_energy_name = add_vector_float('SED_Upper_Energy_OP', size=sed_size, unit=energy_units)
+    sed_middle_energy_name = add_vector_float('SED_Center_Energy_OP', size=sed_size, unit=energy_units)
 
-    sed_ts_name = add_vector_float('SED_TS', size=sed_size)
+    sed_ts_name = add_vector_int('SED_TS_OP', size=sed_size)
 
-    sed_prefactor_name = add_vector_float('SED_Prefactor', size=sed_size, unit='ph/cm^2/s/MeV')
-    sed_prefactor_lower_err_name = add_vector_float('SED_Prefactor_Lower_Error', size=sed_size, unit='ph/cm^2/s/erg')
-    sed_prefactor_upper_err_name = add_vector_float('SED_Prefactor_Upper_Error', size=sed_size, unit='ph/cm^2/s/erg')
-    sed_prefactor_upper_limit_name = add_vector_float('SED_Prefactor_UL', size=sed_size, unit='ph/cm^2/s/erg')
+    sed_prefactor_name = add_vector_float('SED_Prefactor_OP', size=sed_size, unit='ph*cm**-2*s**-1*erg**-1')
+    sed_prefactor_lower_err_name = add_vector_float('SED_Neg_Unc_Prefactor_OP', size=sed_size, unit='ph*cm**-2*s**-1*erg**-1')
+    sed_prefactor_upper_err_name = add_vector_float('SED_Pos_Unc_Prefactor_OP', size=sed_size, unit='ph*cm**-2*s**-1*erg**-1')
+    sed_prefactor_upper_limit_name = add_vector_float('SED_Prefactor_UL_OP', size=sed_size, unit='ph*cm**-2*s**-1*erg**-1')
 
     for i,pwn in enumerate(pwnlist):
         print pwn

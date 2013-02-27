@@ -46,8 +46,9 @@ def gtlike_analysis(pipeline, roi, name, hypothesis, upper_limit):
         s.plot('%s/sed_gtlike_%s_%s.png' % (pipeline.dirdict['seds'],kind,name)) 
         s.save('%s/sed_gtlike_%s_%s.yaml' % (pipeline.dirdict['seds'],kind,name))
 
-    sed('2bpd_%s' % hypothesis,bin_edges=np.logspace(3,5.5,6))
+    sed('1bpd_%s' % hypothesis,bin_edges=[10**2,10**3,10**4,10**5.5])
+    sed('2bpd_%s' % hypothesis,bin_edges=np.logspace(2,5.5,8))
     if not pipeline.fast:
-        sed('4bpd_%s' % hypothesis,bin_edges=np.logspace(3,5.5,11))
+        sed('4bpd_%s' % hypothesis,bin_edges=np.logspace(2,5.5,15))
 
     return r

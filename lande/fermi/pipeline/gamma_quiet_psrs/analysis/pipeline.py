@@ -47,6 +47,7 @@ class Pipeline(object):
         parser.add_argument("--bigfile", required=True)
         parser.add_argument("--name", required=True, help="Name of the pulsar")
         parser.add_argument("--fast", default=False, action='store_true')
+        parser.add_argument("--modify", required=True)
         parser.add_argument("--cachedata", default=False, action='store_true')
         parser.add_argument("--no-point", default=False, action='store_true')
         parser.add_argument("--no-extended", default=False, action='store_true')
@@ -74,6 +75,13 @@ class Pipeline(object):
 
         rb = RadioPSRROIBuilder(radiopsr_loader=self.radiopsr_loader)
         roi = rb.build_roi(name=name, fast=self.fast)
+        modify = import_module(self.modify)
+        new_sources, deleted_sources = modify.modify_roi(roi,name)
+        roi.extra = dict(new_sources=new_sources,
+                         deleted_sources=deleted_sources)
+
+
+
 
         results = self.input_kwargs
 
@@ -104,15 +112,13 @@ class Pipeline(object):
         results=gtlike_analysis(self, roi, self.name, hypothesis, upper_limit=hypothesis=='at_pulsar')
         savedict(results,'results_%s_gtlike_%s.yaml' % (self.name,hypothesis))
 
-    def plots_followup(self, hypothesis):
+    def plots_followup(self, hypothesis, size):
         roi = self.reload_roi(hypothesis)
-        smooth_plots(self, roi, self.name, hypothesis, size=5)
-        smooth_plots(self, roi, self.name, hypothesis, size=10)
+        smooth_plots(self, roi, self.name, hypothesis, size=size)
 
-    def tsmaps_followup(self, hypothesis):
+    def tsmaps_followup(self, hypothesis, size):
         roi = self.reload_roi(hypothesis)
-        tsmap_plots(self, roi, self.name, hypothesis, size=5)
-        tsmap_plots(self, roi, self.name, hypothesis, size=10)
+        tsmap_plots(self, roi, self.name, hypothesis, size=size)
 
     def irfs_systematics_followup(self, hypothesis):
         # use bracketing irfs

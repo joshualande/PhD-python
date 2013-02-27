@@ -22,14 +22,15 @@ class ResultsLoader(object):
             if require_all_exists and not exists(filename): 
                 raise ResultsException("%s does not exist" % filename)
             elif not exists(filename):
+                print '%s does not exist' % filename
                 return dict()
             return loaddict(filename)
 
         results = dict(
-            params=load_me_maybe(join(self.analysisdir,psr,'results_%s_general.yaml' % psr))
+            params=load_me_maybe(join(self.analysisdir,'fits',psr,'results_%s_general.yaml' % psr))
         )
         for hypothesis in self.all_hypotheses:
             results[hypothesis]=dict()
             for code in ['gtlike','pointlike']:
-                results[hypothesis][code]=load_me_maybe(join(self.analysisdir,psr,'results_%s_%s_%s.yaml' % (psr,code,hypothesis)))
+                results[hypothesis][code]=load_me_maybe(join(self.analysisdir,'fits',psr,'results_%s_%s_%s.yaml' % (psr,code,hypothesis)))
         return results

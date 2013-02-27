@@ -76,7 +76,9 @@ class WebsiteBuilder(object):
     def build_each_psr(self,psr):
         filename=join(self.webdir,'%s.t2t' % psr)
 
-        get_sed_table = lambda *args: '|| ' + ' | '.join(['[%s/%s/seds/%s]' % (self.relpath,psr,i) for i in args]) + ' |\n\n'
+        get_sed_table = lambda *args: '|| ' + ' | '.join(['[%s/fits/%s/seds/%s]' % (self.relpath,psr,i) for i in args]) + ' |\n\n'
+
+        get_plot_table = lambda *args: '|| ' + ' | '.join(['[%s/fits/%s/plots/%s]' % (self.relpath,psr,i) for i in args]) + ' |\n\n'
 
         website = [
             '%s+' % psr,
@@ -84,9 +86,20 @@ class WebsiteBuilder(object):
             '',
             self.summary_table([psr]),
             '',
+            'SEDs',
             get_sed_table(*['sed_pointlike_4bpd_%s_%s.png' % (i,psr) for i in self.loader.all_hypotheses]),
             get_sed_table(*['sed_gtlike_2bpd_%s_%s.png' % (i,psr) for i in self.loader.all_hypotheses]),
             get_sed_table(*['sed_gtlike_4bpd_%s_%s.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            'TS Maps',
+            get_plot_table(*['tsmap_source_%s_%s_5.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            get_plot_table(*['tsmap_source_%s_%s_10.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            get_plot_table(*['tsmap_residual_%s_%s_5.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            get_plot_table(*['tsmap_residual_%s_%s_10.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            'Plots',
+            get_plot_table(*['source_%s_%s_5.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            get_plot_table(*['source_%s_%s_10.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            get_plot_table(*['sources_%s_%s_5.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
+            get_plot_table(*['sources_%s_%s_10.0deg.png' % (i,psr) for i in self.loader.all_hypotheses]),
             '```',
             yaml.dump(self.loader.get_results(psr,require_all_exists=False)),
             '```',

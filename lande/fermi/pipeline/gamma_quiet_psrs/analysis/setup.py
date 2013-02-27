@@ -54,7 +54,7 @@ class RadioPSRROIBuilder(object):
                               minROI     = roi_size,
                               event_class= 0)
 
-        fit_emin = 1e3
+        fit_emin = 1e2
         fit_emax = 10**5.5
 
         model=PowerLaw(index=2, e0=np.sqrt(fit_emin*fit_emax))
