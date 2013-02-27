@@ -210,6 +210,7 @@ class GtlikeCutoffTester(CutoffTester):
 
     defaults = CutoffTester.defaults + (
         ('cutoff_model',None,'starting value of spectral model. Must be pointlike model objects.'),
+        ('cutoff_xml_name',None,'...'),
     )
 
 
@@ -323,6 +324,9 @@ class GtlikeCutoffTester(CutoffTester):
                                             flux_units=self.flux_units,
                                             energy_units=self.energy_units,
                                             verbosity=self.verbosity)
+
+            if self.cutoff_xml_name is not None:
+                like.writeXml(self.cutoff_xml_name)
 
             d['TS_cutoff']=2*(d['hypothesis_1']['TS']['reoptimize']-d['hypothesis_0']['TS']['reoptimize'])
 

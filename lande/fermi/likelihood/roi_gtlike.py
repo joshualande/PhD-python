@@ -69,6 +69,7 @@ class Gtlike(object):
             ("rfactor",                    2, "Goes into gtsrcmaps."),
             ("resample",               "yes", "Goes into gtsrcmaps."),
             ("minbinsz",                 0.1, "Goes into gtsrcmaps."),
+            ("extended_dir_name",      None, "place to save converted extended sources."),
     )
 
 
@@ -98,7 +99,7 @@ class Gtlike(object):
         return irfs
 
     @staticmethod
-    def save_xml(roi, input_srcmdl_file):
+    def save_xml(roi, input_srcmdl_file, extended_dir_name):
 
         # shirnk all disk sources which are smaller than 0.05 degrees.
         # Otherwise, gtlike will crash. Anyway, no reason
@@ -109,7 +110,7 @@ class Gtlike(object):
                        source.spatial_model['sigma'] < 0.05  ]
         for src in shrink_list: src.spatial_model.shrink(size=0.05)
 
-        roi.toXML(input_srcmdl_file,convert_extended=True,expand_env_vars=True)
+        roi.toXML(input_srcmdl_file,convert_extended=True,extended_dir_name=extended_dir_name,expand_env_vars=True)
 
         for src in shrink_list: src.spatial_model.unshrink()
 
@@ -186,7 +187,7 @@ class Gtlike(object):
         else:
             x,y,coordsys_str=roi.roi_dir.ra(),roi.roi_dir.dec(),'CEL'
 
-        Gtlike.save_xml(roi, input_srcmdl_file)
+        Gtlike.save_xml(roi, input_srcmdl_file, extended_dir_name=self.extended_dir_name)
 
         evfile=Gtlike.make_evfile(roi,self.savedir)
 

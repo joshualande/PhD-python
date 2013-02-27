@@ -88,7 +88,8 @@ class GtlikeUpperLimit(UpperLimit):
         ('include_prefactor', False, 'Compute prefactor upper limit'),
         ('prefactor_energy', None, 'Energy to compute prefactor energy at'),
         ('upper_limit_kwargs', dict(), 'Kwargs passed into IntegralUpperLimit.calc_int'),
-        ('rescale_parameters_before_limit', True, '...')
+        ('rescale_parameters_before_limit', True, '...'),
+        ('xml_name', None, '...'),
     )
 
     @keyword_options.decorate(defaults)
@@ -192,6 +193,26 @@ class GtlikeUpperLimit(UpperLimit):
 
             self.results['spectrum'] = spectrum_to_dict(spectrum)
             self.results['confidence'] = self.cl
+
+            if self.xml_name is not None:
+                # refree parameters before saving the XML
+                saved_state.restore_free()
+
+                # build pointlike model from object
+                source=like.logLike.getSource(name)
+                spectrum=source.spectrum()
+                model = build_pointlike_model(spectrum)
+
+                # set default oomp limits
+                model.set_default_limits(oomp_limits=True)
+
+                # place back into xml
+                spectrum = build_gtlike_spectrum(model)
+                like.setSpectrum(name,spectrum)
+                like.syncSrcParams(name)
+
+                like.writeXml(self.xml_name)
+
 
         except Exception, ex:
             print 'ERROR gtlike upper limit: ', ex

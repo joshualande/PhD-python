@@ -56,6 +56,19 @@ class SuperState(object):
             for p in parameters:
                 d['parameters'][p.getName()] = _Parameter(p)
 
+    def restore_free(self, like=None):
+        if like is None: like = self.like
+
+        for sname,v in self.sources.items():
+
+            parameters = v['parameters']
+            for pname,pcache in parameters.items():
+                index = like.par_index(sname, pname)
+                param = like.params()[index]
+                param.setFree(pcache.free)
+
+        like.syncSrcParams()
+
     def restore(self, like=None):
         if like is None: like = self.like
 
