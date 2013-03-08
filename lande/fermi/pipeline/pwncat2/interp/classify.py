@@ -356,8 +356,8 @@ class PWNAutomaticClassifier(PWNClassifier):
 
         else:
             source_class = 'Upper_Limit'
-            spatial_model = float('nan')
-            spectral_model = float('nan')
+            spatial_model = None
+            spectral_model = None
 
         return dict(source_class=source_class, 
                     spatial_model=spatial_model,
