@@ -269,6 +269,7 @@ class PWNClassifier(object):
         # add in 4BPD SED
         sed = gtlike['seds']['4bpd']
         sed_ts = np.asarray(sed['Test_Statistic'])
+        sed_ts = np.where(sed_ts>0,sed_ts,0)
         sed_lower_energy = np.asarray(sed['Energy']['Lower'])
         sed_upper_energy = np.asarray(sed['Energy']['Upper'])
         sed_middle_energy = np.asarray(sed['Energy']['Value'])

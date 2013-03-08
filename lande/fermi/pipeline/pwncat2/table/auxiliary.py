@@ -38,7 +38,7 @@ def auxiliary_table(pwndata,
         return name
 
     def add_int(name, **kwargs):
-        table.add_empty_column(name, np.dtype('int32'), shape=npwn, **kwargs)
+        table.add_empty_column(name, np.dtype('uint32'), shape=npwn, **kwargs)
         table[name][:]=np.nan
         return name
 
@@ -48,7 +48,7 @@ def auxiliary_table(pwndata,
         return name
 
     def add_vector_int(name, size, *args, **kwargs):
-        table.add_empty_column(name, np.dtype('int32'), shape=(npwn, size), **kwargs)
+        table.add_empty_column(name, np.dtype('uint32'), shape=(npwn, size), **kwargs)
         table[name][:]=np.nan
         return name
 
@@ -70,10 +70,10 @@ def auxiliary_table(pwndata,
     second_off_peak_max_name=add_float('Max_2_Phase_OP')
 
     # Significance stuff
-    ts_point_name=add_int('TS_point_OP')
-    ts_ext_name=add_int('TS_ext_OP')
-    ts_cutoff_name=add_int('TS_cutoff_OP')
-    ts_var_name=add_int('TS_var_OP')
+    ts_point_name=add_float('TS_point_OP')
+    ts_ext_name=add_float('TS_ext_OP')
+    ts_cutoff_name=add_float('TS_cutoff_OP')
+    ts_var_name=add_float('TS_var_OP')
 
     # Spectral Stuff
 
@@ -134,7 +134,7 @@ def auxiliary_table(pwndata,
     sed_upper_energy_name = add_vector_float('SED_Upper_Energy_OP', size=sed_size, unit=energy_units)
     sed_middle_energy_name = add_vector_float('SED_Center_Energy_OP', size=sed_size, unit=energy_units)
 
-    sed_ts_name = add_vector_int('SED_TS_OP', size=sed_size)
+    sed_ts_name = add_vector_float('SED_TS_OP', size=sed_size)
 
     sed_prefactor_name = add_vector_float('SED_Prefactor_OP', size=sed_size, unit='ph*cm**-2*s**-1*erg**-1')
     sed_prefactor_lower_err_name = add_vector_float('SED_Neg_Unc_Prefactor_OP', size=sed_size, unit='ph*cm**-2*s**-1*erg**-1')
