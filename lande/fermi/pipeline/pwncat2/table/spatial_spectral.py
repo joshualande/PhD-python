@@ -85,6 +85,8 @@ def spatial_spectral_table(pwndata,
             table[eflux_name].append(format.error(r['energy_flux']/1e-11,r['energy_flux_err']/1e-11))
             if r['spectral_model'] in ['PowerLaw','PLSuperExpCutoff']:
                 table[index_name].append(format.error(r['index'],r['index_err']))
+            elif pwn == 'J0534+2200':
+                table[index_name].append('$a$')
             else:
                 table[index_name].append(format.nodata)
 
