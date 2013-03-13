@@ -202,7 +202,7 @@ class PointlikeCutoffTester(CutoffTester):
                                         verbosity=self.verbosity)
 
 
-        d['TS_cutoff']=2*(d['hypothesis_1']['TS']['noquick']-d['hypothesis_0']['TS']['noquick'])
+        d['TS_cutoff']=d['hypothesis_1']['TS']['noquick']-d['hypothesis_0']['TS']['noquick']
 
         saved_state.restore()
 
@@ -328,7 +328,7 @@ class GtlikeCutoffTester(CutoffTester):
             if self.cutoff_xml_name is not None:
                 like.writeXml(self.cutoff_xml_name)
 
-            d['TS_cutoff']=2*(d['hypothesis_1']['TS']['reoptimize']-d['hypothesis_0']['TS']['reoptimize'])
+            d['TS_cutoff']=d['hypothesis_1']['TS']['reoptimize']-d['hypothesis_0']['TS']['reoptimize']
 
             if self.verbosity: 
                 print 'For cutoff test, TS_cutoff = ', d['TS_cutoff']
