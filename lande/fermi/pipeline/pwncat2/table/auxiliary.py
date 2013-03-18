@@ -177,15 +177,23 @@ def auxiliary_table(pwndata,
         ts_point = r['ts_point']
         table[ts_point_name][i]=ts_point
 
-        if source_class in ['Confused', 'Pulsar', 'PWN']:
+        if source_class in ['Confused', 'Pulsar', 'Pulsar_Confused', 'PWN']:
             table[ts_ext_name][i]=r['ts_ext']
             table[ts_cutoff_name][i]=r['ts_cutoff']
+        elif source_class == 'Upper_Limit':
+            pass
+        else:
+            raise Exception("...")
 
         table[ts_var_name][i]=r['ts_var']
 
         # spectral stuff
 
-        table[spectral_model_name][i]=r['spectral_model']
+        spectral_model = r['spectral_model']
+        if not type(spectral_model) == str and np.isnan(spectral_model):
+            spectral_model = 'NULL'
+
+        table[spectral_model_name][i]= spectral_model
 
         table[energy_flux_name][i] = r['energy_flux']
         table[energy_flux_err_name][i] = r['energy_flux_err']
@@ -210,6 +218,8 @@ def auxiliary_table(pwndata,
         # spatial stuff
 
         spatial_model = r['spatial_model']
+        if not type(spatial_model) == str and np.isnan(spatial_model):
+            spatial_model = 'NULL'
         table[spatial_model_name][i] = spatial_model
 
         table[ra_name][i] = r['ra']
