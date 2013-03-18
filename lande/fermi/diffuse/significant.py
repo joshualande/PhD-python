@@ -1,4 +1,5 @@
 from lande.fermi.likelihood.counts import model_counts, observed_counts
+from lande.fermi.likelihood.save import get_background
 
 def is_significant(roi, name, allowed_fraction, verbosity=False):
     oc=observed_counts(roi)
@@ -17,6 +18,7 @@ def get_insignificant_diffuse(roi, allowed_fraction, verbosity=False):
         if is_significant(roi, source, allowed_fraction, verbosity):
             if verbosity: print '... keep source.'
         else:
+            if verbosity: print "... Don't keep source."
             insignificant_list.append(source)
     return insignificant_list
 
