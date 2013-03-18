@@ -3,8 +3,11 @@ import numpy as np
 def pointlike_observed_counts(roi):
     """ Usage:
             observed_counts = pointlike_observed_counts(roi)
+
+        Note: pix_counts is 0 when there are no counts in band.
     """
-    observed_counts = sum(b.pix_counts.sum() for b in roi.bands)
+    observed_counts = sum(b.pix_counts if type(b.pix_counts)==float and b.pix_counts==0 else b.pix_counts.sum() 
+                          for b in roi.bands)
     return observed_counts
 
 
