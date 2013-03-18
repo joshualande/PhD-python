@@ -25,12 +25,12 @@ from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
 from . binning import all_energy, high_energy, higher_energy, one_bin_per_dec, two_bin_per_dec, four_bin_per_dec
 
     
-
-
 def gtlike_analysis(roi, name, hypothesis, max_free,
                     seddir, datadir, plotdir,
                     upper_limit=False, cutoff=False, 
-                    cutoff_model=None):
+                    cutoff_model=None,
+                    do_bandfitter=False, do_sed=False,
+                   ):
     print 'Performing Gtlike crosscheck for %s' % hypothesis
 
     frozen  = freeze_far_away(roi, roi.get_source(name).skydir, max_free)
@@ -76,42 +76,44 @@ def gtlike_analysis(roi, name, hypothesis, max_free,
                                      xml_name=join("%s/srcmodel_gtlike_%s_%s_%s.xml" % (datadir, hypothesis, 'PLSuperExpCutoff_Upper_Limit', name)))
         r['cutoff_upper_limit'] = cul.todict()
 
-    if all_energy(emin,emax):
-        try:
-            bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), 
-                                  upper_limit_kwargs=upper_limit_kwargs,
-                                  verbosity=4)
-            bf.plot('%s/bandfits_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
-            r['bandfits'] = bf.todict()
-        except Exception, ex:
-            print 'ERROR computing bandfit:', ex
-            traceback.print_exc(file=sys.stdout)
+    if do_bandfitter:
+        if all_energy(emin,emax):
+            try:
+                bf = GtlikeBandFitter(like, name, bin_edges=one_bin_per_dec(emin,emax), 
+                                      upper_limit_kwargs=upper_limit_kwargs,
+                                      verbosity=4)
+                bf.plot('%s/bandfits_gtlike_%s_%s.png' % (plotdir,hypothesis,name))
+                r['bandfits'] = bf.todict()
+            except Exception, ex:
+                print 'ERROR computing bandfit:', ex
+                traceback.print_exc(file=sys.stdout)
 
-    def sed(kind,**kwargs):
-        try:
-            print 'Making %s SED' % kind
-            sed = GtlikeSED(like, name, always_upper_limit=True, 
-                            verbosity=4, 
-                            upper_limit_kwargs=upper_limit_kwargs,
-                            **kwargs)
-            sed.plot('%s/sed_gtlike_%s_%s.png' % (seddir,kind,name)) 
-            sed.save('%s/sed_gtlike_%s_%s.yaml' % (seddir,kind,name))
-        except Exception, ex:
-            print 'ERROR computing SED:', ex
-            traceback.print_exc(file=sys.stdout)
+    if do_sed:
+        def sed(kind,**kwargs):
+            try:
+                print 'Making %s SED' % kind
+                sed = GtlikeSED(like, name, always_upper_limit=True, 
+                                verbosity=4, 
+                                upper_limit_kwargs=upper_limit_kwargs,
+                                **kwargs)
+                sed.plot('%s/sed_gtlike_%s_%s.png' % (seddir,kind,name)) 
+                sed.save('%s/sed_gtlike_%s_%s.yaml' % (seddir,kind,name))
+            except Exception, ex:
+                print 'ERROR computing SED:', ex
+                traceback.print_exc(file=sys.stdout)
 
-    if all_energy(emin,emax):
-        sed('1bpd_%s' % hypothesis,bin_edges=one_bin_per_dec(emin,emax))
-        sed('2bpd_%s' % hypothesis,bin_edges=two_bin_per_dec(emin,emax))
-        sed('4bpd_%s' % hypothesis,bin_edges=four_bin_per_dec(emin,emax))
-    elif high_energy(emin,emax):
-        sed('4bpd_%s' % hypothesis,bin_edges=np.logspace(4,5.5,7))
-        sed('2bpd_%s' % hypothesis,bin_edges=np.logspace(4,5.5,4))
-    elif higher_energy(emin,emax):
-        sed('4bpd_%s' % hypothesis,bin_edges=np.logspace(4.5,5.5,5))
-        sed('2bpd_%s' % hypothesis,bin_edges=np.logspace(4.5,5.5,3))
-    else:
-        sed(hypothesis)
+        if all_energy(emin,emax):
+            sed('1bpd_%s' % hypothesis,bin_edges=one_bin_per_dec(emin,emax))
+            sed('2bpd_%s' % hypothesis,bin_edges=two_bin_per_dec(emin,emax))
+            sed('4bpd_%s' % hypothesis,bin_edges=four_bin_per_dec(emin,emax))
+        elif high_energy(emin,emax):
+            sed('4bpd_%s' % hypothesis,bin_edges=np.logspace(4,5.5,7))
+            sed('2bpd_%s' % hypothesis,bin_edges=np.logspace(4,5.5,4))
+        elif higher_energy(emin,emax):
+            sed('4bpd_%s' % hypothesis,bin_edges=np.logspace(4.5,5.5,5))
+            sed('2bpd_%s' % hypothesis,bin_edges=np.logspace(4.5,5.5,3))
+        else:
+            sed(hypothesis)
 
     if cutoff:
         try:
