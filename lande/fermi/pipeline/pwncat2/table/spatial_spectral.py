@@ -18,7 +18,7 @@ def spatial_spectral_table(pwndata,
                            phase_shift, 
                            fitdir, savedir, pwn_classification, filebase, table_type,
                            bigfile_filename):
-    assert table_type in ['latex', 'confluence']
+    assert table_type == 'latex'
 
     format=PWNFormatter(table_type=table_type, precision=2)
 
@@ -34,20 +34,13 @@ def spatial_spectral_table(pwndata,
 
     psr_name='PSR'
     classification_name = 'Type'
-    if table_type == 'confluence':
-        ts_point_name='TS_point'
-        ts_ext_name='TS_ext'
-        ts_cutoff_name = 'TS_cutoff'
-        eflux_name = 'Energy Flux'
-        index_name = 'Gamma'
-        cutoff_name = 'E_cutoff'
-    elif table_type == 'latex':
-        ts_point_name=r'$\tspoint$'
-        ts_ext_name=r'$\tsext$'
-        ts_cutoff_name = r'$\tscutoff$'
-        eflux_name = r'Energy Flux'
-        index_name = r'$\Gamma$'
-        cutoff_name = r'$\Ecutoff$'
+    ts_point_name=r'$\tspoint$'
+    ts_ext_name=r'$\tsext$'
+    ts_cutoff_name = r'$\tscutoff$'
+    ts_altdiff_name = r'$\tsaltdiff$'
+    eflux_name = r'Energy Flux'
+    index_name = r'$\Gamma$'
+    cutoff_name = r'$\Ecutoff$'
 
     pwnlist = loader.get_pwnlist()
     #pwnlist = pwnlist[10:20]
@@ -81,12 +74,13 @@ def spatial_spectral_table(pwndata,
             table[ts_point_name].append(format.value(r['ts_point'],precision=1))
             table[ts_ext_name].append(format.value(r['ts_ext'],precision=1))
             table[ts_cutoff_name].append(format.value(r['ts_cutoff'],precision=1))
+            table[ts_altdiff_name].append(format.value(r['ts_altdiff'],precision=1) if r['ts_altdiff'] is not None else format.nodata)
 
             table[eflux_name].append(format.error(r['energy_flux']/1e-11,r['energy_flux_err']/1e-11))
             if r['spectral_model'] in ['PowerLaw','PLSuperExpCutoff']:
                 table[index_name].append(format.error(r['index'],r['index_err']))
-            elif pwn == 'J0534+2200':
-                table[index_name].append('$a$')
+            elif pwn == 'PSRJ0534+2200':
+                table[index_name].append(r'\tablenotemark{a}')
             else:
                 table[index_name].append(format.nodata)
 
@@ -110,17 +104,10 @@ def spatial_spectral_table(pwndata,
     table[psr_name][first_msp_index] = '\cutinhead{Millisecond Pulsars}\n' + table[psr_name][first_msp_index]
                
     writer=TableWriter(table, savedir, filebase)
-    if table_type == 'confluence':
-        writer.write_confluence(
-                         units={
-                             eflux_name:r'(10^-11 erg cm^-2 s^-1)',
-                             cutoff_name:r'(GeV)',
-                         })
-    elif table_type == 'latex':
-        writer.write_latex(
-                    preamble=r'\tabletypesize{\tiny}',
-                    units={
-                        eflux_name:r'($10^{-11}\,\efluxunits$)',
-                        cutoff_name:r'(GeV)',
-                    },
-                   )
+    writer.write_latex(
+                preamble=r'\tabletypesize{\tiny}',
+                units={
+                    eflux_name:r'($10^{-11}\,\efluxunits$)',
+                    cutoff_name:r'(GeV)',
+                },
+               )
