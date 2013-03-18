@@ -29,6 +29,9 @@ from lande.fermi.likelihood.parlimits import all_params_limited
 from lande.fermi.likelihood.variability import CombinedVariabilityTester
 from lande.fermi.likelihood.load import pointlike_dict_to_spectrum
 from lande.fermi.likelihood.free import freeze_far_away, unfreeze_far_away
+from lande.fermi.likelihood.save import get_background
+from lande.fermi.diffuse.gulli import get_gulli_diffuse
+from lande.fermi.diffuse.significant import freeze_insignificant_diffuse
 
 
 from . setup import PWNRegion, load_pwn
@@ -178,19 +181,28 @@ class Pipeline(object):
         cutoff = (not self.no_cutoff) and hypothesis in ['at_pulsar', 'point']
         upper_limit = hypothesis=='at_pulsar'
         if cutoff:
-            pointlike_results = loaddict('results_%s_pointlike_%s.yaml' % (name,hypothesis))
-            cutoff_model=pointlike_results['test_cutoff']['hypothesis_1']['spectrum']
-            cutoff_model=pointlike_dict_to_spectrum(cutoff_model)
-            cutoff_model.set_default_limits(oomp_limits=True)
+
+            modify = import_module(self.modify)
+            cutoff_model=modify.get_gtlike_cutoff_model(name)
+
+            if cutoff_model is None:
+                pointlike_results = loaddict('results_%s_pointlike_%s.yaml' % (name,hypothesis))
+                cutoff_model=pointlike_results['test_cutoff']['hypothesis_1']['spectrum']
+                cutoff_model=pointlike_dict_to_spectrum(cutoff_model)
+                cutoff_model.set_default_limits(oomp_limits=True)
+
+            print 'override cutoff_model = ',cutoff_model
         else:
             cutoff_model=None
 
         results=gtlike_analysis(roi, name=name,
+                                cutoff_model = cutoff_model,
                                 max_free = self.max_free,
                                 seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
                                 hypothesis=hypothesis, 
                                 upper_limit=upper_limit,
                                 cutoff=cutoff,
+                                do_bandfitter=True, do_sed=True,
                                )
 
         savedict(results,'results_%s_gtlike_%s.yaml' % (name,hypothesis))
@@ -290,3 +302,39 @@ class Pipeline(object):
         r=roi.extension_upper_limit(which=name, confidence=0.95, spatial_model=Gaussian)
         results = {hypothesis:{'pointlike':{'extension_upper_limit':r}}}
         savedict(results,'results_%s_extul_%s.yaml' % (name,hypothesis))
+
+    def altdiff_followup(self, hypothesis, dist, halo, TS):
+        name = self.name
+
+        print dist, halo, TS
+
+        # Note, Gulli's alt diffuse models only go to 100GeV!
+        roi = self.reload_roi(hypothesis, fit_emax=1e5)
+        roi.print_summary()
+        print roi.get_source(name)
+
+        for source in get_background(roi):
+            roi.del_source(source)
+
+        print 'Loading alternate diffuse models'
+        diff = get_gulli_diffuse(dist=dist, halo=halo, TS=TS, version=2, event_class='source', verbosity=True)
+        print 'Adding alternate diffuse models to ROI'
+        for source in diff:
+            roi.add_source(source)
+
+        print 'Freezing insignificant diffuse models'
+        freeze_insignificant_diffuse(roi,allowed_fraction=0.03, verbosity=True)
+
+        print 'Printing ROI'
+        roi.print_summary()
+
+        print 'Doing gtlike analysis'
+        results=gtlike_analysis(roi, name=name,
+                                max_free = self.max_free,
+                                seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
+                                hypothesis='%s_dist_%s_halo_%s_TS_%s' % (hypothesis,dist,halo,TS),
+                                upper_limit=False, do_bandfitter=False, do_sed=True,
+                               )
+
+        savedict(results,'results_%s_altdiff_dist_%s_halo_%s_TS_%s_%s.yaml' % (name,dist,halo,TS,hypothesis))
+
