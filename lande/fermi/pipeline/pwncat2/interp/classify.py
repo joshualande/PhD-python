@@ -2,6 +2,7 @@
 import copy
 from os.path import expandvars
 import math
+import itertools
 
 import numpy as np
 import yaml
@@ -122,7 +123,16 @@ class PWNClassifier(object):
 
         if source_class in ['Confused', 'Pulsar', 'Pulsar_Confused', 'PWN']:
             d['ts_ext'] = max(extended_gtlike['TS']['reoptimize']-point_gtlike['TS']['reoptimize'],0)
-            d['ts_cutoff'] = max(at_pulsar_cutoff['TS_cutoff'],0)
+            d['ts_cutoff'] = max(at_pulsar_cutoff['hypothesis_1']['TS']['reoptimize']-at_pulsar_cutoff['hypothesis_0']['TS']['reoptimize'],0)
+
+            alt_models = [point_gtlike['altdiff'][dist,halo,TS] for dist,halo,TS in itertools.product(['SNR','Lorimer'],[4,10],[150,100000])]
+            if np.any([i is None for i in alt_models]):
+                d['ts_altdiff'] = None
+            else:
+                all_TS = [ i['TS']['reoptimize'] if i is not None else None for i in alt_models]
+                d['ts_altdiff'] = min(all_TS)
+                print all_TS, d['ts_altdiff'] 
+
         elif source_class == 'Upper_Limit':
             pass
         else:
@@ -205,7 +215,7 @@ class PWNClassifier(object):
                 assert h1['flux']['eflux_units'] == 'erg/cm^2/s'
             
                 d['prefactor'] = convert_prefactor(h1['spectrum']['Prefactor'])
-                d['prefactor_err'] = convert_prefactor(h1['spectrum']['Prefactor'])
+                d['prefactor_err'] = convert_prefactor(h1['spectrum']['Prefactor_err'])
 
                 d['index'] = -1*h1['spectrum']['Index1']
                 d['index_err'] = np.abs(h1['spectrum']['Index1_err'])
@@ -221,10 +231,10 @@ class PWNClassifier(object):
         # spatial stuff
 
         d['ra'] = pointlike['position']['equ'][0]
-        d['dec'] = pointlike['position']['equ'][0]
+        d['dec'] = pointlike['position']['equ'][1]
 
         d['glon'] = pointlike['position']['gal'][0]
-        d['glat'] = pointlike['position']['gal'][0]
+        d['glat'] = pointlike['position']['gal'][1]
 
         d['poserr'] = None
 
@@ -321,7 +331,7 @@ class PWNAutomaticClassifier(PWNClassifier):
         at_pulsar_gtlike = results['at_pulsar']['gtlike']
         point_gtlike = results['point']['gtlike']
         extended_gtlike = results['extended']['gtlike']
-        cutoff=at_pulsar_gtlike['test_cutoff']
+        at_pulsar_cutoff=at_pulsar_gtlike['test_cutoff']
 
         ts_point = max(point_gtlike['TS']['reoptimize'],0)
         ts_ext = max(extended_gtlike['TS']['reoptimize']-point_gtlike['TS']['reoptimize'],0)
@@ -330,7 +340,8 @@ class PWNAutomaticClassifier(PWNClassifier):
         spectral_name = point_gtlike['spectrum']['name']
 
         try:
-            ts_cutoff = max(cutoff['TS_cutoff'],0)
+            ts_cutoff = max(at_pulsar_cutoff['hypothesis_1']['TS']['reoptimize']-at_pulsar_cutoff['hypothesis_0']['TS']['reoptimize'],0)
+
         except:
             ts_cutoff = None
 
@@ -356,8 +367,8 @@ class PWNAutomaticClassifier(PWNClassifier):
 
         else:
             source_class = 'Upper_Limit'
-            spatial_model = None
-            spectral_model = None
+            spatial_model = np.nan
+            spectral_model = np.nan
 
         return dict(source_class=source_class, 
                     spatial_model=spatial_model,
