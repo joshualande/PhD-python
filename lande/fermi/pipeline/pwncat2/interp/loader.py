@@ -40,7 +40,7 @@ class PWNResultsLoader(object):
                 print ' * Results for %s do not exist:' % pwn,ex
             return False
 
-    def get_results(self, pwn, require_all_exists=True, get_seds=True, get_variability=True, verbosity=None):
+    def get_results(self, pwn, require_all_exists=True, get_seds=True, get_variability=True, get_altdiff=True, verbosity=None):
         filename = join(self.fitdir,pwn,'results_%s_general.yaml' % pwn)
         if verbosity or (verbosity is None and self.verbosity):
             print 'Getting results for %s' % pwn
@@ -69,6 +69,18 @@ class PWNResultsLoader(object):
                 else:
                     if require_all_exists:
                         raise PWNResultsException('%s does not exist' % filename)
+
+        if get_altdiff:
+            for hypothesis in ['point']:
+                results[hypothesis]['gtlike']['altdiff'] = dict()
+                for dist in ['SNR','Lorimer']:
+                    for halo in [4,10]:
+                        for TS in [150,100000]:
+                            filename =join(self.fitdir,pwn,'results_%s_altdiff_dist_%s_halo_%s_TS_%s_%s.yaml' % (pwn,dist,halo,TS,hypothesis))
+                            if exists(filename):
+                                results[hypothesis]['gtlike']['altdiff'][dist,halo,TS] = loaddict(filename)
+                            else:
+                                results[hypothesis]['gtlike']['altdiff'][dist,halo,TS] = None
 
         if get_seds:
             for hypothesis in self.all_hypotheses:
