@@ -23,7 +23,7 @@ class PulsarCatalogLoader(object):
     def get_off_peak_classification(self, psr):
 
         off_peak = self._get_off_peak(psr)
-        classification = off_peak['Classification']
+        classification = off_peak['Classification_OP']
         return classification
 
     def get_off_peak_psrlist(self):
@@ -47,9 +47,9 @@ class PulsarCatalogLoader(object):
 
         off_peak = self._get_off_peak(psr)
 
-        eflux = off_peak['EFlux']
-        eflux_error = off_peak['EFlux_error']
-        eflux_ul = off_peak['PowerLaw_EFlux_UL']
+        eflux = off_peak['EFlux_OP']
+        eflux_error = off_peak['Unc_EFlux_OP']
+        eflux_ul = off_peak['PowerLaw_EFlux_UL_OP']
 
         return eflux, eflux_error, eflux_ul
 
