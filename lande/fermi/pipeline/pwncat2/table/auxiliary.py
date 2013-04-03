@@ -73,6 +73,7 @@ def auxiliary_table(pwndata,
     ts_point_name=add_float('TS_point_OP')
     ts_ext_name=add_float('TS_ext_OP')
     ts_cutoff_name=add_float('TS_cutoff_OP')
+    ts_altdiff_name = add_float(r'TS_altdiff_OP')
     ts_var_name=add_float('TS_var_OP')
 
     # Spectral Stuff
@@ -181,6 +182,13 @@ def auxiliary_table(pwndata,
             table[ts_ext_name][i]=r['ts_ext']
             table[ts_cutoff_name][i]=r['ts_cutoff']
         elif source_class == 'Upper_Limit':
+            pass
+        else:
+            raise Exception("...")
+
+        if source_class in ['Pulsar','Pulsar_Confused']:
+            table[ts_altdiff_name][i]=r['ts_altdiff']
+        elif source_class in ['Confused', 'PWN', 'Upper_Limit']:
             pass
         else:
             raise Exception("...")

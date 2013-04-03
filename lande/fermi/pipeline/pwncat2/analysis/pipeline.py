@@ -332,7 +332,7 @@ class Pipeline(object):
         results=gtlike_analysis(roi, name=name,
                                 max_free = self.max_free,
                                 seddir=self.seddir, datadir=self.datadir, plotdir=self.plotdir,
-                                hypothesis='%s_dist_%s_halo_%s_TS_%s' % (hypothesis,dist,halo,TS),
+                                hypothesis='%s_altdiff_dist_%s_halo_%s_TS_%s' % (hypothesis,dist,halo,TS),
                                 upper_limit=False, do_bandfitter=False, do_sed=True,
                                )
 

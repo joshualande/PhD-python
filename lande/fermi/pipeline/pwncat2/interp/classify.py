@@ -130,7 +130,7 @@ class PWNClassifier(object):
                 d['ts_altdiff'] = None
             else:
                 all_TS = [ i['TS']['reoptimize'] if i is not None else None for i in alt_models]
-                d['ts_altdiff'] = min(all_TS)
+                d['ts_altdiff'] = max(min(all_TS),0)
                 print all_TS, d['ts_altdiff'] 
 
         elif source_class == 'Upper_Limit':

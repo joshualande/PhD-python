@@ -71,16 +71,30 @@ def spatial_spectral_table(pwndata,
             table[psr_name].append(format.pwn(pwn))
             table[classification_name].append(r['abbreviated_source_class'])
 
-            table[ts_point_name].append(format.value(r['ts_point'],precision=1))
-            table[ts_ext_name].append(format.value(r['ts_ext'],precision=1))
-            table[ts_cutoff_name].append(format.value(r['ts_cutoff'],precision=1))
-            table[ts_altdiff_name].append(format.value(r['ts_altdiff'],precision=1) if r['ts_altdiff'] is not None else format.nodata)
+            def david_format_ts(x):
+                if x >= 100:
+                    return format.value(x,precision=0) + '.'
+                else:
+                    return format.value(x,precision=1)
 
-            table[eflux_name].append(format.error(r['energy_flux']/1e-11,r['energy_flux_err']/1e-11))
+            table[ts_point_name].append(david_format_ts(r['ts_point']))
+            table[ts_ext_name].append(david_format_ts(r['ts_ext']))
+            table[ts_cutoff_name].append(david_format_ts(r['ts_cutoff']))
+            table[ts_altdiff_name].append(david_format_ts(r['ts_altdiff']) if r['ts_altdiff'] is not None else format.nodata)
+
+            def david_format_flux(x, y):
+                if x >= 10:
+                    return format.error(x,y, precision=1)
+                else:
+                    return  format.error(x,y, precision=2)
+
+            table[eflux_name].append(david_format_flux(r['energy_flux']/1e-11,r['energy_flux_err']/1e-11))
             if r['spectral_model'] in ['PowerLaw','PLSuperExpCutoff']:
                 table[index_name].append(format.error(r['index'],r['index_err']))
             elif pwn == 'PSRJ0534+2200':
                 table[index_name].append(r'\tablenotemark{a}')
+            elif pwn == 'PSRJ0835-4510':
+                table[index_name].append(r'\tablenotemark{b}')
             else:
                 table[index_name].append(format.nodata)
 
