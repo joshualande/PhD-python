@@ -2,6 +2,7 @@
 
     TODO: implement lower limits
 """
+import re
 import numpy as np
 import math
 import numbers
@@ -11,23 +12,60 @@ class DataPoint(object):
     
     @staticmethod
     def from_string(string):
+        """
+
+            >>> f = DataPoint.from_string
+            >>> f('$0.1 \pm 0.2$')
+            0.1 +/- 0.2
+            >>> f('$<0.3$')
+            <0.3
+            >>> f('0.1_{0.1}^{0.2}')
+            1.0 +/- 0.15
+            >>> f('0.1^{0.1}_{0.2}')
+            1.0 +/- 0.15
+            >>> f('0.2')
+            0.2
+
+        """
+        if '$' in string:
+            string = string.replace('$','')
+        if r'\,' in string:
+            string = string.replace(r'\,','')
+
         string = string.strip()
-        if string[0] == '$':
-            string = string[1:]
-        if string[-1] == '$':
-            string = string[:-1]
 
-        if '+/-' in string:
-            value,error = string.split('+/-')
-            return Detection(float(value),float(error))
-        elif '\pm' in string:
-            value,error = string.split('\pm')
-            return Detection(float(value),float(error))
 
-        elif string[0] == '<':
-            return UpperLimit(float(string[1:]))
+        m = re.match( r'(.+)\+\/\-(.+)', string)
+        if m:
+            value,error = m.group(1), m.group(2)
+            return Detection(float(value),float(error))
         else:
-            raise Exception("Unrecognized string: %s" % string)
+            m = re.match( r'(.+)\\pm(.+)', string)
+            if m:
+                value,error = m.group(1), m.group(2)
+                return Detection(float(value),float(error))
+            else:
+                m = re.match( r'.*<(.+)', string)
+                if m:
+                    limit = m.group(1)
+                    return UpperLimit(float(limit))
+                else:
+                    m = re.match( r'.*(.+)_\{(.+)\}\^\{(.+)\}.*', string)
+                    if m:
+                        value, lower, upper = m.group(1), m.group(2), m.group(3)
+                        error = (abs(float(lower)) + abs(float(upper)))/2
+                        return Detection(float(value), error)
+                    else:
+                        m = re.match( r'.*(.+)\^{(.+)\}\_\{(.+)\}.*', string)
+                        if m:
+                            value, lower, upper = m.group(1), m.group(2), m.group(3)
+                            error = (abs(float(lower)) + abs(float(upper)))/2
+                            return Detection(float(value), error)
+                        else:
+                            try:
+                                return float(string)
+                            except:
+                                raise Exception("Unrecognized string: %s" % string)
             
 class Detection(DataPoint):
     def __init__(self,value, error):
@@ -48,7 +86,8 @@ class Detection(DataPoint):
         if isinstance(other, numbers.Number):
             if np.isnan(other):
                 return float('nan')
-            return Detection.from_uncertainty(self.to_uncertainty().__pow__(other))
+            else:
+                return Detection.from_uncertainty(self.to_uncertainty().__pow__(other))
         elif isinstance(other, Detection):
             return Detection.from_uncertainty(self.to_uncertainty().__pow__(other.to_uncertainty()))
         else:
@@ -58,19 +97,23 @@ class Detection(DataPoint):
         if isinstance(other, numbers.Number):
             if np.isnan(other):
                 return float('nan')
-            return Detection.from_uncertainty(self.to_uncertainty().__div__(other))
+            else:
+                return Detection.from_uncertainty(self.to_uncertainty().__div__(other))
+        elif isinstance(other, float):
+            return Detection(self.value/other,self.error/other)
         elif isinstance(other, Detection):
             return Detection.from_uncertainty(self.to_uncertainty().__div__(other.to_uncertainty()))
         else:
             raise NotImplemented()
 
-    def __mult__(self, other):
+    def __mul__(self, other):
         if isinstance(other, numbers.Number):
             if np.isnan(other):
                 return float('nan')
-            return Detection.from_uncertainty(self.to_uncertainty().__mult__(other))
+            else:
+                return Detection.from_uncertainty(self.to_uncertainty().__mul__(other))
         elif isinstance(other, Detection):
-            return Detection.from_uncertainty(self.to_uncertainty().__mult__(other.to_uncertainty()))
+            return Detection.from_uncertainty(self.to_uncertainty().__mul__(other.to_uncertainty()))
         elif isinstance(other, UpperLimit):
             return UpperLimit((self.value + self.error)*other.upper_limit)
         else:
@@ -117,6 +160,15 @@ class UpperLimit(DataPoint):
             return UpperLimit(self.upper_limit/(other.value - other.error))
         elif isinstance(other, Detection):
             raise NotImplemented()
+
+    def __mul__(self, other):
+        if isinstance(other, numbers.Number):
+            if np.isnan(other):
+                return float('nan')
+            else:
+                return UpperLimit(self.upper_limit*other)
+        else:
+            raise NotImplemented()
         
     def __repr__(self):
         return '<%s' % self.upper_limit
@@ -136,8 +188,6 @@ def plot(x, y, xlo=None, xhi=None, **kwargs):
     _y_ul = np.asarray([i.upper_limit if isinstance(i,UpperLimit) else np.nan for i in y])
     _significant = np.asarray([True  if isinstance(i,Detection) else False for i in y])
 
-    print _y,_y_lower_err,_y_ul,_significant
-    
     plot_points(x, _y, xlo=xlo, xhi=xhi, 
                 y_lower_err=_y_lower_err, y_upper_err=_y_upper_err, 
                 y_ul=_y_ul, significant=_significant,
@@ -145,4 +195,6 @@ def plot(x, y, xlo=None, xhi=None, **kwargs):
 
 
 
-
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
