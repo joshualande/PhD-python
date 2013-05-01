@@ -50,22 +50,30 @@ class DataPoint(object):
                     limit = m.group(1)
                     return UpperLimit(float(limit))
                 else:
-                    m = re.match( r'.*(.+)_\{(.+)\}\^\{(.+)\}.*', string)
+                    m = re.match( r'(.+)_\{(.+)\}\^\{(.+)\}.*', string)
                     if m:
-                        value, lower, upper = m.group(1), m.group(2), m.group(3)
-                        error = (abs(float(lower)) + abs(float(upper)))/2
-                        return Detection(float(value), error)
+                        value, lower, upper = map(float,[m.group(1), m.group(2), m.group(3)])
+                        return AssymetricError(value, lower=abs(lower), upper=abs(upper))
                     else:
-                        m = re.match( r'.*(.+)\^{(.+)\}\_\{(.+)\}.*', string)
+                        m = re.match( r'(.+)\^{(.+)\}\_\{(.+)\}.*', string)
                         if m:
-                            value, lower, upper = m.group(1), m.group(2), m.group(3)
-                            error = (abs(float(lower)) + abs(float(upper)))/2
-                            return Detection(float(value), error)
+                            value, lower, upper = map(float,[m.group(1), m.group(2), m.group(3)])
+                            return AssymetricError(value, lower=abs(lower), upper=abs(upper))
                         else:
                             try:
                                 return float(string)
                             except:
                                 raise Exception("Unrecognized string: %s" % string)
+
+class AssymetricError(DataPoint):
+    def __init__(self,value, lower, upper):
+        self.value,self.lower,self.upper = value,lower,upper
+    def __repr__(self):
+        return '%s +%s -%s' % (self.value,self.lower,self.upper)
+    def _repr_html_(self):
+        return '$%g_{-%g}^{+%g}$' % (self.value, self.lower,self.upper)
+    @staticmethod
+    def significant(): return True
             
 class Detection(DataPoint):
     def __init__(self,value, error):
@@ -73,7 +81,9 @@ class Detection(DataPoint):
     def __repr__(self):
         return '%s +/- %s' % (self.value,self.error)
     def _repr_html_(self):
-        return '$%s \pm %s $' % (self.value, self.error)
+        return '$%g \pm %g $' % (self.value, self.error)
+    @staticmethod
+    def significant(): return True
 
     def to_uncertainty(self):
         return ufloat((self.value,self.error))
@@ -103,6 +113,8 @@ class Detection(DataPoint):
             return Detection(self.value/other,self.error/other)
         elif isinstance(other, Detection):
             return Detection.from_uncertainty(self.to_uncertainty().__div__(other.to_uncertainty()))
+        elif isinstance(other, UpperLimit):
+            return LowerLimit(self.value/other.upper_limit)
         else:
             raise NotImplemented()
 
@@ -115,7 +127,9 @@ class Detection(DataPoint):
         elif isinstance(other, Detection):
             return Detection.from_uncertainty(self.to_uncertainty().__mul__(other.to_uncertainty()))
         elif isinstance(other, UpperLimit):
-            return UpperLimit((self.value + self.error)*other.upper_limit)
+            return UpperLimit(self.value*other.upper_limit)
+        elif isinstance(other, LowerLimit):
+            return LowerLimit(self.value*other.lower_limit)
         else:
             raise NotImplemented()
 
@@ -128,7 +142,7 @@ class Detection(DataPoint):
         elif isinstance(other, Detection):
             return Detection.from_uncertainty(self.to_uncertainty().__add__(other.to_uncertainty()))
         elif isinstance(other, UpperLimit):
-            return UpperLimit(self.value + self.error +other.upper_limit)
+            return UpperLimit(self.value+other.upper_limit)
         else:
             raise NotImplemented()
     
@@ -150,6 +164,8 @@ class UpperLimit(DataPoint):
             return other.__add__(self) 
         else:
             raise NotImplemented()
+    @staticmethod
+    def significant(): return False
 
     def __div__(self, other):
         if isinstance(other, numbers.Number):
@@ -157,7 +173,7 @@ class UpperLimit(DataPoint):
                 return float('nan')
             return UpperLimit(self.upper_limit/other)
         elif isinstance(other, Detection):
-            return UpperLimit(self.upper_limit/(other.value - other.error))
+            return UpperLimit(self.upper_limit/(other.value))
         elif isinstance(other, Detection):
             raise NotImplemented()
 
@@ -174,26 +190,83 @@ class UpperLimit(DataPoint):
         return '<%s' % self.upper_limit
 
     def _repr_html_(self):
-        return '$<%s$' % self.upper_limit
+        return '$<%g$' % self.upper_limit
         
     def __eq__(self, other):
         return self.upper_limit == other.upper_limit
+
+class LowerLimit(DataPoint):
+    def __init__(self,lower_limit):
+        self.lower_limit = lower_limit
+    @staticmethod
+    def significant(): return False
+
+    def __repr__(self):
+        return '>%s' % self.lower_limit
+
+    def _repr_html_(self):
+        return '$>%g$' % self.lower_limit
         
+    def __eq__(self, other):
+        return self.lower_limit == other.lower_limit
 
-def plot(x, y, xlo=None, xhi=None, **kwargs):
-    from lande.utilities.plotting import plot_points
+def plot(x, y, 
+         axes=None, 
+         ul_fraction=0.4,
+         log_clipping=False, **kwargs):
 
-    _y = np.asarray([i.value if isinstance(i,Detection) else np.nan for i in y])
-    _y_lower_err = _y_upper_err = np.asarray([i.error if isinstance(i,Detection) else np.nan for i in y])
-    _y_ul = np.asarray([i.upper_limit if isinstance(i,UpperLimit) else np.nan for i in y])
-    _significant = np.asarray([True  if isinstance(i,Detection) else False for i in y])
+    import pylab as P
+    import matplotlib.lines as mlines
 
-    plot_points(x, _y, xlo=xlo, xhi=xhi, 
-                y_lower_err=_y_lower_err, y_upper_err=_y_upper_err, 
-                y_ul=_y_ul, significant=_significant,
-                **kwargs)
+    plot_kwargs = dict(linestyle='none', capsize=0)
+    plot_kwargs.update(kwargs)
 
+    ul_kwargs = plot_kwargs.copy()
+    for k in ['capsize', 'elinewidth', 'marker']:
+        if k in ul_kwargs: ul_kwargs.pop(k)
 
+    if axes is None:
+        axes = P.gca()
+
+    for _x, _y in zip(x,y):
+        if isinstance(_y,Detection):
+
+            axes.errorbar([_x], [_y.value],
+                          yerr=[_y.error],
+                          **plot_kwargs)
+
+        elif isinstance(_y,AssymetricError):
+            axes.errorbar([_x], [_y.value],
+                          yerr=[[_y.lower], [_y.upper]],
+                          **plot_kwargs)
+
+        elif isinstance(_y,UpperLimit):
+
+            axes.errorbar([_x], [_y.upper_limit],
+                          yerr=[ [ul_fraction*_y.upper_limit], [0] ],
+                          **plot_kwargs)
+
+            axes.plot([_x], [(1-ul_fraction)*_y.upper_limit],
+                      marker=mlines.CARETDOWN,
+                      **ul_kwargs)
+
+        elif isinstance(_y,float):
+
+            axes.errorbar([_x], [_y],
+                          **plot_kwargs)
+
+        elif isinstance(_y, LowerLimit):
+
+            axes.errorbar([_x], [_y.lower_limit],
+                          yerr=[ [0], [ul_fraction*_y.lower_limit] ],
+                          **plot_kwargs)
+
+            axes.plot([_x], [(1+ul_fraction)*_y.lower_limit],
+                      marker=mlines.CARETUP,
+                      **ul_kwargs)
+
+        else:
+            raise Exception("...")
 
 if __name__ == "__main__":
     import doctest
