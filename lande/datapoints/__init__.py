@@ -231,13 +231,24 @@ def plot(x, y,
     for _x, _y in zip(x,y):
         if isinstance(_y,Detection):
 
-            axes.errorbar([_x], [_y.value],
-                          yerr=[_y.error],
+            a, b = _y.value, _y.error
+
+            if log_clipping and b > a:
+                b = a*0.99999999
+
+            axes.errorbar([_x], [a],
+                          yerr=[b],
                           **plot_kwargs)
 
         elif isinstance(_y,AssymetricError):
-            axes.errorbar([_x], [_y.value],
-                          yerr=[[_y.lower], [_y.upper]],
+
+            a, b, c = _y.value, _y.lower, _y.upper
+
+            if log_clipping and b > a:
+                b = a*0.99999999
+
+            axes.errorbar([_x], [a],
+                          yerr=[[b], [c]],
                           **plot_kwargs)
 
         elif isinstance(_y,UpperLimit):
