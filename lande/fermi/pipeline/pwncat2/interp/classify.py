@@ -128,10 +128,11 @@ class PWNClassifier(object):
             alt_models = [point_gtlike['altdiff'][dist,halo,TS] for dist,halo,TS in itertools.product(['SNR','Lorimer'],[4,10],[150,100000])]
             if np.any([i is None for i in alt_models]):
                 d['ts_altdiff'] = None
+                print 'BAD = '
             else:
                 all_TS = [ i['TS']['reoptimize'] if i is not None else None for i in alt_models]
                 d['ts_altdiff'] = max(min(all_TS),0)
-                print all_TS, d['ts_altdiff'] 
+                print d['ts_point'], all_TS, d['ts_altdiff'] 
 
         elif source_class == 'Upper_Limit':
             pass
